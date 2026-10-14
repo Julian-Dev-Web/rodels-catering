@@ -1,0 +1,13 @@
+node_modules/
+.npm-cache/
+dist/
+.env
+.env.*
+!.env.example
+supabase/.temp/
+supabase/.branches/
+coverage/
+test-results/
+playwright-report/
+.browsers/
+*.log

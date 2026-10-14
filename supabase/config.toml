@@ -1,0 +1,13 @@
+project_id = "rodels-catering"
+# Cloud function deployment configuration. Auth settings are configured in the
+# hosted Supabase Dashboard; no local database/container setup is needed.
+[functions.create-paymongo-checkout]
+verify_jwt = false
+[functions.paymongo-webhook]
+verify_jwt = false
+[functions.admin-set-role]
+verify_jwt = false
+[functions.process-refund]
+verify_jwt = false
+[functions.send-transactional-email]
+verify_jwt = false

@@ -1,0 +1,7 @@
+create table public.feedback(id uuid primary key default gen_random_uuid(),reservation_id uuid not null unique references public.reservations,customer_id uuid not null references public.profiles,rating int not null check(rating between 1 and 5),message text not null check(length(message) between 5 and 3000),created_at timestamptz not null default now());
+create table public.support_tickets(id uuid primary key default gen_random_uuid(),customer_id uuid not null references public.profiles,subject text not null check(length(subject) between 3 and 150),status public.support_status not null default 'pending',created_at timestamptz not null default now());
+create table public.support_messages(id uuid primary key default gen_random_uuid(),ticket_id uuid not null references public.support_tickets on delete cascade,author_id uuid not null references public.profiles,body text not null check(length(body) between 1 and 5000),created_at timestamptz not null default now());
+create index support_status_created on public.support_tickets(status,created_at);
+create index support_thread on public.support_messages(ticket_id,created_at);
+create table public.notifications(id uuid primary key default gen_random_uuid(),user_id uuid not null references public.profiles,title text not null,body text not null,href text not null,read_at timestamptz,created_at timestamptz not null default now());
+create index notifications_user_created on public.notifications(user_id,created_at desc);
