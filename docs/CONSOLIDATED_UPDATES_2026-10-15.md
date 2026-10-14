@@ -25,7 +25,7 @@ Migration `supabase/updates/0019_consolidated_booking_operations.sql` was applie
 
 Original booking dates/times/status/holds, saved quotes, address, financial fields and original financial rows were compared with a fresh pre-migration baseline. The hosted check passed after installation. Immutable human references were backfilled; original UUIDs remain internal keys. The old capacity trigger was disabled only inside the transactional reference-year backfill and re-enabled before commit, avoiding changes to original update timestamps.
 
-The updated `export-application-data` and `public-assistant` Edge Functions were deployed. No new secret or environment-variable name is required. Frontend publication follows the existing GitHub main → Vercel connection. Deployment verification is recorded in the continuation checkpoint.
+The updated `export-application-data` and `public-assistant` Edge Functions were deployed. No new secret or environment-variable name is required. Implementation commit `92c4586` was pushed to GitHub main; Vercel serves the matching tested entry bundle. Final production browser acceptance passed ten read-only checks, including normal staff login/reload, reports, operating-hours controls, role guards and a protected archive/checksum download. See the continuation checkpoint for the deployment record.
 
 For a different project already on 0018, review/back up first, then apply 0019 once through SQL Editor or the restricted operator CLI:
 
@@ -40,7 +40,7 @@ The original SQL Editor install did not register CLI migration history. Do not u
 ## Verification
 
 - 87 automated tests passed across seven files, including the real isolated PostgreSQL schema/RLS/functions, reference immutability, role boundaries, strict contacts, Sunday/closed hours, transitions/reasons, rescheduling and quantity/snapshot pricing.
-- Frontend TypeScript/production build and lint passed. Edge type-check status and final hosted checks are recorded in the checkpoint.
+- Frontend TypeScript/production build, lint and type checks for all seven Edge Functions passed. The build retains a main-bundle size advisory; report dependencies load lazily. Original hosted booking/financial-row preservation passed again after QA cleanup.
 - Browser acceptance used the current local frontend with the real hosted backend and designated test accounts. It passed carousel/reduced motion, four menu CTAs, Sunday hours, contact/consent persistence, mixed guest seating and setup rules, structured details, editable rejection Cancel, filtered CSV/PDF downloads, sorting/page size, request/approval rescheduling, normal staff login/reload, role/suspension guards, maintenance restoration and authenticated archive/checksum.
 - The single temporary unpaid booking and its related records/notifications were cleaned. Test contact/account state and maintenance settings were restored. Immutable audit evidence was retained. No real paid checkout, provider refund or production restore was performed.
 - Fake report fixtures rendered as a four-page narrow report and a three-page thirteen-column landscape report. Repeated headers, page numbering, Unicode and page bounds passed; pages were visually inspected without clipping. These are export tests, not screenshots of real transactions.
