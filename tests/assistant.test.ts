@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { addDays, earliestBookingDate, validDate } from '../supabase/functions/_shared/booking-date'
 import { answerFromFacts, parseIntent, parseRequest, quickIntent } from '../supabase/functions/_shared/assistant'
 import type { Intent } from '../supabase/functions/_shared/assistant'
+import { extractIntent, providerConfig } from '../supabase/functions/_shared/assistant-provider'
 
 const now = '2026-10-13T16:30:00Z'
 const intent: Intent = { topics: ['packages', 'availability'], event_date: null, guests: 50, language: 'en' }
@@ -45,5 +46,28 @@ describe('public assistant and preparation dates', () => {
     const fallback = answerFromFacts(quickIntent(request), [], [], 'quick_answers', now)
     expect(fallback.reply).toContain('Free-text AI chat is temporarily unavailable')
     expect(quickIntent(parseRequest({ message: 'Packages', quick: 'packages' })).topics).toEqual(['packages'])
+  })
+  it('defaults to Groq and never silently switches to a paid OpenAI key', () => {
+    expect(providerConfig({ OPENAI_API_KEY: 'unit-fixture' })).toBeNull()
+    expect(providerConfig({ GROQ_API_KEY: 'unit-fixture' })?.provider).toBe('groq')
+    expect(providerConfig({ AI_PROVIDER: 'openai', OPENAI_API_KEY: 'unit-fixture' })?.provider).toBe('openai')
+  })
+  it('sends bounded structured extraction to Groq with Manila context and parses the response', async () => {
+    const mock: typeof fetch = async (url, init) => {
+      expect(url).toBe('https://api.groq.com/openai/v1/chat/completions')
+      const body = JSON.parse(String(init?.body))
+      expect(body.model).toBe('openai/gpt-oss-20b')
+      expect(body.response_format.json_schema.strict).toBe(true)
+      expect(body.messages[0].content).toContain('2026-10-17')
+      expect(body.max_completion_tokens).toBe(1024)
+      return Response.json({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(intent) } }] })
+    }
+    expect(await extractIntent(parseRequest({ message: 'Prices for 50 guests' }), providerConfig({ GROQ_API_KEY: 'unit-fixture' })!, now, mock)).toEqual(intent)
+  })
+  it('rejects truncated model output and hides provider error details', async () => {
+    const config = providerConfig({ GROQ_API_KEY: 'unit-fixture' })!
+    const request = parseRequest({ message: 'prices' })
+    await expect(extractIntent(request, config, now, async () => Response.json({ choices: [{ finish_reason: 'length', message: { content: '{}' } }] }))).rejects.toThrow('Incomplete response')
+    await expect(extractIntent(request, config, now, async () => Response.json({ error: { message: 'private provider diagnostic' } }, { status: 429 }))).rejects.toThrow('Provider unavailable')
   })
 })

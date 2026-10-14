@@ -123,7 +123,7 @@ https://YOUR_PROJECT_REF.supabase.co/functions/v1/paymongo-webhook
 
 Use matching test/live secrets. Payment redirects never confirm payment; a signed webhook plus a provider lookup does. Test down payment, full payment, balance settlement and refunds with the provider's test environment. The server freezes ambiguous provider attempts to prevent duplicate money movement; reconciliation is documented in [SECURITY_NOTES.md](SECURITY_NOTES.md).
 
-Optional non-auth email: schedule `node scripts/dispatch-emails.mjs` on a restricted server/worker with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `EMAIL_WORKER_SECRET`. In-app notifications work without it. Supabase Auth handles verification/recovery emails separately. The landing-page assistant uses a server-side OpenAI key; see [CHATBOT_SETUP.md](CHATBOT_SETUP.md) for setup and limitations.
+Optional non-auth email: schedule `node scripts/dispatch-emails.mjs` on a restricted server/worker with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `EMAIL_WORKER_SECRET`. In-app notifications work without it. Supabase Auth handles verification/recovery emails separately. The landing-page assistant defaults to GroqCloud with a server-side key; see [CHATBOT_SETUP.md](CHATBOT_SETUP.md) for setup and limitations.
 
 ## Developer checks
 

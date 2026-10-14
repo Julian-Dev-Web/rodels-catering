@@ -5,7 +5,7 @@ export interface Intent { topics: Topic[]; event_date: string | null; guests: nu
 export interface AssistantRequest { message: string; quick?: Topic; event_date?: string; history: { role: 'user' | 'assistant'; content: string }[] }
 export interface PublicPackage { id: string; name: string; price: number; min_guests: number; dish_count: number }
 export interface PublicDate { event_date: string; remaining: number }
-export interface AssistantAnswer { reply: string; engine: 'openai' | 'quick_answers'; packages: PublicPackage[]; dates: PublicDate[] }
+export interface AssistantAnswer { reply: string; engine: 'openai' | 'groq' | 'quick_answers'; packages: PublicPackage[]; dates: PublicDate[] }
 const topics: Topic[] = ['packages', 'availability', 'booking_rules']
 
 export function parseRequest(value: unknown): AssistantRequest {
@@ -25,7 +25,7 @@ export function parseIntent(value: unknown): Intent {
   return { topics: [...new Set(data.topics)] as Topic[], event_date: data.event_date as string | null, guests: data.guests as number | null, language: data.language as 'en' | 'fil' }
 }
 export function quickIntent(request: AssistantRequest): Intent {
-  // Only explicit quick buttons work without AI. Free-text interpretation requires OpenAI.
+  // Only explicit quick buttons work without AI. Free-text interpretation requires a configured provider.
   return { topics: request.quick ? [request.quick] : [], event_date: request.event_date ?? null, guests: null, language: 'en' }
 }
 export function answerFromFacts(intent: Intent, packages: PublicPackage[], dates: PublicDate[], engine: AssistantAnswer['engine'], now: string | Date = new Date()): AssistantAnswer {

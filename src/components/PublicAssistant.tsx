@@ -54,7 +54,7 @@ export function PublicAssistant() {
             {!!item.answer?.packages.length && <Link className="assistant-link" to="/packages">Explore package details</Link>}
             {item.answer?.dates.map((day) => <div className="assistant-date" key={day.event_date}><span>{date(day.event_date)}</span><strong>{day.remaining > 0 ? `${day.remaining} ${day.remaining === 1 ? 'slot' : 'slots'} available` : 'Fully booked'}</strong></div>)}
             {!!item.answer?.dates.some((day) => day.remaining > 0) && <Link className="assistant-link" to={'/customer/reservations/new?date=' + item.answer.dates.find((day) => day.remaining > 0)!.event_date}>Sign in to plan your event</Link>}
-            {item.answer && <small className="assistant-source">{item.answer.engine === 'openai' ? 'AI assisted · current catalog/calendar' : 'Quick answer · current catalog/calendar'}</small>}
+            {item.answer && <small className="assistant-source">{item.answer.engine !== 'quick_answers' ? 'AI assisted · current catalog/calendar' : 'Quick answer · current catalog/calendar'}</small>}
           </div>)}
           {pending && <p className="assistant-status" role="status">Checking your question…</p>}
           {error && <p className="error assistant-error" role="alert">{error} <Link to="/packages">View packages</Link></p>}
