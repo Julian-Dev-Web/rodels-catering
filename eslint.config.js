@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint'
 import hooks from 'eslint-plugin-react-hooks'
 import globals from 'globals'
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', '.npm-cache', '.browsers', 'test-results', 'playwright-report', 'supabase/functions', 'docs/.tools', 'docs/qa'] },
+  { ignores: ['dist', 'node_modules', '.npm-cache', '.browsers', '.private', '.vercel', 'test-results', 'playwright-report', 'supabase/functions', 'docs/.tools', 'docs/qa'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   { files: ['scripts/*.mjs', 'docs/scripts/*.mjs'], languageOptions: { globals: globals.node } },
