@@ -126,7 +126,7 @@ export function Stat({
 export function ReservationDetail() {
   const { id } = useParams(),
     query = useReservation(id),
-    catalog = useCatalog()
+    catalog = useCatalog({ includeArchived: true })
   const [modal, setModal] = useState<'cancel' | 'reschedule' | null>(null)
   if (query.isPending) return <Loading />
   if (query.error) return <ErrorState error={query.error} />

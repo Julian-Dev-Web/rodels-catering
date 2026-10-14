@@ -661,4 +661,250 @@ create trigger profile_lifecycle_audit after insert or update of
  for each row execute function private.catalog_audit();
 revoke execute on function private.normalize_profile(),private.bootstrap_profile() from public,anon,authenticated;
 
+-- ==================== 0014_menu_pricing.sql ====================
+
+-- Menu metadata and seating upgrade rules. Existing menu versions and saved
+-- reservation totals are preserved; only new/edited quotes are calculated here.
+alter table public.menu_sets
+ add column if not exists max_guests int check(max_guests is null or max_guests>=min_guests),
+ add column if not exists pricing_version int not null default 1 check(pricing_version in (1,2)),
+ add column if not exists inclusions text[] not null default '{}',
+ add column if not exists suggested_dishes jsonb not null default '[]' check(jsonb_typeof(suggested_dishes)='array');
+alter table public.menu_sets alter column pricing_version set default 2;
+alter table public.menu_sets alter column max_guests set default 1000;
+do $$ begin
+ if not exists(select 1 from pg_constraint where conname='menu_guest_and_dish_limits_v2' and conrelid='public.menu_sets'::regclass) then
+  alter table public.menu_sets add constraint menu_guest_and_dish_limits_v2 check(pricing_version=1 or (min_guests>=100 and max_guests is not null and max_guests<=1000 and dish_count between 3 and 6));
+ end if;
+end $$;
+alter table public.event_setups add column if not exists description text not null default '';
+alter table public.event_features add column if not exists required_setup_id uuid references public.event_setups;
+
+-- Archiving choices must not hide customers' existing reservations through the
+-- security-invoker summary view or remove access to their selected item names.
+do $$ declare t text; predicate text; begin
+ foreach t in array array['menu_sets','drinks','desserts','dishes','menu_categories','event_setups','chair_types','table_types','event_features','add_ons'] loop
+  predicate=case t
+   when 'menu_sets' then 'exists(select 1 from public.reservations r where r.menu_set_id=menu_sets.id)'
+   when 'drinks' then 'exists(select 1 from public.reservations r where r.drink_id=drinks.id)'
+   when 'desserts' then 'exists(select 1 from public.reservations r where r.dessert_id=desserts.id)'
+   when 'dishes' then 'exists(select 1 from public.reservation_items x where x.dish_id=dishes.id)'
+   when 'menu_categories' then 'exists(select 1 from public.dishes d where d.category_id=menu_categories.id)'
+   when 'event_setups' then 'exists(select 1 from public.reservation_event_setups x where x.event_setup_id=event_setups.id)'
+   when 'chair_types' then 'exists(select 1 from public.reservation_tables_chairs x where x.chair_type_id=chair_types.id)'
+   when 'table_types' then 'exists(select 1 from public.reservation_tables_chairs x where x.table_type_id=table_types.id)'
+   when 'event_features' then 'exists(select 1 from public.reservation_event_features x where x.event_feature_id=event_features.id)'
+   when 'add_ons' then 'exists(select 1 from public.reservation_add_ons x where x.add_on_id=add_ons.id)'
+  end;
+  if not exists(select 1 from pg_policies where schemaname='public' and tablename=t and policyname='catalog_history_read') then
+   execute format('create policy catalog_history_read on public.%I for select to authenticated using (%s)',t,predicate);
+  end if;
+ end loop;
+end $$;
+
+create or replace function private.calculate_price(rid uuid) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare r public.reservations; m public.menu_sets; menu bigint; setup bigint; features bigint; addons bigint; chairs bigint=0; tables bigint; extra bigint; seating record; quote jsonb;
+begin
+ select * into strict r from public.reservations where id=rid;
+ select * into strict m from public.menu_sets where id=r.menu_set_id and active;
+ if r.guests<m.min_guests then raise exception 'Guest count is below the package minimum (% guests)',m.min_guests; end if;
+ if m.max_guests is not null and r.guests>m.max_guests then raise exception 'Guest count exceeds the package maximum (% guests)',m.max_guests; end if;
+ if exists(select 1 from public.reservation_event_features x join public.event_features f on f.id=x.event_feature_id
+   where x.reservation_id=rid and f.required_setup_id is not null and not exists(
+    select 1 from public.reservation_event_setups s where s.reservation_id=rid and s.event_setup_id=f.required_setup_id)) then
+  raise exception 'A selected upgrade requires its matching event setup';
+ end if;
+ menu=m.price*r.guests;
+ select coalesce(sum(s.price),0) into setup from public.reservation_event_setups x join public.event_setups s on s.id=x.event_setup_id where x.reservation_id=rid and s.active;
+ select coalesce(sum(s.price),0) into features from public.reservation_event_features x join public.event_features s on s.id=x.event_feature_id where x.reservation_id=rid and s.active;
+ select coalesce(sum(s.price*x.quantity),0) into addons from public.reservation_add_ons x join public.add_ons s on s.id=x.add_on_id where x.reservation_id=rid and s.active;
+ if m.pricing_version=2 then
+  if exists(select 1 from public.reservation_tables_chairs where reservation_id=rid) and (
+    (select count(*) from public.reservation_tables_chairs where reservation_id=rid)<>1 or
+    (select coalesce(sum(chair_quantity),0) from public.reservation_tables_chairs where reservation_id=rid)<>r.guests) then
+   raise exception 'Choose one chair type for all guests';
+  end if;
+  -- Basic seats have a zero surcharge. Upgrades apply to every guest, even
+  -- when chair quantity equals guest count (not just to excess chairs).
+  select coalesce(sum(s.price*x.chair_quantity),0) into chairs from public.reservation_tables_chairs x join public.chair_types s on s.id=x.chair_type_id where x.reservation_id=rid and s.active;
+ else
+  -- Preserve the original calculation for archived/legacy menu versions.
+  select greatest(coalesce(sum(chair_quantity),0)-r.guests,0) into extra from public.reservation_tables_chairs where reservation_id=rid;
+  for seating in select x.chair_quantity,s.price from public.reservation_tables_chairs x join public.chair_types s on s.id=x.chair_type_id where x.reservation_id=rid and s.active order by s.price desc loop
+   chairs=chairs+least(extra,seating.chair_quantity)*seating.price; extra=greatest(extra-seating.chair_quantity,0);
+  end loop;
+ end if;
+ select coalesce(sum(x.table_quantity*s.price),0) into tables from public.reservation_tables_chairs x join public.table_types s on s.id=x.table_type_id where x.reservation_id=rid and s.active;
+ quote=jsonb_build_object('menu',menu,'setup',setup,'features',features,'add_ons',addons,'tables',tables,'total',menu+setup+features+addons+chairs+tables);
+ return quote||jsonb_build_object(case when m.pricing_version=2 then 'chair_upgrade' else 'extra_chairs' end,chairs);
+end $$;
+revoke execute on function private.calculate_price(uuid) from public,anon,authenticated;
+
+-- ==================== 0015_rodels_catalog.sql ====================
+
+-- GENERATED by npm run db:catalog. Owner-confirmed catalog, October 15, 2026.
+
+-- New choices replace the illustrative catalog. Archive rows; never delete bookings or financial history.
+
+update public.menu_sets set active=false where id not in ('1e8efc88-f97e-46c5-6773-56bcf55e8878','ae6b22e5-fb44-85ae-92bf-a96d2c654676','9552cc63-daa8-1211-b7bd-74b929fac95d','ea88d6ff-8f3c-fe1e-345c-f57d5a561820') and active;
+
+insert into public.menu_sets(id,name,price,dish_count,min_guests,max_guests,pricing_version,description,inclusions,suggested_dishes) values
+('1e8efc88-f97e-46c5-6773-56bcf55e8878','Set Menu No. 1',32000,3,100,1000,2,'Pick your own 3 dishes from our catering menu.',array['Rice','1 drink and 1 dessert','Basic tables and chairs','Simple buffet setup with flower vase or balloon centerpiece']::text[],'[["Seafood Vegetables with Tofu"],["Korean Beef"],["Fried Chicken"]]'::jsonb),
+('ae6b22e5-fb44-85ae-92bf-a96d2c654676','Set Menu No. 2',35000,4,100,1000,2,'Pick your own 4 dishes from our catering menu.',array['Rice','1 drink and 1 dessert','Basic tables and chairs','Simple buffet setup with flower vase or balloon centerpiece']::text[],'[["Squid with Vegetables"],["Lengua"],["Pork Hamonado"],["Chicken BBQ","Chicken Fillet"]]'::jsonb),
+('9552cc63-daa8-1211-b7bd-74b929fac95d','Set Menu No. 3',38000,5,100,1000,2,'Pick your own 5 dishes from our catering menu.',array['Rice','1 drink and 1 dessert','Basic tables and chairs','Simple buffet setup with flower vase or balloon centerpiece']::text[],'[["Green Peas with Quail Eggs","Mixed Vegetables"],["Beef with Broccoli"],["Baked Chicken Pastel"],["Pork Morcon"],["Fish Fillet"]]'::jsonb),
+('ea88d6ff-8f3c-fe1e-345c-f57d5a561820','Set Menu No. 4',42000,6,100,1000,2,'Pick your own 6 dishes from our catering menu.',array['Rice','1 drink and 1 dessert','Basic tables and chairs','Simple buffet setup with flower vase or balloon centerpiece']::text[],'[["Seafood Kare-Kare","Beef Kare-Kare"],["Roast Beef with Buttered Vegetables"],["Grilled Blue Marlin"],["Pork Menudo"],["Chicken Cordon Bleu"],["Shrimp Tempura"]]'::jsonb)
+on conflict(id) do update set name=excluded.name,price=excluded.price,dish_count=excluded.dish_count,min_guests=excluded.min_guests,max_guests=excluded.max_guests,pricing_version=excluded.pricing_version,description=excluded.description,inclusions=excluded.inclusions,suggested_dishes=excluded.suggested_dishes,active=true;
+
+update public.menu_categories set active=false where id not in ('79af5341-c77b-8634-e0e4-336b14d33e28','14026782-f135-aafa-9173-793d72a90cec','03a1f49b-59d4-b522-bace-82f9dcc06730','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1','ead308b6-3b8f-5ede-f68c-789ffd56609d','4785af2b-36b5-c8b3-d840-25ad5fbde230') and active;
+
+insert into public.menu_categories(id,name) values
+('79af5341-c77b-8634-e0e4-336b14d33e28','Chicken'),
+('14026782-f135-aafa-9173-793d72a90cec','Beef'),
+('03a1f49b-59d4-b522-bace-82f9dcc06730','Pasta / Noodles'),
+('5c7bb8fe-8f53-35db-79df-6128e3f0c9f1','Pork'),
+('ead308b6-3b8f-5ede-f68c-789ffd56609d','Seafood'),
+('4785af2b-36b5-c8b3-d840-25ad5fbde230','Vegetables')
+on conflict(id) do update set name=excluded.name,active=true;
+
+update public.dishes set active=false where id not in ('75d7267e-d27c-43be-d536-65f3520cee13','40d6ec31-66bb-4e1d-a388-75d10440ed0f','8d214e09-5cbb-f9f3-ff1b-fe022b806aa8','ce3b340d-31ec-5e46-0302-d75ea138205c','e6de8107-dbb9-6266-967a-41455492fe74','cad13d77-a8ef-fa00-c51d-251dfc198924','cbdecc7c-6da2-e2d0-bd5d-62385734381d','f5f8adad-f353-c950-36a0-4af1f8628a32','c4a90900-cd52-810a-acea-5dcf5705bd99','6b9df8c9-4aaf-0a4c-4887-2f095cac4cfc','d6e139ab-b467-e5e4-e9bb-8d118a27b29c','8a6a0a01-a286-d53c-6294-2de788a77b5d','50b00aab-5b57-935a-4c33-2c7eedbc8133','0f2b0215-83b7-64fa-180e-0e4bace4b266','6e448118-1a0d-5e6c-5b00-80b9e5bf356c','62ea1abe-5858-c480-fac9-d1de911f948c','6b961ccf-895f-b083-141d-80394d10d2be','5219ff22-08f9-7bef-5afb-944221733593','19b89a13-ce07-23bc-49d0-12876fff3e3a','f893e8ff-247f-d8ce-f86c-9bbd3d93dbab','96a5cfea-ff48-8f96-6665-dffb6c630406','dc5a27f3-af52-fe36-3960-5bac16006a72','c80f31c4-683f-3a0b-6a3c-dc73cd307175','5c03f5ef-d5e0-0014-c8dd-736778e13026','37af7473-fd0a-d7ba-f8ef-5f07bf2cd00c','3cc3d0dc-1e53-dcc7-5d4f-ed8b5169d701','378303cb-e2b8-fb99-29ab-1f7da8ed1764','bc11e453-46a6-bb9f-ba20-b9fae2365843','d6540264-e0a6-bc3d-a32c-21fca45ba2cc','cc631753-26a3-4cdb-8905-68a13be97401','3e87b0dd-1641-d765-59fd-8297f56e9637','db2a8720-b72a-6b01-cf70-a77c4803bd29','9b5e5fac-93c3-96ee-40ed-4a0da069dd74','439029dc-6ddf-c9ec-e295-1c7d21739820','5f084199-9f82-0b8e-b45f-9ee0ac26fb11','697a7b4b-f4f5-b51c-cd6f-f79735e362bb','a3c66db4-131b-97af-6026-f0dd7751c916','b011c54a-765a-a25c-54d2-82bcf7343b3f','1820d239-7860-d1fb-a21f-d2bb707084e2','6e374fbc-1f25-6cf4-7448-055f49ff8a1d','fa9c1db8-1c8e-b52c-facd-af1264c4f1be','80b7097d-e8c7-0f8f-6f18-db6dacc41c5d','1c139f41-09c5-8c54-b049-da6a920fc85a','62066a76-e72e-d821-500f-b6db657bf652','af7891c5-a2e7-ab61-2d1c-3ffe561cc4b8','4031c34c-6469-72d7-237f-da13b242175b','4ed49847-1482-d04f-4b6a-9bc96494601b','968bbc4a-59e3-d105-7965-c1b71158283d','2b6731f3-a086-0adf-6526-10228286ea29','8ff1abae-1ae7-d16c-fceb-c92338a91dbb','44aa1892-8479-58fe-029f-6b695d416f4b','fff33968-dcf2-eae6-3faf-b695580bfd7e','7372a554-922e-d269-044c-31410f0c0739','71733105-9b84-574d-383d-576bb4038bfa','26ca95a2-f5eb-a05d-0619-674ffc28bf45','e80adb82-8692-823f-f369-b39f4a5cd282','eb1719ce-30c9-ec4c-c7d8-1742258bb84f','2bb60249-66c8-c133-1e75-ec17294e9f67','6fa1ebd4-6bbc-2cf5-526f-ebb6bb055e1d','a4621cf2-e650-774d-3cac-3e9810c0795a','ee4f0708-c818-b64f-c6da-106ec7fb9fc5','29d86862-4745-1de2-7ce3-356ed1bf5c29','31801176-b622-feba-1c7d-703b9b37327f','ca7b9eb8-1f14-6d4b-b6ff-5e5bcec14580','d66b3815-0e53-2e18-4d65-452c94c28820','1e4330e4-0221-d1d3-a90f-217df89426bc','84ec8430-3bc5-bbef-7b4a-124594b0fb7c','3e330362-13c8-5556-b719-72b201aacaf0','4426aada-110e-59e3-5ef0-7c2a51f086f3','8fab72ac-9bff-5d69-45b8-951a2093cd94','362c8732-17a9-5314-ecae-2b5380df921d','e62f8dcc-b099-e066-8d81-57d15b746a9d','35596195-0bb0-0bf8-f972-a4cae00a17a4','3975ffeb-c585-44a3-abc2-ad67f408e7b6','dc974a74-9ca3-8d6b-f300-73f27a2ff6a3','76042058-419b-bbb4-c8c4-b870935a603f','ddfed76b-d7bb-d583-b762-edfdc6f3a152','cd62708f-1224-5851-468f-adb7cff57a31') and active;
+
+insert into public.dishes(id,name,category_id) values
+('75d7267e-d27c-43be-d536-65f3520cee13','Chicken Cordon Bleu','79af5341-c77b-8634-e0e4-336b14d33e28'),
+('40d6ec31-66bb-4e1d-a388-75d10440ed0f','Baked Chicken Pastel','79af5341-c77b-8634-e0e4-336b14d33e28'),
+('8d214e09-5cbb-f9f3-ff1b-fe022b806aa8','Chicken BBQ','79af5341-c77b-8634-e0e4-336b14d33e28'),
+('ce3b340d-31ec-5e46-0302-d75ea138205c','Chicken Wrapped in Bacon','79af5341-c77b-8634-e0e4-336b14d33e28'),
+('e6de8107-dbb9-6266-967a-41455492fe74','Chicken Curry','79af5341-c77b-8634-e0e4-336b14d33e28'),
+('cad13d77-a8ef-fa00-c51d-251dfc198924','Chicken Teriyaki','79af5341-c77b-8634-e0e4-336b14d33e28'),
+('cbdecc7c-6da2-e2d0-bd5d-62385734381d','Garlic Buttered Chicken','79af5341-c77b-8634-e0e4-336b14d33e28'),
+('f5f8adad-f353-c950-36a0-4af1f8628a32','Pineapple Chicken','79af5341-c77b-8634-e0e4-336b14d33e28'),
+('c4a90900-cd52-810a-acea-5dcf5705bd99','Chicken Fillet','79af5341-c77b-8634-e0e4-336b14d33e28'),
+('6b9df8c9-4aaf-0a4c-4887-2f095cac4cfc','Chicken a la King','79af5341-c77b-8634-e0e4-336b14d33e28'),
+('d6e139ab-b467-e5e4-e9bb-8d118a27b29c','Fried Chicken','79af5341-c77b-8634-e0e4-336b14d33e28'),
+('8a6a0a01-a286-d53c-6294-2de788a77b5d','Lengua','14026782-f135-aafa-9173-793d72a90cec'),
+('50b00aab-5b57-935a-4c33-2c7eedbc8133','Beef with Broccoli','14026782-f135-aafa-9173-793d72a90cec'),
+('0f2b0215-83b7-64fa-180e-0e4bace4b266','Roast Beef with Buttered Vegetables','14026782-f135-aafa-9173-793d72a90cec'),
+('6e448118-1a0d-5e6c-5b00-80b9e5bf356c','Beef with Mushroom','14026782-f135-aafa-9173-793d72a90cec'),
+('62ea1abe-5858-c480-fac9-d1de911f948c','Beef Caldereta','14026782-f135-aafa-9173-793d72a90cec'),
+('6b961ccf-895f-b083-141d-80394d10d2be','Beef Steak','14026782-f135-aafa-9173-793d72a90cec'),
+('5219ff22-08f9-7bef-5afb-944221733593','Beef Teriyaki','14026782-f135-aafa-9173-793d72a90cec'),
+('19b89a13-ce07-23bc-49d0-12876fff3e3a','Korean Beef','14026782-f135-aafa-9173-793d72a90cec'),
+('f893e8ff-247f-d8ce-f86c-9bbd3d93dbab','Beef Morcon','14026782-f135-aafa-9173-793d72a90cec'),
+('96a5cfea-ff48-8f96-6665-dffb6c630406','Beef Salpicao','14026782-f135-aafa-9173-793d72a90cec'),
+('dc5a27f3-af52-fe36-3960-5bac16006a72','Beef Mechado','14026782-f135-aafa-9173-793d72a90cec'),
+('c80f31c4-683f-3a0b-6a3c-dc73cd307175','Pepper Beef Steak','14026782-f135-aafa-9173-793d72a90cec'),
+('5c03f5ef-d5e0-0014-c8dd-736778e13026','Beef Kare-Kare','14026782-f135-aafa-9173-793d72a90cec'),
+('37af7473-fd0a-d7ba-f8ef-5f07bf2cd00c','Beefy Spaghetti','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('3cc3d0dc-1e53-dcc7-5d4f-ed8b5169d701','Creamy Carbonara','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('378303cb-e2b8-fb99-29ab-1f7da8ed1764','Baked Macaroni','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('bc11e453-46a6-bb9f-ba20-b9fae2365843','Beefy Lasagna','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('d6540264-e0a6-bc3d-a32c-21fca45ba2cc','Seafood Pasta','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('cc631753-26a3-4cdb-8905-68a13be97401','Chicken Alfredo','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('3e87b0dd-1641-d765-59fd-8297f56e9637','Sotanghon Guisado','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('db2a8720-b72a-6b01-cf70-a77c4803bd29','Bihon Guisado','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('9b5e5fac-93c3-96ee-40ed-4a0da069dd74','Sotanghon / Canton Guisado','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('439029dc-6ddf-c9ec-e295-1c7d21739820','Canton Guisado','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('5f084199-9f82-0b8e-b45f-9ee0ac26fb11','Japchae','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('697a7b4b-f4f5-b51c-cd6f-f79735e362bb','Palabok','03a1f49b-59d4-b522-bace-82f9dcc06730'),
+('a3c66db4-131b-97af-6026-f0dd7751c916','Pork Morcon','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('b011c54a-765a-a25c-54d2-82bcf7343b3f','Korean Sweet Chili Pork','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('1820d239-7860-d1fb-a21f-d2bb707084e2','Pork Mongolian','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('6e374fbc-1f25-6cf4-7448-055f49ff8a1d','Pork Hamonado','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('fa9c1db8-1c8e-b52c-facd-af1264c4f1be','Sweet and Sour Pork','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('80b7097d-e8c7-0f8f-6f18-db6dacc41c5d','Pork Menudo','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('1c139f41-09c5-8c54-b049-da6a920fc85a','Pork Asado','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('62066a76-e72e-d821-500f-b6db657bf652','Pork Teriyaki','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('af7891c5-a2e7-ab61-2d1c-3ffe561cc4b8','Pork BBQ','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('4031c34c-6469-72d7-237f-da13b242175b','Garlic Pork in Oyster Sauce','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('4ed49847-1482-d04f-4b6a-9bc96494601b','Pork Caldereta','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('968bbc4a-59e3-d105-7965-c1b71158283d','Lechon Kawali','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('2b6731f3-a086-0adf-6526-10228286ea29','Pork Pinatisan','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('8ff1abae-1ae7-d16c-fceb-c92338a91dbb','Pork Sisig','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('44aa1892-8479-58fe-029f-6b695d416f4b','Pork Dinakdakan','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('fff33968-dcf2-eae6-3faf-b695580bfd7e','Tokwa’t Baboy','5c7bb8fe-8f53-35db-79df-6128e3f0c9f1'),
+('7372a554-922e-d269-044c-31410f0c0739','Shrimp Tempura','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('71733105-9b84-574d-383d-576bb4038bfa','Garlic Buttered Shrimp','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('26ca95a2-f5eb-a05d-0619-674ffc28bf45','Sweet Chili Shrimp','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('e80adb82-8692-823f-f369-b39f4a5cd282','Shrimp Gambas','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('eb1719ce-30c9-ec4c-c7d8-1742258bb84f','Grilled Prawns','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('2bb60249-66c8-c133-1e75-ec17294e9f67','Seafood Teriyaki','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('6fa1ebd4-6bbc-2cf5-526f-ebb6bb055e1d','Seafood Salpicao','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('a4621cf2-e650-774d-3cac-3e9810c0795a','Seafood Boil (Spicy Garlic / Cajun)','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('ee4f0708-c818-b64f-c6da-106ec7fb9fc5','Fish and Tofu in Black Bean Sauce','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('29d86862-4745-1de2-7ce3-356ed1bf5c29','Fish Fillet with Sweet and Sour Sauce','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('31801176-b622-feba-1c7d-703b9b37327f','Fish Fillet','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('ca7b9eb8-1f14-6d4b-b6ff-5e5bcec14580','Grilled Blue Marlin','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('d66b3815-0e53-2e18-4d65-452c94c28820','Grilled Tuna','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('1e4330e4-0221-d1d3-a90f-217df89426bc','Squid with Vegetables','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('84ec8430-3bc5-bbef-7b4a-124594b0fb7c','Seafood Kare-Kare','ead308b6-3b8f-5ede-f68c-789ffd56609d'),
+('3e330362-13c8-5556-b719-72b201aacaf0','Kare-Kare (Beef / Pork / Seafood)','4785af2b-36b5-c8b3-d840-25ad5fbde230'),
+('4426aada-110e-59e3-5ef0-7c2a51f086f3','Green Peas with Quail Eggs','4785af2b-36b5-c8b3-d840-25ad5fbde230'),
+('8fab72ac-9bff-5d69-45b8-951a2093cd94','Seafood Vegetables with Tofu','4785af2b-36b5-c8b3-d840-25ad5fbde230'),
+('362c8732-17a9-5314-ecae-2b5380df921d','Chopsuey','4785af2b-36b5-c8b3-d840-25ad5fbde230'),
+('e62f8dcc-b099-e066-8d81-57d15b746a9d','Gising-Gising','4785af2b-36b5-c8b3-d840-25ad5fbde230'),
+('35596195-0bb0-0bf8-f972-a4cae00a17a4','Stir Fry Vegetables','4785af2b-36b5-c8b3-d840-25ad5fbde230'),
+('3975ffeb-c585-44a3-abc2-ad67f408e7b6','Buttered Vegetables','4785af2b-36b5-c8b3-d840-25ad5fbde230'),
+('dc974a74-9ca3-8d6b-f300-73f27a2ff6a3','Mixed Vegetables','4785af2b-36b5-c8b3-d840-25ad5fbde230'),
+('76042058-419b-bbb4-c8c4-b870935a603f','Creamy Mixed Vegetables','4785af2b-36b5-c8b3-d840-25ad5fbde230'),
+('ddfed76b-d7bb-d583-b762-edfdc6f3a152','Ampalaya con Carne','4785af2b-36b5-c8b3-d840-25ad5fbde230'),
+('cd62708f-1224-5851-468f-adb7cff57a31','Pinakbet','4785af2b-36b5-c8b3-d840-25ad5fbde230')
+on conflict(id) do update set name=excluded.name,category_id=excluded.category_id,active=true;
+
+update public.drinks set active=false where id not in ('3c4d2ad6-eedc-e1b8-fc72-380377316279','dce48b7d-e889-2217-3681-236987fdce52','67fa5e51-35bd-e417-c317-795d5f40f7dd','ca152d87-cb18-4a33-2c60-8a8c52cc9e9f','d324fc5d-1ec4-a851-c1c6-54421ed64fe2','59c27064-5a12-88d7-25ec-c8421a5242ca','202fe1a9-0c8d-034b-98f7-a7a6fbef6baf') and active;
+
+insert into public.drinks(id,name) values
+('3c4d2ad6-eedc-e1b8-fc72-380377316279','4 Seasons'),
+('dce48b7d-e889-2217-3681-236987fdce52','Pineapple Punch'),
+('67fa5e51-35bd-e417-c317-795d5f40f7dd','Cucumber Lemonade'),
+('ca152d87-cb18-4a33-2c60-8a8c52cc9e9f','Iced Tea'),
+('d324fc5d-1ec4-a851-c1c6-54421ed64fe2','Red Tea'),
+('59c27064-5a12-88d7-25ec-c8421a5242ca','Black Gulaman'),
+('202fe1a9-0c8d-034b-98f7-a7a6fbef6baf','Softdrinks')
+on conflict(id) do update set name=excluded.name,active=true;
+
+update public.desserts set active=false where id not in ('9f71c616-0929-7d04-d261-1486f2306a00','6d25fc2a-ba78-59ab-17ba-9c2751576a9e','627cb64e-f602-ca5e-1c84-1016e3ede201','9a3408ae-0e59-3b24-804f-9d0c1577d2dd','f85af2ef-480a-315a-5b58-10d6193e1c86') and active;
+
+insert into public.desserts(id,name) values
+('9f71c616-0929-7d04-d261-1486f2306a00','Fruit Salad'),
+('6d25fc2a-ba78-59ab-17ba-9c2751576a9e','Buko Pandan'),
+('627cb64e-f602-ca5e-1c84-1016e3ede201','Buko Lychee'),
+('9a3408ae-0e59-3b24-804f-9d0c1577d2dd','Buko Melon'),
+('f85af2ef-480a-315a-5b58-10d6193e1c86','Coffee Jelly')
+on conflict(id) do update set name=excluded.name,active=true;
+
+update public.event_setups set active=false where id not in ('d0a1572c-1566-477f-14e7-b3f03a921849','055969f2-e4d8-eb1c-152a-f8832d7aa7a7','60187d59-4937-5f7a-d01c-9b96fc673f5e') and active;
+
+insert into public.event_setups(id,name,price,description) values
+('d0a1572c-1566-477f-14e7-b3f03a921849','Simple buffet setup',0,'Included: simple buffet setup with flower vase or balloon centerpiece.'),
+('055969f2-e4d8-eb1c-152a-f8832d7aa7a7','Birthday setup',1500000,'Additional event setup: stage backdrop, elegant chair and entrance.'),
+('60187d59-4937-5f7a-d01c-9b96fc673f5e','Wedding setup',3000000,'Additional event setup: stage backdrop, elegant chair, entrance, presidential table, buffet setup and diamond dance floor.')
+on conflict(id) do update set name=excluded.name,price=excluded.price,description=excluded.description,active=true;
+
+update public.event_features set active=false where id not in ('2cdf0bc6-ec9b-9bb2-2a51-a23623989479','6d7db097-0d84-422a-f4ed-57738000abad') and active;
+
+insert into public.event_features(id,name,price,required_setup_id) values
+('2cdf0bc6-ec9b-9bb2-2a51-a23623989479','Glass dance floor upgrade',500000,'60187d59-4937-5f7a-d01c-9b96fc673f5e'),
+('6d7db097-0d84-422a-f4ed-57738000abad','Trusses',4500000,null)
+on conflict(id) do update set name=excluded.name,price=excluded.price,required_setup_id=excluded.required_setup_id,active=true;
+
+update public.add_ons set active=false where active;
+
+update public.chair_types set active=false where id not in ('cb5f439f-2095-3c02-d14f-641833429341','8b572d2a-6437-dfc3-35be-d3c073128932') and active;
+
+insert into public.chair_types(id,name,price) values
+('cb5f439f-2095-3c02-d14f-641833429341','Monoblock',0),
+('8b572d2a-6437-dfc3-35be-d3c073128932','Elegant chair',1000)
+on conflict(id) do update set name=excluded.name,price=excluded.price,active=true;
+
+update public.table_types set active=false where id not in ('76020e81-a19a-61c5-8275-b7e2b4e5a1df','9644a477-4ce6-dd18-d21a-5751c5a2330b') and active;
+
+insert into public.table_types(id,name,price) values
+('76020e81-a19a-61c5-8275-b7e2b4e5a1df','Round table',0),
+('9644a477-4ce6-dd18-d21a-5751c5a2330b','Long table',0)
+on conflict(id) do update set name=excluded.name,price=excluded.price,active=true;
+
+update public.chair_types set name=name||' (legacy)' where not active and name in ('Monoblock','Tiffany');
+
+notify pgrst, 'reload schema';
+
 commit;

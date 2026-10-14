@@ -25,7 +25,7 @@ export function PackageCards() {
     <>
       {!configured && (
         <p className="demo-note">
-          Illustrative packages for setup preview. Connect Supabase to view the live catalog.
+          Business menu preview. Connect Supabase to view the live catalog and make reservations.
         </p>
       )}
       <div className="package-grid">
@@ -40,11 +40,12 @@ export function PackageCards() {
             </div>
             <div className="package-content">
               <span className="eyebrow">
-                {p.dish_count} DISHES · {p.min_guests}+ GUESTS
+                {p.dish_count} DISHES · {p.min_guests}{p.max_guests ? '–' + p.max_guests : '+'} GUESTS
               </span>
               <h3>{p.name}</h3>
               <p>{p.description}</p>
               <ul>
+                {p.pricing_version === 2 && <li><Check size={15} />Rice included</li>}
                 <li>
                   <Check size={15} />
                   Your choice of {p.dish_count} dishes
@@ -55,13 +56,14 @@ export function PackageCards() {
                 </li>
                 <li>
                   <Check size={15} />
-                  Personalize your setup & extras
+                  {p.pricing_version === 2 ? 'Basic tables, Monoblock chairs & simple buffet setup' : 'Personalize your setup & extras'}
                 </li>
               </ul>
+              {!!p.suggested_dishes?.length && <details className="package-suggested"><summary>Suggested menu</summary><ul>{p.suggested_dishes.map((choices, index) => <li key={index}>{choices.join(' or ')}</li>)}</ul><small>Or pick your own {p.dish_count} dishes.</small></details>}
               <div className="package-bottom">
                 <div>
                   <strong>{money(p.price || 0)}</strong>
-                  <small>per guest · setup priced separately</small>
+                  <small>{p.pricing_version === 2 ? 'per guest · basic setup included' : 'per guest · setup priced separately'}</small>
                 </div>
                 <Link
                   className="round-link"
@@ -261,8 +263,9 @@ export function Packages() {
           <em>everyone together.</em>
         </h1>
         <p>
-          Choose a starting point, then add your own flavor. Menu prices are per guest; your setup
-          and extras are calculated before confirmation.
+          Choose your set menu, then pick your own dishes. Rice, one drink, one dessert, basic
+          tables, Monoblock chairs and simple buffet setup are included. Seating and event upgrades
+          are added before confirmation.
         </p>
       </div>
       <PackageCards />
@@ -411,8 +414,9 @@ export function Policies() {
       </p>
       <h2>Pricing & payments</h2>
       <p>
-        Package price is the price per guest multiplied by your guest count. Setup, chosen features,
-        add-ons, table charges and extra chairs are added. The server-calculated confirmation is
+        Menu price is the price per guest multiplied by your guest count (100–1,000 guests).
+        Basic tables, Monoblock chairs and simple buffet setup are included. Elegant chairs add
+        ₱10 per guest. Birthday/wedding setups and chosen extras have separate event fees. The server-calculated confirmation is
         authoritative. You may pay a 50% down payment, pay in full, or settle an existing balance
         through PayMongo.
       </p>

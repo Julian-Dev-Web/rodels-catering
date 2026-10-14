@@ -502,16 +502,18 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
     queryFn: () => records<RecordRow>('menu_categories', 'name', true),
   })
   const priced = !['dishes', 'menu_categories', 'drinks', 'desserts'].includes(table)
+  const legacyMenu = table === 'menu_sets' && editing?.pricing_version === 1
+  const setups = useQuery({ queryKey: ['catalog-setup-options'], enabled: table === 'event_features', queryFn: () => records<RecordRow>('event_setups', 'name', true, { active: true }) })
   const fields: Field[] = [
     { name: 'name', label: 'Name', required: true, max: 150 },
-    ...(table === 'menu_sets' || table === 'dishes'
+    ...(table === 'menu_sets' || table === 'dishes' || table === 'event_setups'
       ? [{ name: 'description', label: 'Description', type: 'textarea', max: 2000 }]
       : []),
     ...(priced
       ? [
           {
             name: 'price',
-            label: 'Price in PHP (e.g. 350.00)',
+            label: table === 'menu_sets' ? 'Menu price per guest (PHP)' : table === 'chair_types' ? 'Chair upgrade per guest (PHP; 0 = included)' : table === 'table_types' ? 'Additional charge per table (PHP; 0 = included)' : 'Additional event fee (PHP)',
             type: 'number',
             required: true,
             min: 0,
@@ -525,17 +527,19 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
             label: 'Required dish count',
             type: 'number',
             required: true,
-            min: 1,
-            max: 20,
+            min: legacyMenu ? 1 : 3,
+            max: legacyMenu ? 20 : 6,
           },
           {
             name: 'min_guests',
             label: 'Minimum guests',
             type: 'number',
             required: true,
-            min: 1,
-            max: 10000,
+            min: legacyMenu ? 1 : 100,
+            max: legacyMenu ? 10000 : 1000,
           },
+          { name: 'max_guests', label: 'Maximum guests', type: 'number', required: !legacyMenu, min: 100, max: 1000 },
+          { name: 'inclusions', label: 'Included items (one per line)', type: 'textarea', max: 2000 },
         ]
       : []),
     ...(table === 'dishes'
@@ -547,6 +551,7 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
           },
         ]
       : []),
+    ...(table === 'event_features' ? [{ name: 'required_setup_id', label: 'Required event setup (optional)', options: setups.data?.map((setup) => ({ label: String(setup.name), value: setup.id })) || [] }] : []),
   ]
   return (
     <>
@@ -590,6 +595,7 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
               ? [
                   { key: 'dish_count', label: 'Dish count' },
                   { key: 'min_guests', label: 'Minimum guests' },
+                  { key: 'max_guests', label: 'Maximum guests' },
                 ]
               : []),
             {
@@ -638,10 +644,10 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
                       f.name,
                       f.name === 'price'
                         ? Number(editing.price) / 100
-                        : String(editing[f.name] ?? ''),
+                        : f.name === 'inclusions' && Array.isArray(editing.inclusions) ? editing.inclusions.join('\n') : String(editing[f.name] ?? ''),
                     ]),
                   )
-                : {}
+                : table === 'menu_sets' ? { min_guests: 100, max_guests: 1000, dish_count: 3 } : {}
             }
             label="Save item"
             submit={async (v) => {
@@ -654,7 +660,11 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
               if (table === 'menu_sets') {
                 payload.dish_count = Number(v.dish_count)
                 payload.min_guests = Number(v.min_guests)
+                payload.max_guests = v.max_guests ? Number(v.max_guests) : null
+                payload.inclusions = v.inclusions.split('\n').map((line) => line.trim()).filter(Boolean)
+                if (!legacyMenu && (!Number.isInteger(payload.dish_count) || Number(payload.dish_count) < 3 || Number(payload.dish_count) > 6 || !Number.isInteger(payload.min_guests) || Number(payload.min_guests) < 100 || !Number.isInteger(payload.max_guests) || Number(payload.max_guests) > 1000 || Number(payload.max_guests) < Number(payload.min_guests))) throw new Error('Menus require 3–6 dishes and a guest range within 100–1,000.')
               }
+              if (table === 'event_features') payload.required_setup_id = v.required_setup_id || null
               if (table === 'dishes' && !v.category_id) payload.category_id = null
               const { error } = editing
                 ? await supabase.from(table).update(payload).eq('id', editing.id)

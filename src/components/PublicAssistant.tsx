@@ -10,6 +10,7 @@ const quickQuestions: { topic: Topic; label: string }[] = [
   { topic: 'packages', label: 'Package prices' },
   { topic: 'availability', label: 'Available dates' },
   { topic: 'booking_rules', label: '3-day booking rule' },
+  { topic: 'upgrades', label: 'Setups & chairs' },
 ]
 export function PublicAssistant() {
   const [open, setOpen] = useState(false)
@@ -49,9 +50,10 @@ export function PublicAssistant() {
             <span className="sr-only">{item.role === 'user' ? 'You:' : 'Assistant:'}</span>
             <p>{item.content}</p>
             {item.answer?.packages.map((pack) => <article className="assistant-package" key={pack.id}>
-              <strong>{pack.name}</strong><span>{money(pack.price)} / guest</span><small>Minimum {pack.min_guests} guests · {pack.dish_count} dishes</small>
+              <strong>{pack.name}</strong><span>{money(pack.price)} / guest</span><small>{pack.min_guests}{pack.max_guests ? '–' + pack.max_guests : '+'} guests · {pack.dish_count} dishes</small>
             </article>)}
             {!!item.answer?.packages.length && <Link className="assistant-link" to="/packages">Explore package details</Link>}
+            {Object.entries(item.answer?.options ?? {}).map(([kind, options]) => <div key={kind}><strong className="assistant-option-heading">{kind.replaceAll('_', ' ')}</strong>{options.map((option) => <article className="assistant-package" key={option.id}><strong>{option.name}</strong><span>{option.price === 0 ? 'Included' : money(option.price) + (kind === 'chair_types' ? ' / guest' : kind === 'table_types' ? ' / table' : ' / event')}</span>{option.description && <small>{option.description}</small>}{option.required_setup_id && <small>Wedding setup required</small>}</article>)}</div>)}
             {item.answer?.dates.map((day) => <div className="assistant-date" key={day.event_date}><span>{date(day.event_date)}</span><strong>{day.remaining > 0 ? `${day.remaining} ${day.remaining === 1 ? 'slot' : 'slots'} available` : 'Fully booked'}</strong></div>)}
             {!!item.answer?.dates.some((day) => day.remaining > 0) && <Link className="assistant-link" to={'/customer/reservations/new?date=' + item.answer.dates.find((day) => day.remaining > 0)!.event_date}>Sign in to plan your event</Link>}
             {item.answer && <small className="assistant-source">{item.answer.engine !== 'quick_answers' ? 'AI assisted · current catalog/calendar' : 'Quick answer · current catalog/calendar'}</small>}

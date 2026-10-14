@@ -29,6 +29,11 @@ export interface CatalogItem {
   price?: number
   dish_count?: number
   min_guests?: number
+  max_guests?: number | null
+  pricing_version?: number
+  inclusions?: string[]
+  suggested_dishes?: string[][]
+  required_setup_id?: string | null
   category_id?: string
   image_url?: string
   active: boolean

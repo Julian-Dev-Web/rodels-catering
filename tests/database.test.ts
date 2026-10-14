@@ -21,6 +21,7 @@ async function scalar<T>(sql: string, args: unknown[] = []) {
 let draft: string
 let flow: string
 let setupSql: string
+let ownerCatalog: { name: string; price: number; dish_count: number; min_guests: number; max_guests: number }[]
 async function completeDraft(eventDate: string) {
   await identity('customer')
   const dishes = (await db.query<{ id: string }>('select id from dishes limit 3')).rows.map(
@@ -32,7 +33,7 @@ async function completeDraft(eventDate: string) {
     "select id as value from event_setups where name='Classic ivory'",
   )
   const table = await scalar<string>('select id as value from table_types limit 1')
-  const chair = await scalar<string>("select id as value from chair_types where name='Monoblock'")
+  const chair = await scalar<string>("select id as value from chair_types where name='Monoblock (legacy)'")
   return scalar<string>('select save_reservation($1::jsonb) as value', [
     JSON.stringify({
       event_name: 'Workflow event',
@@ -83,6 +84,11 @@ beforeAll(async () => {
     'create extension if not exists pgcrypto with schema extensions;',
     '-- pgcrypto installation belongs to the real Supabase platform.',
   ))
+  ownerCatalog = (await db.query<{ name: string; price: number; dish_count: number; min_guests: number; max_guests: number }>('select name,price,dish_count,min_guests,max_guests from menu_sets where active order by dish_count')).rows
+  // Restore the archived sample fixtures only inside this isolated test database
+  // so the original payment/refund tests still exercise legacy pricing v1.
+  await db.exec('update menu_sets set active=true where pricing_version=1')
+  for (const table of ['dishes','drinks','desserts','event_setups','event_features','add_ons','chair_types','table_types']) await db.exec(`update ${table} set active=true`)
   for (const [name, id] of Object.entries(users))
     await db.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)', [
       id,
@@ -93,7 +99,62 @@ beforeAll(async () => {
   )
 }, 60000)
 afterAll(() => db.close())
+
+async function ownerDraft(day: string, guests: number, chair = 'Monoblock', setup = 'Simple buffet setup', feature?: string, table = 'Round table') {
+  await identity('customer')
+  const lookup = (table: string, name: string) => scalar<string>(`select id as value from ${table} where name=$1`, [name])
+  const data = {
+    event_name: 'Confirmed catalog test', event_date: day, event_time: '12:00', guests,
+    menu_set_id: await lookup('menu_sets', 'Set Menu No. 1'),
+    drink_id: await lookup('drinks', 'Iced Tea'), dessert_id: await lookup('desserts', 'Coffee Jelly'),
+    dish_ids: await Promise.all(['Chicken Cordon Bleu','Korean Beef','Fried Chicken'].map((name) => lookup('dishes', name))),
+    setup_id: await lookup('event_setups', setup), table_type_id: await lookup('table_types', table), table_quantity: 10,
+    chairs: [{ id: await lookup('chair_types', chair), quantity: guests }],
+    feature_ids: feature ? [await lookup('event_features', feature)] : [],
+    address: {street:'Test venue',barangay:'Test barangay',city:'Test city',province:'Test province',contact:'09123456789'},
+  }
+  return scalar<string>('select save_reservation($1::jsonb) as value', [JSON.stringify(data)])
+}
+
+describe('owner menu pricing and included seating', () => {
+  it('rejects 99 and 1,001 guests through the actual save RPC', async () => {
+    await expect(ownerDraft('2098-01-01',99)).rejects.toThrow(/minimum/)
+    await expect(ownerDraft('2098-01-01',1001)).rejects.toThrow(/maximum/)
+  })
+  it('includes Monoblock chairs, both table shapes, and simple setup in the menu price', async () => {
+    const round = await ownerDraft('2098-01-02',100)
+    const long = await ownerDraft('2098-01-03',100,'Monoblock','Simple buffet setup',undefined,'Long table')
+    for (const id of [round,long]) {
+      const quote = await scalar<Record<string, number>>('select pricing as value from reservations where id=$1',[id])
+      expect(quote).toMatchObject({menu:3200000,setup:0,tables:0,chair_upgrade:0,total:3200000})
+    }
+    const maximum = await ownerDraft('2098-01-04',1000)
+    expect(await scalar('select total as value from reservations where id=$1',[maximum])).toBe(32000000)
+    const quote = await scalar<Record<string,number>>('select finalize_reservation($1) as value',[round])
+    expect(quote.total).toBe(3200000)
+  })
+  it('charges elegant chairs for every guest, including the first 100 seats', async () => {
+    const id = await ownerDraft('2098-01-05',100,'Elegant chair')
+    const quote = await scalar<Record<string,number>>('select pricing as value from reservations where id=$1',[id])
+    expect(quote).toMatchObject({menu:3200000,chair_upgrade:100000,total:3300000})
+    await identity('operator')
+    await db.query('update reservation_tables_chairs set chair_quantity=1 where reservation_id=$1',[id])
+    await expect(db.query('select private.calculate_price($1)',[id])).rejects.toThrow('one chair type for all guests')
+  })
+  it('adds fixed event fees and restricts the glass floor upgrade to weddings', async () => {
+    const birthday = await ownerDraft('2098-01-06',100,'Monoblock','Birthday setup')
+    expect(await scalar('select total as value from reservations where id=$1',[birthday])).toBe(4700000)
+    const wedding = await ownerDraft('2098-01-07',100,'Elegant chair','Wedding setup','Glass dance floor upgrade')
+    expect(await scalar('select total as value from reservations where id=$1',[wedding])).toBe(6800000)
+    const trusses = await ownerDraft('2098-01-08',100,'Monoblock','Simple buffet setup','Trusses')
+    expect(await scalar('select total as value from reservations where id=$1',[trusses])).toBe(7700000)
+    await expect(ownerDraft('2098-01-09',100,'Monoblock','Birthday setup','Glass dance floor upgrade')).rejects.toThrow(/matching event setup/)
+  })
+})
 describe('clean migrations and actual PostgreSQL business rules', () => {
+  it('installs the owner-confirmed four menus with the guest limits and current prices', () => {
+    expect(ownerCatalog.map((menu) => [menu.price,menu.dish_count,menu.min_guests,menu.max_guests])).toEqual([[32000,3,100,1000],[35000,4,100,1000],[38000,5,100,1000],[42000,6,100,1000]])
+  })
   it('rejects the first three Manila dates and accepts the third day ahead in the real save RPC', async () => {
     await identity('operator')
     const today = await scalar<string>("select ((now() at time zone 'Asia/Manila')::date)::text as value")
@@ -172,7 +233,7 @@ describe('clean migrations and actual PostgreSQL business rules', () => {
       1750000,
     )
     await identity('operator')
-    const chair = await scalar<string>("select id as value from chair_types where name='Monoblock'")
+    const chair = await scalar<string>("select id as value from chair_types where name='Monoblock (legacy)'")
     const setup = await scalar<string>(
       "select id as value from event_setups where name='Classic ivory'",
     )
@@ -232,6 +293,16 @@ describe('clean migrations and actual PostgreSQL business rules', () => {
     expect(
       await scalar('select count(*)::int as value from reservations where id=$1', [draft]),
     ).toBe(0)
+  })
+  it('keeps an archived menu visible through the owner summary without exposing it to another customer', async () => {
+    await identity('operator')
+    await db.exec("update menu_sets set active=false where id='10000000-0000-0000-0000-000000000001'")
+    await identity('customer')
+    expect(await scalar('select count(*)::int as value from reservation_summary where id=$1',[draft])).toBe(1)
+    await identity('other')
+    expect(await scalar("select count(*)::int as value from menu_sets where id='10000000-0000-0000-0000-000000000001'")).toBe(0)
+    await identity('operator')
+    await db.exec("update menu_sets set active=true where id='10000000-0000-0000-0000-000000000001'")
   })
   it('rejects incomplete menu finalization', async () => {
     await identity('customer')
@@ -428,7 +499,7 @@ describe('clean migrations and actual PostgreSQL business rules', () => {
   it('prices mixed extra chairs from the highest-priced type first', async () => {
     const rid = await completeDraft('2099-09-01')
     await identity('operator')
-    const tiffany = await scalar<string>("select id as value from chair_types where name='Tiffany'")
+    const tiffany = await scalar<string>("select id as value from chair_types where name='Tiffany (legacy)'")
     await db.query(
       'insert into reservation_tables_chairs(reservation_id,chair_type_id,chair_quantity) values($1,$2,10)',
       [rid, tiffany],
@@ -558,9 +629,10 @@ describe('clean migrations and actual PostgreSQL business rules', () => {
   it('rejects rerunning the hosted installer and preserves existing records', async () => {
     await identity('operator')
     const before = await scalar<number>('select count(*)::int as value from profiles')
+    const menusBefore = await scalar<number>('select count(*)::int as value from menu_sets')
     await expect(db.exec(setupSql)).rejects.toThrow(/Setup requires an empty public schema/)
     await db.exec('rollback')
     expect(await scalar<number>('select count(*)::int as value from profiles')).toBe(before)
-    expect(await scalar<number>('select count(*)::int as value from menu_sets')).toBe(3)
+    expect(await scalar<number>('select count(*)::int as value from menu_sets')).toBe(menusBefore)
   })
 })

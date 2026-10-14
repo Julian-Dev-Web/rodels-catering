@@ -1,12 +1,14 @@
 import { earliestBookingDate, validDate } from './booking-date.ts'
 
-export type Topic = 'packages' | 'availability' | 'booking_rules'
+export type Topic = 'packages' | 'availability' | 'booking_rules' | 'upgrades'
 export interface Intent { topics: Topic[]; event_date: string | null; guests: number | null; language: 'en' | 'fil' }
 export interface AssistantRequest { message: string; quick?: Topic; event_date?: string; history: { role: 'user' | 'assistant'; content: string }[] }
-export interface PublicPackage { id: string; name: string; price: number; min_guests: number; dish_count: number }
+export interface PublicPackage { id: string; name: string; price: number; min_guests: number; max_guests?: number | null; pricing_version?: number; inclusions?: string[]; dish_count: number }
+export interface PublicOption { id: string; name: string; price: number; description?: string; required_setup_id?: string | null }
+export type PublicOptions = Record<'event_setups' | 'chair_types' | 'table_types' | 'event_features', PublicOption[]>
 export interface PublicDate { event_date: string; remaining: number }
-export interface AssistantAnswer { reply: string; engine: 'openai' | 'groq' | 'quick_answers'; packages: PublicPackage[]; dates: PublicDate[] }
-const topics: Topic[] = ['packages', 'availability', 'booking_rules']
+export interface AssistantAnswer { reply: string; engine: 'openai' | 'groq' | 'quick_answers'; packages: PublicPackage[]; dates: PublicDate[]; options?: PublicOptions }
+const topics: Topic[] = ['packages', 'availability', 'booking_rules', 'upgrades']
 
 export function parseRequest(value: unknown): AssistantRequest {
   if (!value || typeof value !== 'object') throw new Error('Enter a question about packages or dates.')
@@ -21,14 +23,14 @@ export function parseRequest(value: unknown): AssistantRequest {
 export function parseIntent(value: unknown): Intent {
   if (!value || typeof value !== 'object') throw new Error('Invalid assistant response')
   const data = value as Record<string, unknown>
-  if (!Array.isArray(data.topics) || data.topics.length > 3 || data.topics.some((topic) => !topics.includes(topic)) || !['en', 'fil'].includes(String(data.language)) || (data.event_date !== null && (typeof data.event_date !== 'string' || !validDate(data.event_date))) || (data.guests !== null && (!Number.isInteger(data.guests) || Number(data.guests) < 1 || Number(data.guests) > 10000))) throw new Error('Invalid assistant response')
+  if (!Array.isArray(data.topics) || data.topics.length > 4 || data.topics.some((topic) => !topics.includes(topic)) || !['en', 'fil'].includes(String(data.language)) || (data.event_date !== null && (typeof data.event_date !== 'string' || !validDate(data.event_date))) || (data.guests !== null && (!Number.isInteger(data.guests) || Number(data.guests) < 1 || Number(data.guests) > 10000))) throw new Error('Invalid assistant response')
   return { topics: [...new Set(data.topics)] as Topic[], event_date: data.event_date as string | null, guests: data.guests as number | null, language: data.language as 'en' | 'fil' }
 }
 export function quickIntent(request: AssistantRequest): Intent {
   // Only explicit quick buttons work without AI. Free-text interpretation requires a configured provider.
   return { topics: request.quick ? [request.quick] : [], event_date: request.event_date ?? null, guests: null, language: 'en' }
 }
-export function answerFromFacts(intent: Intent, packages: PublicPackage[], dates: PublicDate[], engine: AssistantAnswer['engine'], now: string | Date = new Date()): AssistantAnswer {
+export function answerFromFacts(intent: Intent, packages: PublicPackage[], dates: PublicDate[], engine: AssistantAnswer['engine'], now: string | Date = new Date(), options?: PublicOptions): AssistantAnswer {
   const earliest = earliestBookingDate(now)
   const fil = intent.language === 'fil'
   const lines: string[] = []
@@ -41,12 +43,19 @@ export function answerFromFacts(intent: Intent, packages: PublicPackage[], dates
   }
   if (intent.topics.includes('packages')) {
     result.packages = packages
-    lines.push(fil ? 'Ito ang kasalukuyang packages. Ang presyo ay bawat guest; hiwalay pa ang event setup at extras.' : 'Here are our current packages. Prices are per guest; event setup and extras are added separately.')
+    const bundled = packages.length > 0 && packages.every((pack) => pack.pricing_version === 2)
+    lines.push(bundled ? (fil ? 'Ito ang kasalukuyang set menus. Bawat guest ang presyo; kasama ang rice, 1 drink, 1 dessert, basic tables, Monoblock chairs at simple buffet setup. Hiwalay ang upgrades at extras.' : 'Here are our current set menus. Prices are per guest and include rice, one drink, one dessert, basic tables, Monoblock chairs and simple buffet setup. Upgrades and extras cost more.') : (fil ? 'Ito ang kasalukuyang packages. Ang presyo ay bawat guest; hiwalay pa ang event setup at extras.' : 'Here are our current packages. Prices are per guest; event setup and extras are added separately.'))
     if (!packages.length) lines.push('No active packages are currently listed. Please contact the team.')
     if (intent.guests) {
       const money = (value: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value / 100)
-      lines.push(`For ${intent.guests} guests: ` + packages.map((item) => intent.guests! < item.min_guests ? `${item.name} needs at least ${item.min_guests} guests` : `${item.name} menu subtotal ${money(item.price * intent.guests!)}`).join('; ') + '. These are menu subtotals, not complete event quotes.')
+      const eligible = packages.some((item) => intent.guests! >= item.min_guests && (!item.max_guests || intent.guests! <= item.max_guests))
+      lines.push(`For ${intent.guests} guests: ` + packages.map((item) => intent.guests! < item.min_guests ? `${item.name} needs at least ${item.min_guests} guests` : item.max_guests && intent.guests! > item.max_guests ? `${item.name} allows at most ${item.max_guests} guests` : `${item.name} menu subtotal ${money(item.price * intent.guests!)}`).join('; ') + (eligible ? '. These are menu subtotals, not complete event quotes.' : '. Choose a guest count within the menu limits.'))
     }
+  }
+  if (intent.topics.includes('upgrades') && options) {
+    result.options = options
+    lines.push(fil ? 'Ito ang current setup at seating choices. Bawat guest ang chair upgrade; bawat table ang table charge. Fixed event fees ang birthday/wedding setup at extras. Ang glass dance floor upgrade ay para sa wedding setup.' : 'Here are the current setup and seating choices. Chair upgrades are per guest; table charges are per table. Birthday/wedding setups and extras have fixed event fees. The glass dance floor upgrade requires the wedding setup.')
+    if (intent.guests && intent.guests >= 100 && intent.guests <= 1000) lines.push(`Chair upgrades for ${intent.guests} guests: ` + options.chair_types.map((chair) => `${chair.name}: ${new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(chair.price * intent.guests! / 100)}`).join('; ') + '.')
   }
   if (intent.topics.includes('availability')) {
     if (intent.event_date && intent.event_date < earliest) {

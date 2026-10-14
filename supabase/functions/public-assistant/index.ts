@@ -3,7 +3,7 @@ import { secret } from '../_shared/http.ts'
 import { addDays, earliestBookingDate } from '../_shared/booking-date.ts'
 import { answerFromFacts, parseRequest, quickIntent } from '../_shared/assistant.ts'
 import { extractIntent, providerConfig } from '../_shared/assistant-provider.ts'
-import type { AssistantAnswer, Intent, PublicDate, PublicPackage } from '../_shared/assistant.ts'
+import type { AssistantAnswer, Intent, PublicDate, PublicPackage, PublicOptions } from '../_shared/assistant.ts'
 
 // Ephemeral limits per Edge instance. These are not a durable global quota.
 const requests = new Map<string, { count: number; expires: number }>()
@@ -52,10 +52,19 @@ Deno.serve(async (req) => {
       }
     }
     let packages: PublicPackage[] = [], dates: PublicDate[] = []
+    let options: PublicOptions | undefined
     if (intent.topics.includes('packages')) {
-      const result = await client.from('menu_sets').select('id,name,price,min_guests,dish_count').eq('active', true).order('price').limit(30)
+      const result = await client.from('menu_sets').select('id,name,price,min_guests,max_guests,pricing_version,inclusions,dish_count').eq('active', true).order('price').limit(30)
       if (result.error) throw new Error('Catalog unavailable')
       packages = result.data
+    }
+    if (intent.topics.includes('upgrades')) {
+      const result = await Promise.all((['event_setups', 'chair_types', 'table_types', 'event_features'] as const).map(async (table) => {
+        const value = await client.from(table).select('id,name,price' + (table === 'event_setups' ? ',description' : table === 'event_features' ? ',required_setup_id' : '')).eq('active', true).order('price').limit(30)
+        if (value.error) throw new Error('Upgrades unavailable')
+        return [table, value.data]
+      }))
+      options = Object.fromEntries(result) as PublicOptions
     }
     const earliest = earliestBookingDate()
     if (intent.topics.includes('availability') && (!intent.event_date || intent.event_date >= earliest)) {
@@ -64,7 +73,7 @@ Deno.serve(async (req) => {
       if (result.error) throw new Error('Calendar unavailable')
       dates = intent.event_date ? result.data : result.data.filter((day: PublicDate) => day.remaining > 0)
     }
-    return respond(answerFromFacts(intent, packages, dates, engine))
+    return respond(answerFromFacts(intent, packages, dates, engine, new Date(), options))
   } catch (error) {
     const safe = error instanceof Error && /^(Enter a question|Use a question|Unknown quick|Choose a valid|Conversation is too long)/.test(error.message)
     return respond({ error: safe ? error.message : 'The assistant could not answer right now. Please try again shortly.' }, safe ? 400 : 503)
