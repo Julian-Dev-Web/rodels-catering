@@ -20,6 +20,8 @@ export interface Profile {
   phone: string
   avatar_path: string | null
   role: Role
+  account_status: 'active' | 'suspended'
+  status_changed_at: string | null
   created_at: string
 }
 export interface CatalogItem {
@@ -34,6 +36,7 @@ export interface CatalogItem {
   inclusions?: string[]
   suggested_dishes?: string[][]
   required_setup_id?: string | null
+  setup_kind?: 'birthday' | 'wedding' | 'buffet' | null
   category_id?: string
   image_url?: string
   active: boolean
@@ -69,6 +72,10 @@ export interface Reservation {
   pricing: Record<string, number>
   created_at: string
   finalized_at: string | null
+  booking_version?: number
+  event_preferences?: import('./lib/booking').EventPreferences
+  consent_version?: string | null
+  consent_at?: string | null
   package_name?: string
   customer_name?: string
 }

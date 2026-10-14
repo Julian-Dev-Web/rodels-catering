@@ -42,19 +42,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'PASSWORD_RECOVERY') setRecovery(true)
       if (event === 'SIGNED_OUT') setRecovery(false)
       client.removeQueries({
-        predicate: (q) => q.queryKey[0] !== 'catalog' && q.queryKey[0] !== 'maintenance',
+        predicate: (q) =>
+          q.queryKey[0] !== 'catalog' && q.queryKey[0] !== 'maintenance',
       })
     })
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (!active) return
-      setSession(data.session)
-      setSessionError(error)
-      setBooting(false)
-    }).catch((error: unknown) => {
-      if (!active) return
-      setSessionError(error)
-      setBooting(false)
-    })
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!active) return
+        setSession(data.session)
+        setSessionError(error)
+        setBooting(false)
+      })
+      .catch((error: unknown) => {
+        if (!active) return
+        setSessionError(error)
+        setBooting(false)
+      })
     return () => {
       active = false
       subscription.unsubscribe()
@@ -73,7 +77,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return data as Profile
     },
     refetchOnWindowFocus: true,
+    refetchInterval: 30000,
   })
+  useEffect(() => {
+    if (!configured || !session?.user.id) return
+    const userId = session.user.id
+    const channel = supabase
+      .channel('account-status-' + userId)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: 'id=eq.' + userId,
+        },
+        () => {
+          void client.invalidateQueries({ queryKey: ['profile', userId] })
+        },
+      )
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [session?.user.id, client])
   return (
     <Context.Provider
       value={{
@@ -95,10 +122,41 @@ export function RoleGuard({ children }: { children: ReactNode }) {
     location = useLocation()
   if (auth.loading) return <Loading />
   if (!auth.session)
-    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location.pathname + location.search }}
+        replace
+      />
+    )
   if (auth.error) return <ErrorState error={auth.error} retry={auth.refresh} />
   if (!auth.profile)
-    return <ErrorState error={new Error('Your profile could not be loaded. Contact support.')} />
+    return (
+      <ErrorState
+        error={new Error('Your profile could not be loaded. Contact support.')}
+      />
+    )
+  if (auth.profile.account_status === 'suspended')
+    return (
+      <main className="container section">
+        <ErrorState
+          error={
+            new Error(
+              'This account is suspended. Contact Rodel’s Catering through the website contact page to request a review.',
+            )
+          }
+        />
+        <a className="button secondary" href="/about">
+          Contact the team
+        </a>
+        <button
+          className="text-button"
+          onClick={() => void supabase.auth.signOut()}
+        >
+          Sign out
+        </button>
+      </main>
+    )
   if (!canVisit(auth.profile.role, location.pathname))
     return <Navigate to={roleHome[auth.profile.role]} replace />
   return children

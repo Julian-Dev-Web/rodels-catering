@@ -14,7 +14,10 @@ export function canVisit(role: Role, path: string) {
         ? role === 'super_admin'
         : true
 }
-export const navigation: Record<Role, { label: string; path: string; icon: string }[]> = {
+export const navigation: Record<
+  Role,
+  { label: string; path: string; icon: string }[]
+> = {
   customer: [
     ['My reservations', 'reservations', 'calendar'],
     ['Available dates', 'available-dates', 'date'],
@@ -30,11 +33,15 @@ export const navigation: Record<Role, { label: string; path: string; icon: strin
   ].map(([label, path, icon]) => ({ label, path: '/customer/' + path, icon })),
   manager: [
     ['Overview', 'dashboard', 'chart'],
+    ['Event calendar', 'calendar', 'date'],
+    ['Packages & menus', 'catalog', 'utensils'],
     ['Menu library', 'menu', 'utensils'],
+    ['Event setups & extras', 'event-setups', 'star'],
     ['Reservations', 'reservations', 'calendar'],
     ['Cancellations', 'cancellations', 'cancel'],
     ['Reschedules', 'reschedule', 'clock'],
-    ['Payments & reports', 'payments', 'wallet'],
+    ['Payment monitoring', 'payments', 'wallet'],
+    ['Reports & analytics', 'reports', 'chart'],
     ['Refunds', 'refunds', 'return'],
     ['Feedback', 'feedback', 'star'],
     ['Support inbox', 'support', 'chat'],
@@ -45,9 +52,13 @@ export const navigation: Record<Role, { label: string; path: string; icon: strin
     ['Backups & recovery', 'backups', 'database'],
     ['Packages & setups', 'packages', 'utensils'],
     ['Add-ons & features', 'add-ons', 'star'],
-    ['User access', 'users', 'users'],
+    ['User management', 'users', 'users'],
+    ['Roles & permissions', 'roles', 'users'],
     ['Gallery', 'gallery', 'image'],
-    ['System settings', 'maintenance', 'settings'],
+    ['Website maintenance', 'maintenance', 'settings'],
+    ['System settings', 'system-settings', 'settings'],
+    ['Security monitoring', 'security', 'receipt'],
+    ['System reports', 'reports', 'chart'],
     ['Audit trail', 'audit-logs', 'receipt'],
     ['Account settings', 'settings', 'settings'],
   ].map(([label, path, icon]) => ({

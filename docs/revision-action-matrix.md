@@ -25,6 +25,8 @@ or documentation action, not complete production acceptance.
 
 ## How to present this during a defense
 
+The rows above remain the original reconstructed documentation baseline, not panel minutes. For the current October 15 revision, use [the feature handoff](FEATURE_UPDATES_2026-10-15.md): validated service locations and contacts/consent; selectable setup inclusions; original-date reschedule calendar; five-day/10%-of-paid refund policy; distinct staff workspaces; account suspension; persistent maintenance; and a schema-bearing application archive. Preserve the stated limitations and pending Wedding owner prices when making slides.
+
 Use the slide title **“Revision and Action Matrix — Reconstructed for Team Confirmation.”**
 Introduce it as the team's evidence-based reconstruction of improvements, not a
 verbatim transcript of the previous panel. For each row, show the issue, actual

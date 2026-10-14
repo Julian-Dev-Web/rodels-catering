@@ -1,0 +1,8087 @@
+[
+  {
+    "code": "031400000",
+    "name": "Bulacan",
+    "province_code": "031400000",
+    "parent_code": null,
+    "level": "province"
+  },
+  {
+    "code": "031401000",
+    "name": "Angat",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031402000",
+    "name": "Balagtas",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031403000",
+    "name": "Baliuag",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031404000",
+    "name": "Bocaue",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031405000",
+    "name": "Bulacan",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031406000",
+    "name": "Bustos",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031407000",
+    "name": "Calumpit",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031408000",
+    "name": "Guiguinto",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031409000",
+    "name": "Hagonoy",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031410000",
+    "name": "City of Malolos",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031411000",
+    "name": "Marilao",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031412000",
+    "name": "City of Meycauayan",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031413000",
+    "name": "Norzagaray",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031414000",
+    "name": "Obando",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031415000",
+    "name": "Pandi",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031416000",
+    "name": "Paombong",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031417000",
+    "name": "Plaridel",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031418000",
+    "name": "Pulilan",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031419000",
+    "name": "San Ildefonso",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031420000",
+    "name": "City of San Jose Del Monte",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031421000",
+    "name": "San Miguel",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031422000",
+    "name": "San Rafael",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031423000",
+    "name": "Santa Maria",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031424000",
+    "name": "Doña Remedios Trinidad",
+    "province_code": "031400000",
+    "parent_code": "031400000",
+    "level": "city"
+  },
+  {
+    "code": "031401001",
+    "name": "Banaban",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401002",
+    "name": "Baybay",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401003",
+    "name": "Binagbag",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401005",
+    "name": "Donacion",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401006",
+    "name": "Encanto",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401007",
+    "name": "Laog",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401008",
+    "name": "Marungko",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401009",
+    "name": "Niugan",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401010",
+    "name": "Paltok",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401013",
+    "name": "Pulong Yantok",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401014",
+    "name": "San Roque (Pob.)",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401015",
+    "name": "Santa Cruz (Pob.)",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401016",
+    "name": "Santa Lucia",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401017",
+    "name": "Santo Cristo (Pob.)",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401018",
+    "name": "Sulucan",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031401019",
+    "name": "Taboc",
+    "province_code": "031400000",
+    "parent_code": "031401000",
+    "level": "barangay"
+  },
+  {
+    "code": "031402002",
+    "name": "Borol 2nd",
+    "province_code": "031400000",
+    "parent_code": "031402000",
+    "level": "barangay"
+  },
+  {
+    "code": "031402003",
+    "name": "Borol 1st",
+    "province_code": "031400000",
+    "parent_code": "031402000",
+    "level": "barangay"
+  },
+  {
+    "code": "031402004",
+    "name": "Dalig",
+    "province_code": "031400000",
+    "parent_code": "031402000",
+    "level": "barangay"
+  },
+  {
+    "code": "031402005",
+    "name": "Longos",
+    "province_code": "031400000",
+    "parent_code": "031402000",
+    "level": "barangay"
+  },
+  {
+    "code": "031402007",
+    "name": "Panginay",
+    "province_code": "031400000",
+    "parent_code": "031402000",
+    "level": "barangay"
+  },
+  {
+    "code": "031402008",
+    "name": "Pulong Gubat",
+    "province_code": "031400000",
+    "parent_code": "031402000",
+    "level": "barangay"
+  },
+  {
+    "code": "031402009",
+    "name": "San Juan",
+    "province_code": "031400000",
+    "parent_code": "031402000",
+    "level": "barangay"
+  },
+  {
+    "code": "031402010",
+    "name": "Santol",
+    "province_code": "031400000",
+    "parent_code": "031402000",
+    "level": "barangay"
+  },
+  {
+    "code": "031402011",
+    "name": "Wawa (Pob.)",
+    "province_code": "031400000",
+    "parent_code": "031402000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403001",
+    "name": "Bagong Nayon",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403002",
+    "name": "Barangca",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403003",
+    "name": "Calantipay",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403004",
+    "name": "Catulinan",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403005",
+    "name": "Concepcion",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403006",
+    "name": "Hinukay",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403007",
+    "name": "Makinabang",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403008",
+    "name": "Matangtubig",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403010",
+    "name": "Pagala",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403011",
+    "name": "Paitan",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403012",
+    "name": "Piel",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403013",
+    "name": "Pinagbarilan",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403014",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403016",
+    "name": "Sabang",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403017",
+    "name": "San Jose",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403018",
+    "name": "San Roque",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403019",
+    "name": "Santa Barbara",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403020",
+    "name": "Santo Cristo",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403021",
+    "name": "Santo Niño",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403022",
+    "name": "Subic",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403023",
+    "name": "Sulivan",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403024",
+    "name": "Tangos",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403025",
+    "name": "Tarcan",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403026",
+    "name": "Tiaong",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403027",
+    "name": "Tibag",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403028",
+    "name": "Tilapayong",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031403030",
+    "name": "Virgen delas Flores",
+    "province_code": "031400000",
+    "parent_code": "031403000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404001",
+    "name": "Antipona",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404002",
+    "name": "Bagumbayan",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404003",
+    "name": "Bambang",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404004",
+    "name": "Batia",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404005",
+    "name": "Biñang 1st",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404006",
+    "name": "Biñang 2nd",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404007",
+    "name": "Bolacan",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404008",
+    "name": "Bundukan",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404009",
+    "name": "Bunlo",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404010",
+    "name": "Caingin",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404011",
+    "name": "Duhat",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404012",
+    "name": "Igulot",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404013",
+    "name": "Lolomboy",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404014",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404015",
+    "name": "Sulucan",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404016",
+    "name": "Taal",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404017",
+    "name": "Tambobong",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404018",
+    "name": "Turo",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031404019",
+    "name": "Wakas",
+    "province_code": "031400000",
+    "parent_code": "031404000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405001",
+    "name": "Bagumbayan",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405002",
+    "name": "Balubad",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405003",
+    "name": "Bambang",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405004",
+    "name": "Matungao",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405005",
+    "name": "Maysantol",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405006",
+    "name": "Perez",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405007",
+    "name": "Pitpitan",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405009",
+    "name": "San Francisco",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405010",
+    "name": "San Jose (Pob.)",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405012",
+    "name": "San Nicolas",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405013",
+    "name": "Santa Ana",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405014",
+    "name": "Santa Ines",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405015",
+    "name": "Taliptip",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031405016",
+    "name": "Tibig",
+    "province_code": "031400000",
+    "parent_code": "031405000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406001",
+    "name": "Bonga Mayor",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406002",
+    "name": "Bonga Menor",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406003",
+    "name": "Buisan",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406004",
+    "name": "Camachilihan",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406005",
+    "name": "Cambaog",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406006",
+    "name": "Catacte",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406007",
+    "name": "Liciada",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406008",
+    "name": "Malamig",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406009",
+    "name": "Malawak",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406010",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406011",
+    "name": "San Pedro",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406012",
+    "name": "Talampas",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406013",
+    "name": "Tanawan",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031406014",
+    "name": "Tibagan",
+    "province_code": "031400000",
+    "parent_code": "031406000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407001",
+    "name": "Balite",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407002",
+    "name": "Balungao",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407004",
+    "name": "Buguion",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407005",
+    "name": "Bulusan",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407006",
+    "name": "Calizon",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407007",
+    "name": "Calumpang",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407008",
+    "name": "Caniogan",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407009",
+    "name": "Corazon",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407010",
+    "name": "Frances",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407011",
+    "name": "Gatbuca",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407012",
+    "name": "Gugo",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407013",
+    "name": "Iba Este",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407014",
+    "name": "Iba O'Este",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407015",
+    "name": "Longos",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407016",
+    "name": "Meysulao",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407017",
+    "name": "Meyto",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407018",
+    "name": "Palimbang",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407019",
+    "name": "Panducot",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407020",
+    "name": "Pio Cruzcosa",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407021",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407022",
+    "name": "Pungo",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407023",
+    "name": "San Jose",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407024",
+    "name": "San Marcos",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407025",
+    "name": "San Miguel",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407026",
+    "name": "Santa Lucia",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407027",
+    "name": "Santo Niño",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407028",
+    "name": "Sapang Bayan",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407029",
+    "name": "Sergio Bayan",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031407030",
+    "name": "Sucol",
+    "province_code": "031400000",
+    "parent_code": "031407000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408001",
+    "name": "Cutcut",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408002",
+    "name": "Daungan",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408003",
+    "name": "Ilang-Ilang",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408004",
+    "name": "Malis",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408005",
+    "name": "Panginay",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408006",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408007",
+    "name": "Pritil",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408008",
+    "name": "Pulong Gubat",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408009",
+    "name": "Santa Cruz",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408010",
+    "name": "Santa Rita",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408011",
+    "name": "Tabang",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408012",
+    "name": "Tabe",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408013",
+    "name": "Tiaong",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031408015",
+    "name": "Tuktukan",
+    "province_code": "031400000",
+    "parent_code": "031408000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409001",
+    "name": "Abulalas",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409002",
+    "name": "Carillo",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409003",
+    "name": "Iba",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409004",
+    "name": "Mercado",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409005",
+    "name": "Palapat",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409006",
+    "name": "Pugad",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409007",
+    "name": "Sagrada Familia",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409008",
+    "name": "San Agustin",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409009",
+    "name": "San Isidro",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409011",
+    "name": "San Jose",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409012",
+    "name": "San Juan",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409013",
+    "name": "San Miguel",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409014",
+    "name": "San Nicolas",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409015",
+    "name": "San Pablo",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409016",
+    "name": "San Pascual",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409017",
+    "name": "San Pedro",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409018",
+    "name": "San Roque",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409019",
+    "name": "San Sebastian",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409020",
+    "name": "Santa Cruz",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409021",
+    "name": "Santa Elena",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409022",
+    "name": "Santa Monica",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409023",
+    "name": "Santo Niño (Pob.)",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409024",
+    "name": "Santo Rosario",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409025",
+    "name": "Tampok",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409026",
+    "name": "Tibaguin",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031409027",
+    "name": "Iba-Ibayo",
+    "province_code": "031400000",
+    "parent_code": "031409000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410001",
+    "name": "Anilao",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410002",
+    "name": "Atlag",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410003",
+    "name": "Babatnin",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410004",
+    "name": "Bagna",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410005",
+    "name": "Bagong Bayan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410006",
+    "name": "Balayong",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410007",
+    "name": "Balite",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410008",
+    "name": "Bangkal",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410010",
+    "name": "Barihan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410012",
+    "name": "Bulihan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410013",
+    "name": "Bungahan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410014",
+    "name": "Dakila",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410015",
+    "name": "Guinhawa",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410016",
+    "name": "Caingin",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410017",
+    "name": "Calero",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410018",
+    "name": "Caliligawan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410019",
+    "name": "Canalate",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410020",
+    "name": "Caniogan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410021",
+    "name": "Catmon",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410022",
+    "name": "Ligas",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410023",
+    "name": "Liang",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410025",
+    "name": "Longos",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410026",
+    "name": "Look 1st",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410027",
+    "name": "Look 2nd",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410028",
+    "name": "Lugam",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410029",
+    "name": "Mabolo",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410031",
+    "name": "Mambog",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410032",
+    "name": "Masile",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410033",
+    "name": "Matimbo",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410034",
+    "name": "Mojon",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410035",
+    "name": "Namayan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410036",
+    "name": "Niugan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410037",
+    "name": "Pamarawan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410038",
+    "name": "Panasahan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410039",
+    "name": "Pinagbakahan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410041",
+    "name": "San Agustin",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410042",
+    "name": "San Gabriel",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410043",
+    "name": "San Juan",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410044",
+    "name": "San Pablo",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410045",
+    "name": "San Vicente (Pob.)",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410046",
+    "name": "Santiago",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410047",
+    "name": "Santisima Trinidad",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410048",
+    "name": "Santo Cristo",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410049",
+    "name": "Santo Niño (Pob.)",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410050",
+    "name": "Santo Rosario (Pob.)",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410051",
+    "name": "Santor",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410052",
+    "name": "Sumapang Bata",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410053",
+    "name": "Sumapang Matanda",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410054",
+    "name": "Taal",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410055",
+    "name": "Tikay",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031410056",
+    "name": "Cofradia",
+    "province_code": "031400000",
+    "parent_code": "031410000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411001",
+    "name": "Abangan Norte",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411002",
+    "name": "Abangan Sur",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411003",
+    "name": "Ibayo",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411004",
+    "name": "Lambakin",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411005",
+    "name": "Lias",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411006",
+    "name": "Loma de Gato",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411007",
+    "name": "Nagbalon",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411008",
+    "name": "Patubig",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411009",
+    "name": "Poblacion I",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411010",
+    "name": "Poblacion II",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411011",
+    "name": "Prenza I",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411012",
+    "name": "Prenza II",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411013",
+    "name": "Santa Rosa I",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411014",
+    "name": "Santa Rosa II",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411015",
+    "name": "Saog",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031411016",
+    "name": "Tabing Ilog",
+    "province_code": "031400000",
+    "parent_code": "031411000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412001",
+    "name": "Bagbaguin",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412002",
+    "name": "Bahay Pare",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412003",
+    "name": "Bancal",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412004",
+    "name": "Banga",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412005",
+    "name": "Bayugo",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412006",
+    "name": "Calvario",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412007",
+    "name": "Camalig",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412008",
+    "name": "Hulo",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412009",
+    "name": "Iba",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412010",
+    "name": "Langka",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412011",
+    "name": "Lawa",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412012",
+    "name": "Libtong",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412013",
+    "name": "Liputan",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412014",
+    "name": "Longos",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412015",
+    "name": "Malhacan",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412016",
+    "name": "Pajo",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412017",
+    "name": "Pandayan",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412018",
+    "name": "Pantoc",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412019",
+    "name": "Perez",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412020",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412021",
+    "name": "Saluysoy",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412022",
+    "name": "Saint Francis (Gasak)",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412023",
+    "name": "Tugatog",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412024",
+    "name": "Ubihan",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412025",
+    "name": "Zamora",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031412026",
+    "name": "Caingin",
+    "province_code": "031400000",
+    "parent_code": "031412000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413003",
+    "name": "Bangkal",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413004",
+    "name": "Baraka",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413006",
+    "name": "Bigte",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413007",
+    "name": "Bitungol",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413015",
+    "name": "Matictic",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413016",
+    "name": "Minuyan",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413020",
+    "name": "Partida",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413021",
+    "name": "Pinagtulayan",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413022",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413024",
+    "name": "San Mateo",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413031",
+    "name": "Tigbe",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413032",
+    "name": "San Lorenzo",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031413033",
+    "name": "Friendship Village Resources",
+    "province_code": "031400000",
+    "parent_code": "031413000",
+    "level": "barangay"
+  },
+  {
+    "code": "031414001",
+    "name": "Binuangan",
+    "province_code": "031400000",
+    "parent_code": "031414000",
+    "level": "barangay"
+  },
+  {
+    "code": "031414002",
+    "name": "Catanghalan",
+    "province_code": "031400000",
+    "parent_code": "031414000",
+    "level": "barangay"
+  },
+  {
+    "code": "031414003",
+    "name": "Hulo",
+    "province_code": "031400000",
+    "parent_code": "031414000",
+    "level": "barangay"
+  },
+  {
+    "code": "031414004",
+    "name": "Lawa",
+    "province_code": "031400000",
+    "parent_code": "031414000",
+    "level": "barangay"
+  },
+  {
+    "code": "031414005",
+    "name": "Salambao",
+    "province_code": "031400000",
+    "parent_code": "031414000",
+    "level": "barangay"
+  },
+  {
+    "code": "031414006",
+    "name": "Paco",
+    "province_code": "031400000",
+    "parent_code": "031414000",
+    "level": "barangay"
+  },
+  {
+    "code": "031414007",
+    "name": "Pag-asa (Pob.)",
+    "province_code": "031400000",
+    "parent_code": "031414000",
+    "level": "barangay"
+  },
+  {
+    "code": "031414008",
+    "name": "Paliwas",
+    "province_code": "031400000",
+    "parent_code": "031414000",
+    "level": "barangay"
+  },
+  {
+    "code": "031414009",
+    "name": "Panghulo",
+    "province_code": "031400000",
+    "parent_code": "031414000",
+    "level": "barangay"
+  },
+  {
+    "code": "031414010",
+    "name": "San Pascual",
+    "province_code": "031400000",
+    "parent_code": "031414000",
+    "level": "barangay"
+  },
+  {
+    "code": "031414011",
+    "name": "Tawiran",
+    "province_code": "031400000",
+    "parent_code": "031414000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415001",
+    "name": "Bagbaguin",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415002",
+    "name": "Bagong Barrio",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415003",
+    "name": "Bunsuran III",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415004",
+    "name": "Bunsuran I",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415005",
+    "name": "Bunsuran II",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415006",
+    "name": "Cacarong Bata",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415007",
+    "name": "Cacarong Matanda",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415008",
+    "name": "Cupang",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415009",
+    "name": "Malibong Bata",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415010",
+    "name": "Malibong Matanda",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415011",
+    "name": "Manatal",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415012",
+    "name": "Mapulang Lupa",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415013",
+    "name": "Masagana",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415014",
+    "name": "Masuso",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415015",
+    "name": "Pinagkuartelan",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415016",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415017",
+    "name": "Real de Cacarong",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415018",
+    "name": "San Roque",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415019",
+    "name": "Siling Bata",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415020",
+    "name": "Siling Matanda",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415021",
+    "name": "Baka-bakahan",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031415022",
+    "name": "Santo Niño",
+    "province_code": "031400000",
+    "parent_code": "031415000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416001",
+    "name": "Binakod",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416002",
+    "name": "Kapitangan",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416003",
+    "name": "Malumot",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416004",
+    "name": "Masukol",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416006",
+    "name": "Pinalagdan",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416007",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416009",
+    "name": "San Isidro I",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416010",
+    "name": "San Isidro II",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416011",
+    "name": "San Jose",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416012",
+    "name": "San Roque",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416013",
+    "name": "San Vicente",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416014",
+    "name": "Santa Cruz",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416015",
+    "name": "Santo Niño",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031416016",
+    "name": "Santo Rosario",
+    "province_code": "031400000",
+    "parent_code": "031416000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417001",
+    "name": "Agnaya",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417002",
+    "name": "Bagong Silang",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417003",
+    "name": "Banga I",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417004",
+    "name": "Banga II",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417005",
+    "name": "Bintog",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417006",
+    "name": "Bulihan",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417007",
+    "name": "Culianin",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417008",
+    "name": "Dampol",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417010",
+    "name": "Lagundi",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417011",
+    "name": "Lalangan",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417012",
+    "name": "Lumang Bayan",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417014",
+    "name": "Parulan",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417015",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417016",
+    "name": "Rueda",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417017",
+    "name": "San Jose",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417018",
+    "name": "Santa Ines",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417019",
+    "name": "Santo Niño",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417020",
+    "name": "Sipat",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031417021",
+    "name": "Tabang",
+    "province_code": "031400000",
+    "parent_code": "031417000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418001",
+    "name": "Balatong A",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418002",
+    "name": "Balatong B",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418003",
+    "name": "Cutcot",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418005",
+    "name": "Dampol I",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418006",
+    "name": "Dampol II-A",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418007",
+    "name": "Dampol II-B",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418008",
+    "name": "Dulong Malabon",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418009",
+    "name": "Inaon",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418010",
+    "name": "Longos",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418011",
+    "name": "Lumbac",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418018",
+    "name": "Paltao",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418020",
+    "name": "Penabatan",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418022",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418025",
+    "name": "Santa Peregrina",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418026",
+    "name": "Santo Cristo",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418033",
+    "name": "Taal",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418034",
+    "name": "Tabon",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418035",
+    "name": "Tibag",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031418037",
+    "name": "Tinejero",
+    "province_code": "031400000",
+    "parent_code": "031418000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419001",
+    "name": "Akle",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419002",
+    "name": "Alagao",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419003",
+    "name": "Anyatam",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419006",
+    "name": "Bagong Barrio",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419007",
+    "name": "Basuit",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419008",
+    "name": "Bubulong Munti",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419009",
+    "name": "Bubulong Malaki",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419010",
+    "name": "Buhol na Mangga",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419011",
+    "name": "Bulusukan",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419012",
+    "name": "Calasag",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419013",
+    "name": "Calawitan",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419014",
+    "name": "Casalat",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419015",
+    "name": "Gabihan",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419016",
+    "name": "Garlang",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419017",
+    "name": "Lapnit",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419018",
+    "name": "Maasim",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419019",
+    "name": "Makapilapil",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419020",
+    "name": "Malipampang",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419021",
+    "name": "Matimbubong",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419022",
+    "name": "Nabaong Garlang",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419023",
+    "name": "Palapala",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419024",
+    "name": "Pasong Bangkal",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419025",
+    "name": "Pinaod",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419026",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419027",
+    "name": "Pulong Tamo",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419028",
+    "name": "San Juan",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419029",
+    "name": "Santa Catalina Bata",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419030",
+    "name": "Santa Catalina Matanda",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419031",
+    "name": "Sapang Dayap",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419032",
+    "name": "Sapang Putik",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419033",
+    "name": "Sapang Putol",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419034",
+    "name": "Sumandig",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419035",
+    "name": "Telepatio",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419036",
+    "name": "Upig",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419037",
+    "name": "Umpucan",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031419038",
+    "name": "Mataas na Parang",
+    "province_code": "031400000",
+    "parent_code": "031419000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420001",
+    "name": "Bagong Buhay I",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420002",
+    "name": "Dulong Bayan",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420003",
+    "name": "Gaya-gaya",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420004",
+    "name": "Kaypian",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420005",
+    "name": "Kaybanban",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420006",
+    "name": "Minuyan I",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420007",
+    "name": "Muzon",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420008",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420009",
+    "name": "Santo Cristo",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420010",
+    "name": "Sapang Palay",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420011",
+    "name": "Tungkong Mangga",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420012",
+    "name": "Citrus",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420013",
+    "name": "San Martin I",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420014",
+    "name": "Santa Cruz I",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420015",
+    "name": "Fatima I",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420016",
+    "name": "San Pedro",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420017",
+    "name": "San Rafael II",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420018",
+    "name": "Santo Niño I",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420019",
+    "name": "Assumption",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420020",
+    "name": "Bagong Buhay II",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420021",
+    "name": "Bagong Buhay III",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420022",
+    "name": "Ciudad Real",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420023",
+    "name": "Fatima II",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420024",
+    "name": "Fatima III",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420025",
+    "name": "Fatima IV",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420026",
+    "name": "Fatima V",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420027",
+    "name": "Francisco Homes-Guijo",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420028",
+    "name": "Francisco Homes-Mulawin",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420029",
+    "name": "Francisco Homes-Narra",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420030",
+    "name": "Francisco Homes-Yakal",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420031",
+    "name": "Graceville",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420032",
+    "name": "Gumaoc Central",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420033",
+    "name": "Gumaoc East",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420034",
+    "name": "Gumaoc West",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420035",
+    "name": "Lawang Pari",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420036",
+    "name": "Maharlika",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420037",
+    "name": "Minuyan II",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420038",
+    "name": "Minuyan III",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420039",
+    "name": "Minuyan IV",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420040",
+    "name": "Minuyan V",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420041",
+    "name": "Minuyan Proper",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420042",
+    "name": "Paradise III",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420043",
+    "name": "Poblacion I",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420044",
+    "name": "San Isidro",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420045",
+    "name": "San Manuel",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420046",
+    "name": "San Martin II",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420047",
+    "name": "San Martin III",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420048",
+    "name": "San Martin IV",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420049",
+    "name": "San Rafael I",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420050",
+    "name": "San Rafael III",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420051",
+    "name": "San Rafael IV",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420052",
+    "name": "San Rafael V",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420053",
+    "name": "San Roque",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420054",
+    "name": "Santa Cruz II",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420055",
+    "name": "Santa Cruz III",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420056",
+    "name": "Santa Cruz IV",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420057",
+    "name": "Santa Cruz V",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420058",
+    "name": "Santo Niño II",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031420059",
+    "name": "San Martin de Porres",
+    "province_code": "031400000",
+    "parent_code": "031420000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421001",
+    "name": "Bagong Silang",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421002",
+    "name": "Balaong",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421003",
+    "name": "Balite",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421004",
+    "name": "Bantog",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421006",
+    "name": "Bardias",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421007",
+    "name": "Baritan",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421008",
+    "name": "Batasan Bata",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421009",
+    "name": "Batasan Matanda",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421011",
+    "name": "Biak-na-Bato",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421012",
+    "name": "Biclat",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421013",
+    "name": "Buga",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421014",
+    "name": "Buliran",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421015",
+    "name": "Bulualto",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421016",
+    "name": "Calumpang",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421019",
+    "name": "Cambio",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421020",
+    "name": "Camias",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421021",
+    "name": "Ilog-Bulo",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421023",
+    "name": "King Kabayo",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421024",
+    "name": "Labne",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421025",
+    "name": "Lambakin",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421027",
+    "name": "Magmarale",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421028",
+    "name": "Malibay",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421030",
+    "name": "Mandile",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421031",
+    "name": "Masalipit",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421032",
+    "name": "Pacalag",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421033",
+    "name": "Paliwasan",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421035",
+    "name": "Partida",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421036",
+    "name": "Pinambaran",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421037",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421038",
+    "name": "Pulong Bayabas",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421039",
+    "name": "Sacdalan",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421040",
+    "name": "Salacot",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421041",
+    "name": "Salangan",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421043",
+    "name": "San Agustin",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421044",
+    "name": "San Jose",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421045",
+    "name": "San Juan",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421046",
+    "name": "San Vicente",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421047",
+    "name": "Santa Ines",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421048",
+    "name": "Santa Lucia",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421049",
+    "name": "Santa Rita Bata",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421050",
+    "name": "Santa Rita Matanda",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421051",
+    "name": "Sapang",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421052",
+    "name": "Sibul",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421054",
+    "name": "Tartaro",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421055",
+    "name": "Tibagan",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421056",
+    "name": "Bagong Pag-asa",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421057",
+    "name": "Pulong Duhat",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421058",
+    "name": "Maligaya",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031421059",
+    "name": "Tigpalas",
+    "province_code": "031400000",
+    "parent_code": "031421000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422001",
+    "name": "BMA-Balagtas",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422002",
+    "name": "Banca-banca",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422003",
+    "name": "Caingin",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422004",
+    "name": "Coral na Bato",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422005",
+    "name": "Cruz na Daan",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422006",
+    "name": "Dagat-dagatan",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422007",
+    "name": "Diliman I",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422008",
+    "name": "Diliman II",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422009",
+    "name": "Capihan",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422010",
+    "name": "Libis",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422011",
+    "name": "Lico",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422012",
+    "name": "Maasim",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422013",
+    "name": "Mabalas-balas",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422014",
+    "name": "Maguinao",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422015",
+    "name": "Maronquillo",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422016",
+    "name": "Paco",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422017",
+    "name": "Pansumaloc",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422018",
+    "name": "Pantubig",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422019",
+    "name": "Pasong Bangkal",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422020",
+    "name": "Pasong Callos",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422021",
+    "name": "Pasong Intsik",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422022",
+    "name": "Pinacpinacan",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422023",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422024",
+    "name": "Pulo",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422025",
+    "name": "Pulong Bayabas",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422026",
+    "name": "Salapungan",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422027",
+    "name": "Sampaloc",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422028",
+    "name": "San Agustin",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422030",
+    "name": "San Roque",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422031",
+    "name": "Talacsan",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422032",
+    "name": "Tambubong",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422033",
+    "name": "Tukod",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422034",
+    "name": "Ulingao",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031422035",
+    "name": "Sapang Pahalang",
+    "province_code": "031400000",
+    "parent_code": "031422000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423001",
+    "name": "Bagbaguin",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423002",
+    "name": "Balasing",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423003",
+    "name": "Buenavista",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423004",
+    "name": "Bulac",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423005",
+    "name": "Camangyanan",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423006",
+    "name": "Catmon",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423007",
+    "name": "Cay Pombo",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423008",
+    "name": "Caysio",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423009",
+    "name": "Guyong",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423010",
+    "name": "Lalakhan",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423011",
+    "name": "Mag-asawang Sapa",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423013",
+    "name": "Mahabang Parang",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423014",
+    "name": "Manggahan",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423015",
+    "name": "Parada",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423016",
+    "name": "Poblacion",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423017",
+    "name": "Pulong Buhangin",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423018",
+    "name": "San Gabriel",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423019",
+    "name": "San Jose Patag",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423020",
+    "name": "San Vicente",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423021",
+    "name": "Sta. Clara",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423022",
+    "name": "Sta. Cruz",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423023",
+    "name": "Silangan",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423024",
+    "name": "Tabing Bakod",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031423025",
+    "name": "Tumana",
+    "province_code": "031400000",
+    "parent_code": "031423000",
+    "level": "barangay"
+  },
+  {
+    "code": "031424001",
+    "name": "Bayabas",
+    "province_code": "031400000",
+    "parent_code": "031424000",
+    "level": "barangay"
+  },
+  {
+    "code": "031424002",
+    "name": "Kabayunan",
+    "province_code": "031400000",
+    "parent_code": "031424000",
+    "level": "barangay"
+  },
+  {
+    "code": "031424003",
+    "name": "Camachin",
+    "province_code": "031400000",
+    "parent_code": "031424000",
+    "level": "barangay"
+  },
+  {
+    "code": "031424004",
+    "name": "Camachile",
+    "province_code": "031400000",
+    "parent_code": "031424000",
+    "level": "barangay"
+  },
+  {
+    "code": "031424005",
+    "name": "Kalawakan",
+    "province_code": "031400000",
+    "parent_code": "031424000",
+    "level": "barangay"
+  },
+  {
+    "code": "031424006",
+    "name": "Pulong Sampalok",
+    "province_code": "031400000",
+    "parent_code": "031424000",
+    "level": "barangay"
+  },
+  {
+    "code": "031424007",
+    "name": "Talbak",
+    "province_code": "031400000",
+    "parent_code": "031424000",
+    "level": "barangay"
+  },
+  {
+    "code": "031424008",
+    "name": "Sapang Bulak",
+    "province_code": "031400000",
+    "parent_code": "031424000",
+    "level": "barangay"
+  },
+  {
+    "code": "035400000",
+    "name": "Pampanga",
+    "province_code": "035400000",
+    "parent_code": null,
+    "level": "province"
+  },
+  {
+    "code": "035401000",
+    "name": "City of Angeles",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035402000",
+    "name": "Apalit",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035403000",
+    "name": "Arayat",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035404000",
+    "name": "Bacolor",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035405000",
+    "name": "Candaba",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035406000",
+    "name": "Floridablanca",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035407000",
+    "name": "Guagua",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035408000",
+    "name": "Lubao",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035409000",
+    "name": "Mabalacat City",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035410000",
+    "name": "Macabebe",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035411000",
+    "name": "Magalang",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035412000",
+    "name": "Masantol",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035413000",
+    "name": "Mexico",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035414000",
+    "name": "Minalin",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035415000",
+    "name": "Porac",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035416000",
+    "name": "City of San Fernando",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035417000",
+    "name": "San Luis",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035418000",
+    "name": "San Simon",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035419000",
+    "name": "Santa Ana",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035420000",
+    "name": "Santa Rita",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035421000",
+    "name": "Sto. Tomas",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035422000",
+    "name": "Sasmuan",
+    "province_code": "035400000",
+    "parent_code": "035400000",
+    "level": "city"
+  },
+  {
+    "code": "035401001",
+    "name": "Agapito del Rosario",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401002",
+    "name": "Anunas",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401003",
+    "name": "Balibago",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401004",
+    "name": "Capaya",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401005",
+    "name": "Claro M. Recto",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401006",
+    "name": "Cuayan",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401007",
+    "name": "Cutcut",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401008",
+    "name": "Cutud",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401010",
+    "name": "Lourdes North West",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401011",
+    "name": "Lourdes Sur",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401012",
+    "name": "Lourdes Sur East",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401013",
+    "name": "Malabañas",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401014",
+    "name": "Margot",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401015",
+    "name": "Mining",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401017",
+    "name": "Pampang",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401018",
+    "name": "Pandan",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401019",
+    "name": "Pulung Maragul",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401020",
+    "name": "Pulungbulu",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401021",
+    "name": "Pulung Cacutud",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401022",
+    "name": "Salapungan",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401023",
+    "name": "San Jose",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401024",
+    "name": "San Nicolas",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401025",
+    "name": "Sta. Teresita",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401026",
+    "name": "Sta. Trinidad",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401027",
+    "name": "Sto. Cristo",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401028",
+    "name": "Sto. Domingo",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401029",
+    "name": "Sto. Rosario (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401030",
+    "name": "Sapalibutad",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401031",
+    "name": "Sapangbato",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401032",
+    "name": "Tabun",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401034",
+    "name": "Virgen Delos Remedios",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401035",
+    "name": "Amsic",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035401036",
+    "name": "Ninoy Aquino",
+    "province_code": "035400000",
+    "parent_code": "035401000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402001",
+    "name": "Balucuc",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402003",
+    "name": "Calantipe",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402004",
+    "name": "Cansinala",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402005",
+    "name": "Capalangan",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402007",
+    "name": "Colgante",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402009",
+    "name": "Paligui",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402010",
+    "name": "Sampaloc",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402011",
+    "name": "San Juan (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402012",
+    "name": "San Vicente",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402013",
+    "name": "Sucad",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402014",
+    "name": "Sulipan",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035402015",
+    "name": "Tabuyuc",
+    "province_code": "035400000",
+    "parent_code": "035402000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403001",
+    "name": "Arenas",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403002",
+    "name": "Baliti",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403003",
+    "name": "Batasan",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403005",
+    "name": "Buensuceso",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403007",
+    "name": "Candating",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403008",
+    "name": "Gatiawin",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403009",
+    "name": "Guemasan",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403010",
+    "name": "La Paz",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403011",
+    "name": "Lacmit",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403012",
+    "name": "Lacquios",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403013",
+    "name": "Mangga-Cacutud",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403014",
+    "name": "Mapalad",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403015",
+    "name": "Panlinlang",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403016",
+    "name": "Paralaya",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403017",
+    "name": "Plazang Luma",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403018",
+    "name": "Poblacion",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403020",
+    "name": "San Agustin Norte",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403021",
+    "name": "San Agustin Sur",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403022",
+    "name": "San Antonio",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403025",
+    "name": "San Jose Mesulo",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403026",
+    "name": "San Juan Bano",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403027",
+    "name": "San Mateo",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403028",
+    "name": "San Nicolas",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403029",
+    "name": "San Roque Bitas",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403030",
+    "name": "Cupang",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403031",
+    "name": "Matamo",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403032",
+    "name": "Santo Niño Tabuan",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403034",
+    "name": "Suclayin",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403035",
+    "name": "Telapayong",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035403036",
+    "name": "Kaledian",
+    "province_code": "035400000",
+    "parent_code": "035403000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404001",
+    "name": "Balas",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404002",
+    "name": "Cabalantian",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404003",
+    "name": "Cabambangan (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404004",
+    "name": "Cabetican",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404005",
+    "name": "Calibutbut",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404006",
+    "name": "Concepcion",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404007",
+    "name": "Dolores",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404008",
+    "name": "Duat",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404009",
+    "name": "Macabacle",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404010",
+    "name": "Magliman",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404011",
+    "name": "Maliwalu",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404012",
+    "name": "Mesalipit",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404013",
+    "name": "Parulog",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404015",
+    "name": "Potrero",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404016",
+    "name": "San Antonio",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404018",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404019",
+    "name": "San Vicente",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404020",
+    "name": "Santa Barbara",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404021",
+    "name": "Santa Ines",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404023",
+    "name": "Talba",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035404024",
+    "name": "Tinajero",
+    "province_code": "035400000",
+    "parent_code": "035404000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405001",
+    "name": "Bahay Pare",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405002",
+    "name": "Bambang",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405003",
+    "name": "Barangca",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405004",
+    "name": "Barit",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405005",
+    "name": "Buas (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405008",
+    "name": "Cuayang Bugtong",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405009",
+    "name": "Dalayap",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405010",
+    "name": "Dulong Ilog",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405011",
+    "name": "Gulap",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405012",
+    "name": "Lanang",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405013",
+    "name": "Lourdes",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405014",
+    "name": "Magumbali",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405015",
+    "name": "Mandasig",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405016",
+    "name": "Mandili",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405017",
+    "name": "Mangga",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405018",
+    "name": "Mapaniqui",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405020",
+    "name": "Paligui",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405021",
+    "name": "Pangclara",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405022",
+    "name": "Pansinao",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405023",
+    "name": "Paralaya (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405024",
+    "name": "Pasig",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405025",
+    "name": "Pescadores (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405026",
+    "name": "Pulong Gubat",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405027",
+    "name": "Pulong Palazan",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405028",
+    "name": "Salapungan",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405029",
+    "name": "San Agustin (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405031",
+    "name": "Santo Rosario",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405032",
+    "name": "Tagulod",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405033",
+    "name": "Talang",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405034",
+    "name": "Tenejero",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405035",
+    "name": "Vizal San Pablo",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405036",
+    "name": "Vizal Santo Cristo",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035405037",
+    "name": "Vizal Santo Niño",
+    "province_code": "035400000",
+    "parent_code": "035405000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406001",
+    "name": "Anon",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406002",
+    "name": "Apalit",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406003",
+    "name": "Basa Air Base",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406004",
+    "name": "Benedicto",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406005",
+    "name": "Bodega",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406006",
+    "name": "Cabangcalan",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406007",
+    "name": "Calantas",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406008",
+    "name": "Carmencita",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406009",
+    "name": "Consuelo",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406010",
+    "name": "Dampe",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406011",
+    "name": "Del Carmen",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406012",
+    "name": "Fortuna",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406013",
+    "name": "Gutad",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406014",
+    "name": "Mabical",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406015",
+    "name": "Sto. Rosario",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406016",
+    "name": "Maligaya",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406017",
+    "name": "Nabuclod",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406018",
+    "name": "Pabanlag",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406019",
+    "name": "Paguiruan",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406020",
+    "name": "Palmayo",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406021",
+    "name": "Pandaguirig",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406023",
+    "name": "Poblacion",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406024",
+    "name": "San Antonio",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406025",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406026",
+    "name": "San Jose",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406027",
+    "name": "San Nicolas",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406028",
+    "name": "San Pedro",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406029",
+    "name": "San Ramon",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406030",
+    "name": "San Roque",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406031",
+    "name": "Sta. Monica",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406032",
+    "name": "Solib",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406033",
+    "name": "Valdez",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035406034",
+    "name": "Mawacat",
+    "province_code": "035400000",
+    "parent_code": "035406000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407002",
+    "name": "Bancal",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407004",
+    "name": "Jose Abad Santos",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407005",
+    "name": "Lambac",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407006",
+    "name": "Magsaysay",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407007",
+    "name": "Maquiapo",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407008",
+    "name": "Natividad",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407009",
+    "name": "Plaza Burgos (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407010",
+    "name": "Pulungmasle",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407011",
+    "name": "Rizal",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407012",
+    "name": "San Agustin",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407013",
+    "name": "San Antonio",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407014",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407015",
+    "name": "San Jose",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407016",
+    "name": "San Juan Bautista",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407017",
+    "name": "San Juan Nepomuceno",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407018",
+    "name": "San Matias",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407019",
+    "name": "San Miguel",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407020",
+    "name": "San Nicolas 1st",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407021",
+    "name": "San Nicolas 2nd",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407022",
+    "name": "San Pablo",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407023",
+    "name": "San Pedro",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407024",
+    "name": "San Rafael",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407025",
+    "name": "San Roque",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407026",
+    "name": "San Vicente",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407027",
+    "name": "San Juan",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407028",
+    "name": "Santa Filomena (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407029",
+    "name": "Santa Ines",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407030",
+    "name": "Santa Ursula",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407031",
+    "name": "Santo Cristo",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407033",
+    "name": "Santo Niño (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035407034",
+    "name": "Ascomo",
+    "province_code": "035400000",
+    "parent_code": "035407000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408001",
+    "name": "Balantacan",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408002",
+    "name": "Bancal Sinubli",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408003",
+    "name": "Bancal Pugad",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408004",
+    "name": "Baruya",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408005",
+    "name": "Calangain",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408006",
+    "name": "Concepcion",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408007",
+    "name": "Del Carmen",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408008",
+    "name": "De La Paz",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408009",
+    "name": "Don Ignacio Dimson",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408010",
+    "name": "Lourdes",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408011",
+    "name": "Prado Siongco",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408012",
+    "name": "Remedios",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408013",
+    "name": "San Agustin",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408014",
+    "name": "San Antonio",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408015",
+    "name": "San Francisco",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408016",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408017",
+    "name": "San Jose Apunan",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408018",
+    "name": "San Jose Gumi",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408019",
+    "name": "San Juan (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408020",
+    "name": "San Matias",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408021",
+    "name": "San Miguel",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408022",
+    "name": "San Nicolas 1st (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408023",
+    "name": "San Nicolas 2nd",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408024",
+    "name": "San Pablo 1st",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408025",
+    "name": "San Pablo 2nd",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408026",
+    "name": "San Pedro Palcarangan",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408027",
+    "name": "San Pedro Saug",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408029",
+    "name": "San Roque Arbol",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408030",
+    "name": "San Roque Dau",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408031",
+    "name": "San Vicente",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408032",
+    "name": "Santa Barbara",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408033",
+    "name": "Santa Catalina",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408034",
+    "name": "Santa Cruz",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408035",
+    "name": "Santa Lucia (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408036",
+    "name": "Santa Maria",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408037",
+    "name": "Santa Monica",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408038",
+    "name": "Santa Rita",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408040",
+    "name": "Santa Teresa 1st",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408041",
+    "name": "Santa Teresa 2nd",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408042",
+    "name": "Santiago",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408043",
+    "name": "Santo Domingo",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408044",
+    "name": "Santo Niño",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408045",
+    "name": "Santo Tomas (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035408046",
+    "name": "Santo Cristo",
+    "province_code": "035400000",
+    "parent_code": "035408000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409001",
+    "name": "Atlu-Bola",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409002",
+    "name": "Bical",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409003",
+    "name": "Bundagul",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409004",
+    "name": "Cacutud",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409005",
+    "name": "Calumpang",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409006",
+    "name": "Camachiles",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409007",
+    "name": "Dapdap",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409008",
+    "name": "Dau",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409009",
+    "name": "Dolores",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409010",
+    "name": "Duquit",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409011",
+    "name": "Lakandula",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409012",
+    "name": "Mabiga",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409013",
+    "name": "Macapagal Village",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409015",
+    "name": "Mamatitang",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409016",
+    "name": "Mangalit",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409017",
+    "name": "Marcos Village",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409018",
+    "name": "Mawaque",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409019",
+    "name": "Paralayunan",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409020",
+    "name": "Poblacion",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409021",
+    "name": "San Francisco",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409022",
+    "name": "San Joaquin",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409023",
+    "name": "Santa Ines",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409024",
+    "name": "Santa Maria",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409025",
+    "name": "Santo Rosario",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409026",
+    "name": "Sapang Balen",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409027",
+    "name": "Sapang Biabas",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035409028",
+    "name": "Tabun",
+    "province_code": "035400000",
+    "parent_code": "035409000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410001",
+    "name": "Batasan",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410002",
+    "name": "Caduang Tete",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410003",
+    "name": "Candelaria",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410004",
+    "name": "Castuli",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410005",
+    "name": "Consuelo",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410006",
+    "name": "Dalayap",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410007",
+    "name": "Mataguiti",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410008",
+    "name": "San Esteban",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410009",
+    "name": "San Francisco",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410010",
+    "name": "San Gabriel (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410011",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410012",
+    "name": "San Jose",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410013",
+    "name": "San Juan",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410014",
+    "name": "San Rafael",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410015",
+    "name": "San Roque",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410016",
+    "name": "San Vicente",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410017",
+    "name": "Sta. Cruz (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410018",
+    "name": "Sta. Lutgarda",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410019",
+    "name": "Sta. Maria",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410020",
+    "name": "Sta. Rita (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410021",
+    "name": "Sto. Niño",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410022",
+    "name": "Sto. Rosario (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410023",
+    "name": "Saplad David",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410024",
+    "name": "Tacasan",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035410025",
+    "name": "Telacsan",
+    "province_code": "035400000",
+    "parent_code": "035410000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411001",
+    "name": "Camias",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411002",
+    "name": "Dolores",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411003",
+    "name": "Escaler",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411004",
+    "name": "La Paz",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411005",
+    "name": "Navaling",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411006",
+    "name": "San Agustin",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411007",
+    "name": "San Antonio",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411008",
+    "name": "San Franciso",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411009",
+    "name": "San Ildefonso",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411010",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411011",
+    "name": "San Jose",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411012",
+    "name": "San Miguel",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411013",
+    "name": "San Nicolas 1st (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411014",
+    "name": "San Nicolas 2nd",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411015",
+    "name": "San Pablo (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411016",
+    "name": "San Pedro I",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411017",
+    "name": "San Pedro II",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411018",
+    "name": "San Roque",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411019",
+    "name": "San Vicente",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411020",
+    "name": "Santa Cruz (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411021",
+    "name": "Santa Lucia",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411022",
+    "name": "Santa Maria",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411023",
+    "name": "Santo Niño",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411024",
+    "name": "Santo Rosario",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411025",
+    "name": "Bucanan",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411026",
+    "name": "Turu",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035411027",
+    "name": "Ayala",
+    "province_code": "035400000",
+    "parent_code": "035411000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412001",
+    "name": "Alauli",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412003",
+    "name": "Bagang",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412004",
+    "name": "Balibago",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412006",
+    "name": "Bebe Anac",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412007",
+    "name": "Bebe Matua",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412008",
+    "name": "Bulacus",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412009",
+    "name": "San Agustin",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412010",
+    "name": "Sta. Monica",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412011",
+    "name": "Cambasi",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412012",
+    "name": "Malauli",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412013",
+    "name": "Nigui",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412014",
+    "name": "Palimpe",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412015",
+    "name": "Puti",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412016",
+    "name": "Sagrada",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412017",
+    "name": "San Isidro Anac",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412018",
+    "name": "San Isidro Matua (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412019",
+    "name": "San Nicolas (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412020",
+    "name": "San Pedro",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412021",
+    "name": "Sta. Cruz",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412023",
+    "name": "Sta. Lucia Matua",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412024",
+    "name": "Sta. Lucia Paguiba",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412025",
+    "name": "Sta. Lucia Wakas",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412026",
+    "name": "Sta. Lucia Anac (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412027",
+    "name": "Sapang Kawayan",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412028",
+    "name": "Sua",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035412029",
+    "name": "Sto. Niño",
+    "province_code": "035400000",
+    "parent_code": "035412000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413001",
+    "name": "Acli",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413002",
+    "name": "Anao",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413003",
+    "name": "Balas",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413004",
+    "name": "Buenavista",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413005",
+    "name": "Camuning",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413006",
+    "name": "Cawayan",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413007",
+    "name": "Concepcion",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413008",
+    "name": "Culubasa",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413009",
+    "name": "Divisoria",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413010",
+    "name": "Dolores",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413011",
+    "name": "Eden",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413012",
+    "name": "Gandus",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413013",
+    "name": "Lagundi",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413014",
+    "name": "Laput",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413015",
+    "name": "Laug",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413017",
+    "name": "Masamat",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413018",
+    "name": "Masangsang",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413020",
+    "name": "Nueva Victoria",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413021",
+    "name": "Pandacaqui",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413022",
+    "name": "Pangatlan",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413023",
+    "name": "Panipuan",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413024",
+    "name": "Parian (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413025",
+    "name": "Sabanilla",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413026",
+    "name": "San Antonio",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413027",
+    "name": "San Carlos",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413029",
+    "name": "San Jose Malino",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413030",
+    "name": "San Jose Matulid",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413031",
+    "name": "San Juan",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413032",
+    "name": "San Lorenzo",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413033",
+    "name": "San Miguel",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413034",
+    "name": "San Nicolas",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413035",
+    "name": "San Pablo",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413036",
+    "name": "San Patricio",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413037",
+    "name": "San Rafael",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413038",
+    "name": "San Roque",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413039",
+    "name": "San Vicente",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413040",
+    "name": "Santa Cruz",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413041",
+    "name": "Santa Maria",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413042",
+    "name": "Santo Domingo",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413043",
+    "name": "Santo Rosario",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413044",
+    "name": "Sapang Maisac",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413045",
+    "name": "Suclaban",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035413046",
+    "name": "Tangle",
+    "province_code": "035400000",
+    "parent_code": "035413000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414001",
+    "name": "Bulac",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414002",
+    "name": "Dawe",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414003",
+    "name": "Lourdes",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414004",
+    "name": "Maniango",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414006",
+    "name": "San Francisco 1st",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414007",
+    "name": "San Francisco 2nd",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414008",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414009",
+    "name": "San Nicolas (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414010",
+    "name": "San Pedro",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414011",
+    "name": "Sta. Catalina",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414012",
+    "name": "Sta. Maria",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414013",
+    "name": "Sta. Rita",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414014",
+    "name": "Sto. Domingo",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414015",
+    "name": "Sto. Rosario (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035414016",
+    "name": "Saplad",
+    "province_code": "035400000",
+    "parent_code": "035414000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415001",
+    "name": "Babo Pangulo",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415002",
+    "name": "Babo Sacan",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415004",
+    "name": "Balubad",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415008",
+    "name": "Calzadang Bayu",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415009",
+    "name": "Camias",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415010",
+    "name": "Cangatba",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415011",
+    "name": "Diaz",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415013",
+    "name": "Dolores",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415014",
+    "name": "Jalung",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415016",
+    "name": "Mancatian",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415017",
+    "name": "Manibaug Libutad",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415018",
+    "name": "Manibaug Paralaya",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415019",
+    "name": "Manibaug Pasig",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415020",
+    "name": "Manuali",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415021",
+    "name": "Mitla Proper",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415022",
+    "name": "Palat",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415023",
+    "name": "Pias",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415024",
+    "name": "Pio",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415025",
+    "name": "Planas",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415026",
+    "name": "Poblacion",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415028",
+    "name": "Pulung Santol",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415029",
+    "name": "Salu",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415030",
+    "name": "San Jose Mitla",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415031",
+    "name": "Sta. Cruz",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415032",
+    "name": "Sepung Bulaon",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415033",
+    "name": "Sinura",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415035",
+    "name": "Villa Maria",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415036",
+    "name": "Inararo",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035415037",
+    "name": "Sapang Uwak",
+    "province_code": "035400000",
+    "parent_code": "035415000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416001",
+    "name": "Alasas",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416002",
+    "name": "Baliti",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416003",
+    "name": "Bulaon",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416004",
+    "name": "Calulut",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416005",
+    "name": "Dela Paz Norte",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416006",
+    "name": "Dela Paz Sur",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416007",
+    "name": "Del Carmen",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416008",
+    "name": "Del Pilar",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416009",
+    "name": "Del Rosario",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416010",
+    "name": "Dolores",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416011",
+    "name": "Juliana",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416012",
+    "name": "Lara",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416013",
+    "name": "Lourdes",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416014",
+    "name": "Magliman",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416015",
+    "name": "Maimpis",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416016",
+    "name": "Malino",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416017",
+    "name": "Malpitic",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416019",
+    "name": "Pandaras",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416020",
+    "name": "Panipuan",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416021",
+    "name": "Santo Rosario (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416022",
+    "name": "Quebiauan",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416023",
+    "name": "Saguin",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416024",
+    "name": "San Agustin",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416025",
+    "name": "San Felipe",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416026",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416027",
+    "name": "San Jose",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416029",
+    "name": "San Juan",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416030",
+    "name": "San Nicolas",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416031",
+    "name": "San Pedro",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416032",
+    "name": "Santa Lucia",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416033",
+    "name": "Santa Teresita",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416034",
+    "name": "Santo Niño",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416036",
+    "name": "Sindalan",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416037",
+    "name": "Telabastagan",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035416038",
+    "name": "Pulung Bulu",
+    "province_code": "035400000",
+    "parent_code": "035416000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417001",
+    "name": "San Agustin",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417002",
+    "name": "San Carlos",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417003",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417004",
+    "name": "San Jose",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417005",
+    "name": "San Juan",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417006",
+    "name": "San Nicolas",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417008",
+    "name": "San Roque",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417009",
+    "name": "San Sebastian",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417010",
+    "name": "Santa Catalina",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417011",
+    "name": "Santa Cruz Pambilog",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417012",
+    "name": "Santa Cruz Poblacion",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417013",
+    "name": "Santa Lucia",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417014",
+    "name": "Santa Monica",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417015",
+    "name": "Santa Rita",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417016",
+    "name": "Santo Niño",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417017",
+    "name": "Santo Rosario",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035417018",
+    "name": "Santo Tomas",
+    "province_code": "035400000",
+    "parent_code": "035417000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418001",
+    "name": "Concepcion",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418002",
+    "name": "De La Paz",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418003",
+    "name": "San Juan (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418004",
+    "name": "San Agustin",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418005",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418006",
+    "name": "San Jose",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418007",
+    "name": "San Miguel",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418008",
+    "name": "San Nicolas",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418009",
+    "name": "San Pablo Libutad",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418010",
+    "name": "San Pablo Proper",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418011",
+    "name": "San Pedro",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418012",
+    "name": "Santa Cruz",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418013",
+    "name": "Santa Monica",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035418014",
+    "name": "Santo Niño",
+    "province_code": "035400000",
+    "parent_code": "035418000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419001",
+    "name": "San Agustin",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419002",
+    "name": "San Bartolome",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419003",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419004",
+    "name": "San Joaquin (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419005",
+    "name": "San Jose",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419006",
+    "name": "San Juan",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419007",
+    "name": "San Nicolas",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419008",
+    "name": "San Pablo",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419009",
+    "name": "San Pedro",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419010",
+    "name": "San Roque",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419011",
+    "name": "Santa Lucia",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419012",
+    "name": "Santa Maria",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419013",
+    "name": "Santiago",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035419014",
+    "name": "Santo Rosario",
+    "province_code": "035400000",
+    "parent_code": "035419000",
+    "level": "barangay"
+  },
+  {
+    "code": "035420001",
+    "name": "Becuran",
+    "province_code": "035400000",
+    "parent_code": "035420000",
+    "level": "barangay"
+  },
+  {
+    "code": "035420002",
+    "name": "Dila-dila",
+    "province_code": "035400000",
+    "parent_code": "035420000",
+    "level": "barangay"
+  },
+  {
+    "code": "035420003",
+    "name": "San Agustin",
+    "province_code": "035400000",
+    "parent_code": "035420000",
+    "level": "barangay"
+  },
+  {
+    "code": "035420004",
+    "name": "San Basilio",
+    "province_code": "035400000",
+    "parent_code": "035420000",
+    "level": "barangay"
+  },
+  {
+    "code": "035420005",
+    "name": "San Isidro",
+    "province_code": "035400000",
+    "parent_code": "035420000",
+    "level": "barangay"
+  },
+  {
+    "code": "035420006",
+    "name": "San Jose (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035420000",
+    "level": "barangay"
+  },
+  {
+    "code": "035420007",
+    "name": "San Juan",
+    "province_code": "035400000",
+    "parent_code": "035420000",
+    "level": "barangay"
+  },
+  {
+    "code": "035420008",
+    "name": "San Matias",
+    "province_code": "035400000",
+    "parent_code": "035420000",
+    "level": "barangay"
+  },
+  {
+    "code": "035420009",
+    "name": "San Vicente",
+    "province_code": "035400000",
+    "parent_code": "035420000",
+    "level": "barangay"
+  },
+  {
+    "code": "035420010",
+    "name": "Santa Monica",
+    "province_code": "035400000",
+    "parent_code": "035420000",
+    "level": "barangay"
+  },
+  {
+    "code": "035421002",
+    "name": "Moras De La Paz",
+    "province_code": "035400000",
+    "parent_code": "035421000",
+    "level": "barangay"
+  },
+  {
+    "code": "035421004",
+    "name": "Poblacion",
+    "province_code": "035400000",
+    "parent_code": "035421000",
+    "level": "barangay"
+  },
+  {
+    "code": "035421005",
+    "name": "San Bartolome",
+    "province_code": "035400000",
+    "parent_code": "035421000",
+    "level": "barangay"
+  },
+  {
+    "code": "035421006",
+    "name": "San Matias",
+    "province_code": "035400000",
+    "parent_code": "035421000",
+    "level": "barangay"
+  },
+  {
+    "code": "035421007",
+    "name": "San Vicente",
+    "province_code": "035400000",
+    "parent_code": "035421000",
+    "level": "barangay"
+  },
+  {
+    "code": "035421008",
+    "name": "Santo Rosario",
+    "province_code": "035400000",
+    "parent_code": "035421000",
+    "level": "barangay"
+  },
+  {
+    "code": "035421009",
+    "name": "Sapa",
+    "province_code": "035400000",
+    "parent_code": "035421000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422001",
+    "name": "Batang 1st",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422002",
+    "name": "Batang 2nd",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422004",
+    "name": "Mabuanbuan",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422005",
+    "name": "Malusac",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422006",
+    "name": "Sta. Lucia (Pob.)",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422007",
+    "name": "San Antonio",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422008",
+    "name": "San Nicolas 1st",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422009",
+    "name": "San Nicolas 2nd",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422010",
+    "name": "San Pedro",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422011",
+    "name": "Santa Monica",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422012",
+    "name": "Santo Tomas",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  },
+  {
+    "code": "035422013",
+    "name": "Sebitanan",
+    "province_code": "035400000",
+    "parent_code": "035422000",
+    "level": "barangay"
+  }
+]

@@ -1,5 +1,9 @@
 # RodelConnect gaps and questions
 
+The original table below is the October 14 documentation baseline. Current implementation supersedes its absent-chatbot, illustrative-catalog, geographic fallback, privacy-consent and administration findings. See [the October 15 feature handoff](FEATURE_UPDATES_2026-10-15.md). The current chatbot uses Groq, menus use the supplied owner-confirmed rates, and 0017/0018 implement access controls, consent and current refund policy. The original DOCX/PDF have not been silently rewritten.
+
+Current unresolved items: six owner-approved Wedding component prices totaling ₱30,000; legal review of Terms/Privacy, privacy contact and retention schedule; actual paid PayMongo webhook/refund acceptance; email inbox delivery/worker configuration; separate Auth/Storage backup and a staging recovery drill; credential rotation; an enforced CI test gate. No production restore or live paid transaction is claimed.
+
 The required PDF and earlier Word file were located in Downloads and inspected.
 The paper will follow the supplied section structure and retain the exact project
 title, author spellings, subject and October 14, 2026 submission date.

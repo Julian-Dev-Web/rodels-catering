@@ -12,7 +12,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { CalendarDays, Download, Plus, Users, Wallet, Hourglass } from 'lucide-react'
+import {
+  CalendarDays,
+  Download,
+  Plus,
+  Users,
+  Wallet,
+  Hourglass,
+} from 'lucide-react'
 import {
   Action,
   Badge,
@@ -26,11 +33,21 @@ import {
 import { Form } from '../components/Form'
 import type { Field } from '../components/Form'
 import { Stat } from './Customer'
+import { StaffBookingDetails } from '../components/BookingDetails'
+import { OperationalSummary } from './ManagerOperations'
 import { useAuth } from '../features/auth'
 import { useReservations } from '../features/reservations'
-import { date, dayManila, exportCsv, human, money, todayManila } from '../lib/format'
+import {
+  date,
+  dayManila,
+  exportCsv,
+  human,
+  money,
+  todayManila,
+} from '../lib/format'
 import { edge, records, rpc, supabase } from '../lib/supabase'
-import type { CatalogTable, Metrics, Profile, RecordRow } from '../types'
+import type { CatalogTable, Metrics, RecordRow } from '../types'
+import { refundProcessing } from '../lib/refunds'
 export function Dashboard() {
   const query = useQuery({
     queryKey: ['metrics'],
@@ -40,13 +57,18 @@ export function Dashboard() {
   const reservations = useReservations()
   const { profile } = useAuth()
   if (query.isPending) return <Loading />
-  if (query.error) return <ErrorState error={query.error} retry={() => void query.refetch()} />
+  if (query.error)
+    return <ErrorState error={query.error} retry={() => void query.refetch()} />
   const m = query.data
   return (
     <>
       <PageHeading
         title="Every celebration, in view."
-        eyebrow={profile?.role === 'super_admin' ? 'THE BIGGER PICTURE' : 'THE DAY AT A GLANCE'}
+        eyebrow={
+          profile?.role === 'super_admin'
+            ? 'THE BIGGER PICTURE'
+            : 'THE DAY AT A GLANCE'
+        }
         action={
           <span className="today-label">
             <CalendarDays size={16} />
@@ -56,9 +78,18 @@ export function Dashboard() {
       >
         A thoughtful overview of your catering business.
       </PageHeading>
+      <OperationalSummary />
       <div className="stat-grid four">
-        <Stat label="Today’s received revenue" value={money(m.today_revenue)} icon={<Wallet />} />
-        <Stat label="New bookings today" value={m.today_bookings} icon={<CalendarDays />} />
+        <Stat
+          label="Today’s received revenue"
+          value={money(m.today_revenue)}
+          icon={<Wallet />}
+        />
+        <Stat
+          label="New bookings today"
+          value={m.today_bookings}
+          icon={<CalendarDays />}
+        />
         <Stat label="Total customers" value={m.customers} icon={<Users />} />
         <Stat label="Awaiting review" value={m.pending} icon={<Hourglass />} />
       </div>
@@ -72,7 +103,11 @@ export function Dashboard() {
             <span className="badge">Last 12 months</span>
           </div>
           {m.monthly.length ? (
-            <div className="chart" role="img" aria-label="Monthly approved booking counts">
+            <div
+              className="chart"
+              role="img"
+              aria-label="Monthly approved booking counts"
+            >
               <ResponsiveContainer width="100%" height={260}>
                 <AreaChart data={m.monthly}>
                   <defs>
@@ -82,7 +117,10 @@ export function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="period" tickFormatter={(v) => String(v).slice(0, 7)} />
+                  <XAxis
+                    dataKey="period"
+                    tickFormatter={(v) => String(v).slice(0, 7)}
+                  />
                   <YAxis allowDecimals={false} />
                   <Tooltip />
                   <Area
@@ -108,7 +146,12 @@ export function Dashboard() {
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={m.top_packages} layout="vertical">
                 <XAxis type="number" allowDecimals={false} />
-                <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={110}
+                  tick={{ fontSize: 11 }}
+                />
                 <Tooltip />
                 <Bar dataKey="bookings" fill="#681f32" radius={[0, 5, 5, 0]} />
               </BarChart>
@@ -127,7 +170,8 @@ export function Dashboard() {
           <div>
             <small>Approved event bookings</small>
             <strong>
-              {m.current_month_bookings} <span>/ {m.previous_month_bookings}</span>
+              {m.current_month_bookings}{' '}
+              <span>/ {m.previous_month_bookings}</span>
             </strong>
           </div>
           <div>
@@ -139,7 +183,8 @@ export function Dashboard() {
           <div>
             <small>Received revenue</small>
             <strong>
-              {money(m.current_month_revenue)} <span>/ {money(m.previous_month_revenue)}</span>
+              {money(m.current_month_revenue)}{' '}
+              <span>/ {money(m.previous_month_revenue)}</span>
             </strong>
           </div>
         </div>
@@ -182,10 +227,22 @@ export function Dashboard() {
 const reservationColumns = [
   { key: 'event_name', label: 'Event' },
   { key: 'customer_name', label: 'Customer' },
-  { key: 'event_date', label: 'Event date', render: (r: RecordRow) => date(String(r.event_date)) },
+  {
+    key: 'event_date',
+    label: 'Event date',
+    render: (r: RecordRow) => date(String(r.event_date)),
+  },
   { key: 'guests', label: 'Guests' },
-  { key: 'total', label: 'Total', render: (r: RecordRow) => money(Number(r.total)) },
-  { key: 'status', label: 'Status', render: (r: RecordRow) => <Badge value={String(r.status)} /> },
+  {
+    key: 'total',
+    label: 'Total',
+    render: (r: RecordRow) => money(Number(r.total)),
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    render: (r: RecordRow) => <Badge value={String(r.status)} />,
+  },
 ]
 export function ManageReservations() {
   const query = useReservations()
@@ -251,7 +308,10 @@ export function ManageReservations() {
                     kind="small secondary"
                     confirm="Confirm this event date? The database will enforce date capacity and prevent conflicting reservations."
                     run={() =>
-                      rpc('manager_reservation_status', { rid: r.id, new_status: 'approved' })
+                      rpc('manager_reservation_status', {
+                        rid: r.id,
+                        new_status: 'approved',
+                      })
                     }
                   />
                   {Number(r.paid) === 0 && (
@@ -260,7 +320,10 @@ export function ManageReservations() {
                       kind="small secondary"
                       confirm="Reject this unpaid reservation and release its customer/date slot?"
                       run={() =>
-                        rpc('manager_reservation_status', { rid: r.id, new_status: 'rejected' })
+                        rpc('manager_reservation_status', {
+                          rid: r.id,
+                          new_status: 'rejected',
+                        })
                       }
                     />
                   )}
@@ -274,7 +337,10 @@ export function ManageReservations() {
                     kind="small secondary"
                     confirm="Mark the catered event complete? The customer will be able to leave feedback."
                     run={() =>
-                      rpc('manager_reservation_status', { rid: r.id, new_status: 'completed' })
+                      rpc('manager_reservation_status', {
+                        rid: r.id,
+                        new_status: 'completed',
+                      })
                     }
                   />
                 )}
@@ -283,29 +349,52 @@ export function ManageReservations() {
         />
       )}{' '}
       {selected && (
-        <Modal title={String(selected.event_name)} close={() => setSelected(null)}>
+        <Modal
+          title={String(selected.event_name)}
+          close={() => setSelected(null)}
+        >
+          <StaffBookingDetails id={selected.id} />
           <dl className="detail-list">
-            {Object.entries(selected).map(([k, v]) => (
-              <div key={k}>
-                <dt>{human(k)}</dt>
-                <dd>
-                  {['total', 'paid', 'refunded'].includes(k)
-                    ? money(Number(v))
-                    : typeof v === 'object'
-                      ? JSON.stringify(v)
+            {Object.entries(selected)
+              .filter(([key]) =>
+                [
+                  'customer_name',
+                  'event_date',
+                  'event_time',
+                  'guests',
+                  'status',
+                  'payment_status',
+                  'total',
+                  'paid',
+                  'refunded',
+                ].includes(key),
+              )
+              .map(([k, v]) => (
+                <div key={k}>
+                  <dt>{human(k)}</dt>
+                  <dd>
+                    {['total', 'paid', 'refunded'].includes(k)
+                      ? money(Number(v))
                       : String(v ?? '—')}
-                </dd>
-              </div>
-            ))}
+                  </dd>
+                </div>
+              ))}
           </dl>
         </Modal>
       )}
     </>
   )
 }
-export function ReviewRequests({ kind }: { kind: 'cancellations' | 'refunds' | 'reschedule' }) {
+export function ReviewRequests({
+  kind,
+}: {
+  kind: 'cancellations' | 'refunds' | 'reschedule'
+}) {
   const table = kind === 'reschedule' ? 'reschedule_requests' : kind
-  const query = useQuery({ queryKey: [table], queryFn: () => records<RecordRow>(table) })
+  const query = useQuery({
+    queryKey: [table],
+    queryFn: () => records<RecordRow>(table),
+  })
   const reservations = useReservations()
   const review = (row: RecordRow, approve: boolean) =>
     rpc(
@@ -315,7 +404,11 @@ export function ReviewRequests({ kind }: { kind: 'cancellations' | 'refunds' | '
           ? 'review_refund'
           : 'review_reschedule',
       {
-        [kind === 'cancellations' ? 'cid' : kind === 'refunds' ? 'fid' : 'request_id']: row.id,
+        [kind === 'cancellations'
+          ? 'cid'
+          : kind === 'refunds'
+            ? 'fid'
+            : 'request_id']: row.id,
         approve,
       },
     )
@@ -338,12 +431,32 @@ export function ReviewRequests({ kind }: { kind: 'cancellations' | 'refunds' | '
               key: 'reservation_id',
               label: 'Event',
               render: (r) =>
-                reservations.data?.find((x) => x.id === r.reservation_id)?.event_name ||
-                String(r.reservation_id).slice(0, 8),
+                reservations.data?.find((x) => x.id === r.reservation_id)
+                  ?.event_name || String(r.reservation_id).slice(0, 8),
             },
-            { key: 'created_at', label: 'Requested', render: (r) => date(String(r.created_at)) },
+            {
+              key: 'created_at',
+              label: 'Requested',
+              render: (r) => date(String(r.created_at)),
+            },
             ...(kind === 'refunds'
               ? [
+                  {
+                    key: 'gross_amount',
+                    label: 'Unrefunded paid',
+                    render: (r: RecordRow) =>
+                      r.gross_amount === null
+                        ? 'Historical policy'
+                        : money(Number(r.gross_amount)),
+                  },
+                  {
+                    key: 'fee_amount',
+                    label: 'Policy fee',
+                    render: (r: RecordRow) =>
+                      r.fee_amount === null
+                        ? 'Historical policy'
+                        : money(Number(r.fee_amount)),
+                  },
                   {
                     key: 'eligible_amount',
                     label: 'Eligible amount',
@@ -360,7 +473,20 @@ export function ReviewRequests({ kind }: { kind: 'cancellations' | 'refunds' | '
                   },
                 ]
               : []),
-            { key: 'status', label: 'Status', render: (r) => <Badge value={String(r.status)} /> },
+            ...(kind === 'refunds'
+              ? [
+                  {
+                    key: 'processing',
+                    label: 'Provider processing',
+                    render: (r: RecordRow) => refundProcessing(r),
+                  },
+                ]
+              : []),
+            {
+              key: 'status',
+              label: 'Status',
+              render: (r) => <Badge value={String(r.status)} />,
+            },
           ]}
           actions={(r) => (
             <>
@@ -382,7 +508,9 @@ export function ReviewRequests({ kind }: { kind: 'cancellations' | 'refunds' | '
               )}
               {kind === 'refunds' && r.status === 'approved' && (
                 <Action
-                  label={r.processing ? 'Check provider status' : 'Process refund'}
+                  label={
+                    r.processing ? 'Check provider status' : 'Process refund'
+                  }
                   kind="small secondary"
                   confirm="Continue the approved refund with PayMongo? This uses the stored eligible amount and original payment references."
                   run={() => edge('process-refund', { refund_id: r.id })}
@@ -427,21 +555,34 @@ export function ManagePayments() {
           </button>
         }
       >
-        Provider-confirmed receipts and refunds. Payment confirmation is handled by the server.
+        Provider-confirmed receipts and refunds. Payment confirmation is handled
+        by the server.
       </PageHeading>
       <div className="filter-bar">
         <label>
           From
-          <input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+          <input
+            type="date"
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+          />
         </label>
         <label>
           To
-          <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+          <input
+            type="date"
+            value={end}
+            onChange={(e) => setEnd(e.target.value)}
+          />
         </label>
         <strong>
           Net receipts:{' '}
           {money(
-            filtered.reduce((sum, r) => sum + (r.kind === 'refund' ? -1 : 1) * Number(r.amount), 0),
+            filtered.reduce(
+              (sum, r) =>
+                sum + (r.kind === 'refund' ? -1 : 1) * Number(r.amount),
+              0,
+            ),
           )}
         </strong>
       </div>
@@ -453,10 +594,18 @@ export function ManagePayments() {
         <DataTable
           rows={filtered}
           columns={[
-            { key: 'created_at', label: 'Date', render: (r) => date(String(r.created_at)) },
+            {
+              key: 'created_at',
+              label: 'Date',
+              render: (r) => date(String(r.created_at)),
+            },
             { key: 'reservation_id', label: 'Reservation' },
             { key: 'kind', label: 'Type' },
-            { key: 'amount', label: 'Amount', render: (r) => money(Number(r.amount)) },
+            {
+              key: 'amount',
+              label: 'Amount',
+              render: (r) => money(Number(r.amount)),
+            },
             { key: 'reference', label: 'Provider reference' },
           ]}
         />
@@ -471,11 +620,23 @@ export function ManagePayments() {
           <DataTable
             rows={attempts.data}
             columns={[
-              { key: 'created_at', label: 'Created', render: (r) => date(String(r.created_at)) },
+              {
+                key: 'created_at',
+                label: 'Created',
+                render: (r) => date(String(r.created_at)),
+              },
               { key: 'reservation_id', label: 'Reservation' },
-              { key: 'amount', label: 'Amount', render: (r) => money(Number(r.amount)) },
+              {
+                key: 'amount',
+                label: 'Amount',
+                render: (r) => money(Number(r.amount)),
+              },
               { key: 'intent', label: 'Intent' },
-              { key: 'status', label: 'State', render: (r) => <Badge value={String(r.status)} /> },
+              {
+                key: 'status',
+                label: 'State',
+                render: (r) => <Badge value={String(r.status)} />,
+              },
             ]}
           />
         )
@@ -483,7 +644,11 @@ export function ManagePayments() {
     </>
   )
 }
-export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' }) {
+export function CatalogManager({
+  area,
+}: {
+  area: 'menu' | 'packages' | 'extras'
+}) {
   const tabs: CatalogTable[] =
     area === 'menu'
       ? ['dishes', 'menu_categories', 'drinks', 'desserts']
@@ -501,19 +666,40 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
     enabled: area === 'menu',
     queryFn: () => records<RecordRow>('menu_categories', 'name', true),
   })
-  const priced = !['dishes', 'menu_categories', 'drinks', 'desserts'].includes(table)
+  const priced = !['dishes', 'menu_categories', 'drinks', 'desserts'].includes(
+    table,
+  )
   const legacyMenu = table === 'menu_sets' && editing?.pricing_version === 1
-  const setups = useQuery({ queryKey: ['catalog-setup-options'], enabled: table === 'event_features', queryFn: () => records<RecordRow>('event_setups', 'name', true, { active: true }) })
+  const setups = useQuery({
+    queryKey: ['catalog-setup-options'],
+    enabled: table === 'event_features',
+    queryFn: () =>
+      records<RecordRow>('event_setups', 'name', true, { active: true }),
+  })
   const fields: Field[] = [
     { name: 'name', label: 'Name', required: true, max: 150 },
     ...(table === 'menu_sets' || table === 'dishes' || table === 'event_setups'
-      ? [{ name: 'description', label: 'Description', type: 'textarea', max: 2000 }]
+      ? [
+          {
+            name: 'description',
+            label: 'Description',
+            type: 'textarea',
+            max: 2000,
+          },
+        ]
       : []),
     ...(priced
       ? [
           {
             name: 'price',
-            label: table === 'menu_sets' ? 'Menu price per guest (PHP)' : table === 'chair_types' ? 'Chair upgrade per guest (PHP; 0 = included)' : table === 'table_types' ? 'Additional charge per table (PHP; 0 = included)' : 'Additional event fee (PHP)',
+            label:
+              table === 'menu_sets'
+                ? 'Menu price per guest (PHP)'
+                : table === 'chair_types'
+                  ? 'Chair upgrade per guest (PHP; 0 = included)'
+                  : table === 'table_types'
+                    ? 'Additional charge per table (PHP; 0 = included)'
+                    : 'Additional event fee (PHP)',
             type: 'number',
             required: true,
             min: 0,
@@ -538,8 +724,20 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
             min: legacyMenu ? 1 : 100,
             max: legacyMenu ? 10000 : 1000,
           },
-          { name: 'max_guests', label: 'Maximum guests', type: 'number', required: !legacyMenu, min: 100, max: 1000 },
-          { name: 'inclusions', label: 'Included items (one per line)', type: 'textarea', max: 2000 },
+          {
+            name: 'max_guests',
+            label: 'Maximum guests',
+            type: 'number',
+            required: !legacyMenu,
+            min: 100,
+            max: 1000,
+          },
+          {
+            name: 'inclusions',
+            label: 'Included items (one per line)',
+            type: 'textarea',
+            max: 2000,
+          },
         ]
       : []),
     ...(table === 'dishes'
@@ -547,11 +745,27 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
           {
             name: 'category_id',
             label: 'Category',
-            options: categories.data?.map((c) => ({ label: String(c.name), value: c.id })) || [],
+            options:
+              categories.data?.map((c) => ({
+                label: String(c.name),
+                value: c.id,
+              })) || [],
           },
         ]
       : []),
-    ...(table === 'event_features' ? [{ name: 'required_setup_id', label: 'Required event setup (optional)', options: setups.data?.map((setup) => ({ label: String(setup.name), value: setup.id })) || [] }] : []),
+    ...(table === 'event_features'
+      ? [
+          {
+            name: 'required_setup_id',
+            label: 'Required event setup (optional)',
+            options:
+              setups.data?.map((setup) => ({
+                label: String(setup.name),
+                value: setup.id,
+              })) || [],
+          },
+        ]
+      : []),
   ]
   return (
     <>
@@ -570,11 +784,16 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
           </button>
         }
       >
-        Maintain your live catalog. Archive items to keep historical reservations intact.
+        Maintain your live catalog. Archive items to keep historical
+        reservations intact.
       </PageHeading>
       <div className="tabs">
         {tabs.map((t) => (
-          <button className={t === table ? 'active' : ''} key={t} onClick={() => setTable(t)}>
+          <button
+            className={t === table ? 'active' : ''}
+            key={t}
+            onClick={() => setTable(t)}
+          >
             {human(t)}
           </button>
         ))}
@@ -589,7 +808,13 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
           columns={[
             { key: 'name', label: 'Name' },
             ...(priced
-              ? [{ key: 'price', label: 'Price', render: (r: RecordRow) => money(Number(r.price)) }]
+              ? [
+                  {
+                    key: 'price',
+                    label: 'Price',
+                    render: (r: RecordRow) => money(Number(r.price)),
+                  },
+                ]
               : []),
             ...(table === 'menu_sets'
               ? [
@@ -644,30 +869,57 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
                       f.name,
                       f.name === 'price'
                         ? Number(editing.price) / 100
-                        : f.name === 'inclusions' && Array.isArray(editing.inclusions) ? editing.inclusions.join('\n') : String(editing[f.name] ?? ''),
+                        : f.name === 'inclusions' &&
+                            Array.isArray(editing.inclusions)
+                          ? editing.inclusions.join('\n')
+                          : String(editing[f.name] ?? ''),
                     ]),
                   )
-                : table === 'menu_sets' ? { min_guests: 100, max_guests: 1000, dish_count: 3 } : {}
+                : table === 'menu_sets'
+                  ? { min_guests: 100, max_guests: 1000, dish_count: 3 }
+                  : {}
             }
             label="Save item"
             submit={async (v) => {
               const payload: Record<string, unknown> = { ...v }
               if (priced) {
                 const number = Number(v.price)
-                if (!Number.isFinite(number) || number < 0) throw new Error('Enter a valid price')
+                if (!Number.isFinite(number) || number < 0)
+                  throw new Error('Enter a valid price')
                 payload.price = Math.round(number * 100)
               }
               if (table === 'menu_sets') {
                 payload.dish_count = Number(v.dish_count)
                 payload.min_guests = Number(v.min_guests)
                 payload.max_guests = v.max_guests ? Number(v.max_guests) : null
-                payload.inclusions = v.inclusions.split('\n').map((line) => line.trim()).filter(Boolean)
-                if (!legacyMenu && (!Number.isInteger(payload.dish_count) || Number(payload.dish_count) < 3 || Number(payload.dish_count) > 6 || !Number.isInteger(payload.min_guests) || Number(payload.min_guests) < 100 || !Number.isInteger(payload.max_guests) || Number(payload.max_guests) > 1000 || Number(payload.max_guests) < Number(payload.min_guests))) throw new Error('Menus require 3–6 dishes and a guest range within 100–1,000.')
+                payload.inclusions = v.inclusions
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+                if (
+                  !legacyMenu &&
+                  (!Number.isInteger(payload.dish_count) ||
+                    Number(payload.dish_count) < 3 ||
+                    Number(payload.dish_count) > 6 ||
+                    !Number.isInteger(payload.min_guests) ||
+                    Number(payload.min_guests) < 100 ||
+                    !Number.isInteger(payload.max_guests) ||
+                    Number(payload.max_guests) > 1000 ||
+                    Number(payload.max_guests) < Number(payload.min_guests))
+                )
+                  throw new Error(
+                    'Menus require 3–6 dishes and a guest range within 100–1,000.',
+                  )
               }
-              if (table === 'event_features') payload.required_setup_id = v.required_setup_id || null
-              if (table === 'dishes' && !v.category_id) payload.category_id = null
+              if (table === 'event_features')
+                payload.required_setup_id = v.required_setup_id || null
+              if (table === 'dishes' && !v.category_id)
+                payload.category_id = null
               const { error } = editing
-                ? await supabase.from(table).update(payload).eq('id', editing.id)
+                ? await supabase
+                    .from(table)
+                    .update(payload)
+                    .eq('id', editing.id)
                 : await supabase.from(table).insert(payload)
               if (error) throw error
             }}
@@ -678,166 +930,19 @@ export function CatalogManager({ area }: { area: 'menu' | 'packages' | 'extras' 
     </>
   )
 }
-export function UserManagement() {
-  const query = useQuery({ queryKey: ['users'], queryFn: () => records<Profile>('profiles') })
-  const [target, setTarget] = useState<Profile | null>(null)
-  return (
-    <>
-      <PageHeading title="The right access, for the right people.">
-        Assign customer and manager roles securely. Super-admin access is controlled by a database
-        operator.
-      </PageHeading>
-      {query.isPending ? (
-        <Loading />
-      ) : query.error ? (
-        <ErrorState error={query.error} />
-      ) : (
-        <DataTable
-          rows={query.data as unknown as RecordRow[]}
-          columns={[
-            { key: 'full_name', label: 'Name' },
-            { key: 'phone', label: 'Phone' },
-            { key: 'role', label: 'Role', render: (r) => <Badge value={String(r.role)} /> },
-            { key: 'created_at', label: 'Joined', render: (r) => date(String(r.created_at)) },
-          ]}
-          actions={(r) =>
-            r.role !== 'super_admin' && (
-              <button
-                className="text-button"
-                onClick={() => setTarget(query.data.find((p) => p.id === r.id)!)}
-              >
-                Change role
-              </button>
-            )
-          }
-        />
-      )}{' '}
-      {target && (
-        <Modal title={'Change access for ' + target.full_name} close={() => setTarget(null)}>
-          <p>
-            Confirm the intended role for <strong>{target.full_name}</strong>. Managers can access
-            customer reservation, payment and support records. This change is audited.
-          </p>
-          <Form
-            fields={[
-              {
-                name: 'target_role',
-                label: 'Assign role',
-                required: true,
-                options: [
-                  { label: 'Customer', value: 'customer' },
-                  { label: 'Manager', value: 'manager' },
-                ],
-              },
-            ]}
-            initial={{ target_role: target.role }}
-            label="Confirm role change"
-            submit={(v) =>
-              edge('admin-set-role', { target_id: target.id, target_role: v.target_role })
-            }
-            onSuccess={() => setTarget(null)}
-          />
-        </Modal>
-      )}
-    </>
-  )
-}
+export { UserManagement } from './UserAdministration'
 export { GalleryManagement } from './GalleryManagement'
-export function Maintenance() {
-  const query = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => records<{ key: string; value: unknown }>('app_settings', 'key', true),
-  })
-  const enabled = query.data?.find((s) => s.key === 'maintenance')?.value === true
-  return (
-    <>
-      <PageHeading title="Take a little time behind the scenes.">
-        Maintenance closes public and customer access. Super admins can always sign in to manage the
-        system.
-      </PageHeading>
-      {query.isPending ? (
-        <Loading />
-      ) : query.error ? (
-        <ErrorState error={query.error} />
-      ) : (
-        <div className="settings-grid">
-          <section className="panel">
-            <h2>Maintenance mode</h2>
-            <Badge value={enabled ? 'active' : 'disabled'} />
-            <p>
-              {enabled
-                ? 'Customers see the maintenance page and cannot perform normal operations.'
-                : 'Your public website and customer booking service are open.'}
-            </p>
-            <Action
-              label={enabled ? 'Reopen the service' : 'Enable maintenance'}
-              confirm={
-                enabled
-                  ? 'Restore customer access and public catalog browsing?'
-                  : 'Block normal public/customer use until you reopen the service? Staff can still inspect operational records.'
-              }
-              run={() =>
-                rpc('update_setting', { setting_key: 'maintenance', setting_value: !enabled })
-              }
-            />
-          </section>
-          <section className="panel">
-            <h2>Refund policy configuration</h2>
-            <p>
-              Changes apply to new refund requests. Existing requests keep their stored eligible
-              amount.
-            </p>
-            <Form
-              initial={{
-                partial: String(
-                  Number(query.data.find((s) => s.key === 'refund_partial_rate')?.value) * 100,
-                ),
-                full: String(
-                  Number(query.data.find((s) => s.key === 'refund_full_rate')?.value) * 100,
-                ),
-              }}
-              fields={[
-                {
-                  name: 'partial',
-                  label: 'Refund % of a 50% down payment',
-                  type: 'number',
-                  required: true,
-                  min: 0,
-                  max: 100,
-                },
-                {
-                  name: 'full',
-                  label: 'Refund % of a fully paid amount',
-                  type: 'number',
-                  required: true,
-                  min: 0,
-                  max: 100,
-                },
-              ]}
-              label="Update refund policy"
-              submit={async (v) => {
-                await rpc('update_setting', {
-                  setting_key: 'refund_partial_rate',
-                  setting_value: Number(v.partial) / 100,
-                })
-                await rpc('update_setting', {
-                  setting_key: 'refund_full_rate',
-                  setting_value: Number(v.full) / 100,
-                })
-              }}
-            />
-          </section>
-        </div>
-      )}
-    </>
-  )
-}
+export { Maintenance } from './AdministrationControls'
 export function AuditLogs() {
-  const query = useQuery({ queryKey: ['audit'], queryFn: () => records<RecordRow>('audit_logs') })
+  const query = useQuery({
+    queryKey: ['audit'],
+    queryFn: () => records<RecordRow>('audit_logs'),
+  })
   return (
     <>
       <PageHeading title="Every important action, accounted for.">
-        Append-only records, attributed to authenticated users or verified server processing.
+        Append-only records, attributed to authenticated users or verified
+        server processing.
       </PageHeading>
       {query.isPending ? (
         <Loading />
@@ -851,13 +956,16 @@ export function AuditLogs() {
               key: 'created_at',
               label: 'Time',
               render: (r) =>
-                new Date(String(r.created_at)).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
+                new Date(String(r.created_at)).toLocaleString('en-PH', {
+                  timeZone: 'Asia/Manila',
+                }),
             },
             { key: 'action', label: 'Action' },
             {
               key: 'actor_id',
               label: 'Actor',
-              render: (r) => (r.actor_id ? String(r.actor_id) : 'Server / operator'),
+              render: (r) =>
+                r.actor_id ? String(r.actor_id) : 'Server / operator',
             },
             { key: 'entity_id', label: 'Entity' },
             {

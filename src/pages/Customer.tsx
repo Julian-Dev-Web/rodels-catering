@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, CalendarDays, Plus, ShieldCheck, Users, Wallet } from 'lucide-react'
+import {
+  ArrowRight,
+  CalendarDays,
+  Plus,
+  ShieldCheck,
+  Users,
+  Wallet,
+} from 'lucide-react'
 import { useReservations, useReservation } from '../features/reservations'
 import { useCatalog } from '../features/catalog'
 import { useAuth } from '../features/auth'
@@ -16,15 +23,26 @@ import {
   PageHeading,
 } from '../components/ui'
 import { Form } from '../components/Form'
-import { date, earliestEventDate, human, money, todayManila } from '../lib/format'
+import { BookingSelections } from '../components/BookingDetails'
+import { RefundRequest } from '../components/RefundRequest'
+import { RescheduleForm } from '../components/RescheduleForm'
+import {
+  date,
+  earliestEventDate,
+  human,
+  money,
+  todayManila,
+} from '../lib/format'
 import { edge, records, rpc } from '../lib/supabase'
 import { paymentAmount } from '../lib/rules'
+import { refundProcessing } from '../lib/refunds'
 import type { RecordRow, Reservation } from '../types'
 export function Reservations() {
   const query = useReservations()
   const { profile } = useAuth()
   if (query.isPending) return <Loading />
-  if (query.error) return <ErrorState error={query.error} retry={() => void query.refetch()} />
+  if (query.error)
+    return <ErrorState error={query.error} retry={() => void query.refetch()} />
   const rows = query.data
   return (
     <>
@@ -41,11 +59,17 @@ export function Reservations() {
         Your upcoming moments, all in one place.
       </PageHeading>
       <div className="stat-grid">
-        <Stat label="Your reservations" value={rows.length} icon={<CalendarDays />} />
+        <Stat
+          label="Your reservations"
+          value={rows.length}
+          icon={<CalendarDays />}
+        />
         <Stat
           label="Upcoming celebrations"
           value={
-            rows.filter((r) => r.event_date >= todayManila() && r.status === 'approved').length
+            rows.filter(
+              (r) => r.event_date >= todayManila() && r.status === 'approved',
+            ).length
           }
           icon={<Users />}
         />
@@ -69,7 +93,9 @@ export function Reservations() {
                 <span className="date-block">
                   <strong>{r.event_date.slice(8)}</strong>
                   <small>
-                    {new Date(r.event_date + 'T00:00:00+08:00').toLocaleDateString('en-PH', {
+                    {new Date(
+                      r.event_date + 'T00:00:00+08:00',
+                    ).toLocaleDateString('en-PH', {
                       month: 'short',
                       timeZone: 'Asia/Manila',
                     })}
@@ -99,7 +125,8 @@ export function Reservations() {
         </div>
       ) : (
         <Empty title="Your next memory starts here.">
-          Explore our packages, find your date, and start planning your first celebration.{' '}
+          Explore our packages, find your date, and start planning your first
+          celebration.{' '}
           <Link to="/customer/reservations/new">Plan an event</Link>
         </Empty>
       )}
@@ -131,8 +158,11 @@ export function ReservationDetail() {
   if (query.isPending) return <Loading />
   if (query.error) return <ErrorState error={query.error} />
   const { reservation: r, children: c } = query.data
-  const editable = ['draft', 'pending', 'for_approval'].includes(r.status) && r.paid === 0
-  const payable = ['for_approval', 'pending', 'approved'].includes(r.status) && r.paid < r.total
+  const editable =
+    ['draft', 'pending', 'for_approval'].includes(r.status) && r.paid === 0
+  const payable =
+    ['for_approval', 'pending', 'approved'].includes(r.status) &&
+    r.paid < r.total
   return (
     <>
       <PageHeading
@@ -144,7 +174,8 @@ export function ReservationDetail() {
           </Link>
         }
       >
-        {date(r.event_date)} · {r.event_time.slice(0, 5)} Manila · {r.guests} guests
+        {date(r.event_date)} · {r.event_time.slice(0, 5)} Manila · {r.guests}{' '}
+        guests
       </PageHeading>
       <div className="detail-layout">
         <section className="panel">
@@ -156,7 +187,8 @@ export function ReservationDetail() {
           <dl className="detail-list">
             <dt>Package</dt>
             <dd>
-              {catalog.data?.menu_sets.find((p) => p.id === r.menu_set_id)?.name || r.menu_set_id}
+              {catalog.data?.menu_sets.find((p) => p.id === r.menu_set_id)
+                ?.name || r.menu_set_id}
             </dd>
             <dt>Location</dt>
             <dd>
@@ -165,12 +197,12 @@ export function ReservationDetail() {
                 .filter(Boolean)
                 .join(', ')}
             </dd>
-            <dt>Event contact</dt>
-            <dd>{r.address.contact || '—'}</dd>
             <dt>Menu</dt>
             <dd>
               {catalog.data?.dishes
-                .filter((d) => c.reservation_items.some((x) => x.dish_id === d.id))
+                .filter((d) =>
+                  c.reservation_items.some((x) => x.dish_id === d.id),
+                )
                 .map((d) => d.name)
                 .join(', ') || 'Not selected'}
             </dd>
@@ -179,78 +211,102 @@ export function ReservationDetail() {
               {catalog.data?.drinks.find((d) => d.id === r.drink_id)?.name} ·{' '}
               {catalog.data?.desserts.find((d) => d.id === r.dessert_id)?.name}
             </dd>
-            <dt>Setup</dt>
-            <dd>
-              {catalog.data?.event_setups.find((d) =>
-                c.reservation_event_setups.some((x) => x.event_setup_id === d.id),
-              )?.name || 'Not selected'}
-            </dd>
             <dt>Notes</dt>
             <dd>{r.address.notes || '—'}</dd>
           </dl>
+          {catalog.data && (
+            <BookingSelections
+              reservation={r}
+              children={c}
+              catalog={catalog.data}
+            />
+          )}
           <div className="actions">
             {editable && (
-              <Link className="button secondary" to={`/customer/reservations/${r.id}/edit`}>
+              <Link
+                className="button secondary"
+                to={`/customer/reservations/${r.id}/edit`}
+              >
                 Edit reservation
               </Link>
             )}
             {r.status === 'draft' && (
-              <Link className="button" to={`/customer/reservations/${r.id}/confirm`}>
+              <Link
+                className="button"
+                to={`/customer/reservations/${r.id}/confirm`}
+              >
                 Review & finalize
               </Link>
             )}
-            {['draft', 'pending', 'for_approval', 'approved'].includes(r.status) && (
-              <button className="text-button" onClick={() => setModal('cancel')}>
+            {['draft', 'pending', 'for_approval', 'approved'].includes(
+              r.status,
+            ) && (
+              <button
+                className="text-button"
+                onClick={() => setModal('cancel')}
+              >
                 Request cancellation
               </button>
             )}
             {r.status === 'approved' && (
-              <button className="text-button" onClick={() => setModal('reschedule')}>
+              <button
+                className="text-button"
+                onClick={() => setModal('reschedule')}
+              >
                 Request reschedule
               </button>
             )}
-            {r.status === 'cancelled' && r.paid > 0 && (
-              <Action
-                label="Request policy refund"
-                confirm="We will store your eligible refund amount using the current refund policy and send it for manager review."
-                run={() => rpc('request_refund', { rid: r.id })}
-              />
-            )}
           </div>
+          {r.paid > 0 &&
+            [
+              'cancelled',
+              'pending_refund',
+              'refund_approved',
+              'refunded',
+            ].includes(r.status) && <RefundRequest reservation={r} />}
           {payable && (
             <div className="payment-box">
               <h3>A little closer to your celebration.</h3>
               <p>
-                Choose how you’d like to pay. Your confirmed payment state appears here after
-                verified server processing.
+                Choose how you’d like to pay. Your confirmed payment state
+                appears here after verified server processing.
               </p>
               <div className="actions">
-                {(r.paid === 0 ? ['partial', 'full'] : ['balance']).map((intent) => (
-                  <Action
-                    key={intent}
-                    label={`${human(intent === 'partial' ? '50% down payment' : intent)} · ${money(paymentAmount(r.total, r.paid, intent as 'partial' | 'full' | 'balance'))}`}
-                    kind="primary"
-                    confirm="You will continue to PayMongo’s secure checkout. A redirect alone does not confirm payment or your event date."
-                    run={async () => {
-                      const data = await edge<{ url: string }>('create-paymongo-checkout', {
-                        reservation_id: r.id,
-                        intent,
-                      })
-                      const url = new URL(data.url)
-                      if (url.protocol !== 'https:' || !url.hostname.endsWith('.paymongo.com'))
-                        throw new Error('Invalid checkout URL')
-                      window.location.assign(url.toString())
-                    }}
-                  />
-                ))}
+                {(r.paid === 0 ? ['partial', 'full'] : ['balance']).map(
+                  (intent) => (
+                    <Action
+                      key={intent}
+                      label={`${human(intent === 'partial' ? '50% down payment' : intent)} · ${money(paymentAmount(r.total, r.paid, intent as 'partial' | 'full' | 'balance'))}`}
+                      kind="primary"
+                      confirm="You will continue to PayMongo’s secure checkout. A redirect alone does not confirm payment or your event date."
+                      run={async () => {
+                        const data = await edge<{ url: string }>(
+                          'create-paymongo-checkout',
+                          {
+                            reservation_id: r.id,
+                            intent,
+                          },
+                        )
+                        const url = new URL(data.url)
+                        if (
+                          url.protocol !== 'https:' ||
+                          !url.hostname.endsWith('.paymongo.com')
+                        )
+                          throw new Error('Invalid checkout URL')
+                        window.location.assign(url.toString())
+                      }}
+                    />
+                  ),
+                )}
               </div>
             </div>
           )}
           <div className="alert">
             <ShieldCheck size={22} />
             <p>
-              Payment confirmation is read from the server. If you’ve just returned from checkout,
-              use Refresh status while your payment is verified.
+              Payment confirmation is read from the server. If you’ve just
+              returned from checkout, use Refresh status while your payment is
+              verified.
             </p>
           </div>
           <button className="text-button" onClick={() => void query.refetch()}>
@@ -283,9 +339,13 @@ export function ReservationDetail() {
             <span>Balance</span>
             <strong>
               {money(
-                ['cancelled', 'pending_refund', 'refund_approved', 'refunded', 'rejected'].includes(
-                  r.status,
-                )
+                [
+                  'cancelled',
+                  'pending_refund',
+                  'refund_approved',
+                  'refunded',
+                  'rejected',
+                ].includes(r.status)
                   ? 0
                   : Math.max(0, r.total - r.paid),
               )}
@@ -293,7 +353,13 @@ export function ReservationDetail() {
           </div>
         </aside>
       </div>
-      {modal && <RequestModal kind={modal} reservation={r} close={() => setModal(null)} />}
+      {modal && (
+        <RequestModal
+          kind={modal}
+          reservation={r}
+          close={() => setModal(null)}
+        />
+      )}
     </>
   )
 }
@@ -307,43 +373,49 @@ function RequestModal({
   close: () => void
 }) {
   return (
-    <Modal title={kind === 'cancel' ? 'Request cancellation' : 'Request a new date'} close={close}>
-      <p>
-        {kind === 'cancel'
-          ? 'Requests must be made more than 72 hours before your event date begins.'
-          : 'Up to three approved reschedules per calendar month, subject to date availability. New date must be at least three days ahead.'}
-      </p>
-      <Form
-        fields={[
-          ...(kind === 'reschedule'
-            ? [{ name: 'new_date', label: 'New event date', type: 'date', required: true }]
-            : []),
-          {
-            name: 'reason',
-            label: 'Tell us a little more',
-            type: 'textarea',
-            required: true,
-            max: 2000,
-          },
-        ]}
-        label="Send request"
-        submit={(v) =>
-          kind === 'cancel'
-            ? rpc('request_cancellation', { rid: reservation.id, reason: v.reason })
-            : rpc('request_reschedule', {
+    <Modal
+      title={kind === 'cancel' ? 'Request cancellation' : 'Request a new date'}
+      close={close}
+    >
+      {kind === 'reschedule' ? (
+        <RescheduleForm reservation={reservation} close={close} />
+      ) : (
+        <>
+          <p>
+            Requests must be made more than 72 hours before your event date
+            begins.
+          </p>
+          <Form
+            fields={[
+              {
+                name: 'reason',
+                label: 'Tell us a little more',
+                type: 'textarea',
+                required: true,
+                max: 2000,
+              },
+            ]}
+            label="Send request"
+            submit={(v) =>
+              rpc('request_cancellation', {
                 rid: reservation.id,
-                new_date: v.new_date,
                 reason: v.reason,
               })
-        }
-        onSuccess={close}
-      />
+            }
+            onSuccess={close}
+          />
+        </>
+      )}
     </Modal>
   )
 }
 export function AvailableDates() {
   const [month, setMonth] = useState(todayManila().slice(0, 7))
-  const end = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate()
+  const end = new Date(
+    Number(month.slice(0, 4)),
+    Number(month.slice(5, 7)),
+    0,
+  ).getDate()
   const query = useQuery({
     queryKey: ['dates', month],
     queryFn: () =>
@@ -357,8 +429,9 @@ export function AvailableDates() {
   return (
     <>
       <PageHeading title="Find room for your celebration.">
-        Up to three approved events per date. Availability is confirmed when your reservation is
-        approved. Please reserve at least 3 days ahead for preparation. The earliest date is {date(earliestEventDate())} (Manila).
+        Up to three approved events per date. Availability is confirmed when
+        your reservation is approved. Please reserve at least 3 days ahead for
+        preparation. The earliest date is {date(earliestEventDate())} (Manila).
       </PageHeading>
       <section className="panel">
         <div className="section-title">
@@ -389,7 +462,14 @@ export function AvailableDates() {
               ))}
               {query.data?.map((d) => (
                 <div
-                  className={'calendar-day ' + (d.event_date < earliestEventDate() ? 'blocked' : d.remaining === 0 ? 'full' : '')}
+                  className={
+                    'calendar-day ' +
+                    (d.event_date < earliestEventDate()
+                      ? 'blocked'
+                      : d.remaining === 0
+                        ? 'full'
+                        : '')
+                  }
                   key={d.event_date}
                 >
                   <strong>{Number(d.event_date.slice(8))}</strong>
@@ -399,11 +479,13 @@ export function AvailableDates() {
                       : d.event_date < earliestEventDate()
                         ? '3-day notice required'
                         : d.remaining > 0
-                        ? `${d.remaining} spots available`
-                        : 'Fully booked'}
+                          ? `${d.remaining} spots available`
+                          : 'Fully booked'}
                   </span>
                   {d.remaining > 0 && d.event_date >= earliestEventDate() && (
-                    <Link to={'/customer/reservations/new?date=' + d.event_date}>
+                    <Link
+                      to={'/customer/reservations/new?date=' + d.event_date}
+                    >
                       Plan event <ArrowRight size={12} />
                     </Link>
                   )}
@@ -416,11 +498,18 @@ export function AvailableDates() {
     </>
   )
 }
-export function CustomerWorkflow({ kind }: { kind: 'cancellations' | 'refunds' | 'reschedule' }) {
+export function CustomerWorkflow({
+  kind,
+}: {
+  kind: 'cancellations' | 'refunds' | 'reschedule'
+}) {
   const reservations = useReservations()
   const [selected, setSelected] = useState<Reservation | null>(null)
   const table = kind === 'reschedule' ? 'reschedule_requests' : kind
-  const query = useQuery({ queryKey: [table], queryFn: () => records<RecordRow>(table) })
+  const query = useQuery({
+    queryKey: [table],
+    queryFn: () => records<RecordRow>(table),
+  })
   return (
     <>
       <PageHeading title={human(kind)}>
@@ -448,7 +537,9 @@ export function CustomerWorkflow({ kind }: { kind: 'cancellations' | 'refunds' |
                   ? r.status === 'cancelled' && r.paid > 0
                   : kind === 'reschedule'
                     ? r.status === 'approved'
-                    : ['draft', 'pending', 'for_approval', 'approved'].includes(r.status),
+                    : ['draft', 'pending', 'for_approval', 'approved'].includes(
+                        r.status,
+                      ),
               )
               .map((r) => (
                 <div key={r.id}>
@@ -457,13 +548,12 @@ export function CustomerWorkflow({ kind }: { kind: 'cancellations' | 'refunds' |
                     <small>{date(r.event_date)}</small>
                   </span>
                   {kind === 'refunds' ? (
-                    <Action
-                      label="Request refund"
-                      run={() => rpc('request_refund', { rid: r.id })}
-                      confirm="Your eligible refund amount will be calculated and stored using the current policy."
-                    />
+                    <RefundRequest reservation={r} />
                   ) : (
-                    <button className="button small secondary" onClick={() => setSelected(r)}>
+                    <button
+                      className="button small secondary"
+                      onClick={() => setSelected(r)}
+                    >
                       Send request <ArrowRight size={14} />
                     </button>
                   )}
@@ -471,7 +561,8 @@ export function CustomerWorkflow({ kind }: { kind: 'cancellations' | 'refunds' |
               ))}
             <p className="muted">
               Only eligible reservations appear here.{' '}
-              <Link to="/customer/support">Contact support</Link> if you need help.
+              <Link to="/customer/support">Contact support</Link> if you need
+              help.
             </p>
           </div>
         )}
@@ -492,12 +583,16 @@ export function CustomerWorkflow({ kind }: { kind: 'cancellations' | 'refunds' |
               label: 'Reservation',
               render: (r) => (
                 <Link to={'/customer/reservations/' + r.reservation_id}>
-                  {reservations.data?.find((x) => x.id === r.reservation_id)?.event_name ||
-                    String(r.reservation_id).slice(0, 8)}
+                  {reservations.data?.find((x) => x.id === r.reservation_id)
+                    ?.event_name || String(r.reservation_id).slice(0, 8)}
                 </Link>
               ),
             },
-            { key: 'created_at', label: 'Requested', render: (r) => date(String(r.created_at)) },
+            {
+              key: 'created_at',
+              label: 'Requested',
+              render: (r) => date(String(r.created_at)),
+            },
             {
               key:
                 kind === 'refunds'
@@ -518,7 +613,40 @@ export function CustomerWorkflow({ kind }: { kind: 'cancellations' | 'refunds' |
                     ? date(String(r.new_date))
                     : String(r.reason),
             },
-            { key: 'status', label: 'Status', render: (r) => <Badge value={String(r.status)} /> },
+            ...(kind === 'refunds'
+              ? [
+                  {
+                    key: 'gross_amount',
+                    label: 'Unrefunded paid',
+                    render: (r: RecordRow) =>
+                      r.gross_amount === null
+                        ? 'Historical policy'
+                        : money(Number(r.gross_amount)),
+                  },
+                  {
+                    key: 'fee_amount',
+                    label: 'Policy fee',
+                    render: (r: RecordRow) =>
+                      r.fee_amount === null
+                        ? 'Historical policy'
+                        : money(Number(r.fee_amount)),
+                  },
+                ]
+              : []),
+            ...(kind === 'refunds'
+              ? [
+                  {
+                    key: 'processing',
+                    label: 'Provider processing',
+                    render: (r: RecordRow) => refundProcessing(r),
+                  },
+                ]
+              : []),
+            {
+              key: 'status',
+              label: 'Status',
+              render: (r) => <Badge value={String(r.status)} />,
+            },
           ]}
         />
       )}{' '}
@@ -535,12 +663,15 @@ export function CustomerWorkflow({ kind }: { kind: 'cancellations' | 'refunds' |
 export function Payments({ transactions = false }: { transactions?: boolean }) {
   const query = useQuery({
     queryKey: [transactions ? 'transactions' : 'payments'],
-    queryFn: () => records<RecordRow>(transactions ? 'transactions' : 'payments'),
+    queryFn: () =>
+      records<RecordRow>(transactions ? 'transactions' : 'payments'),
   })
   const reservations = useReservations()
   return (
     <>
-      <PageHeading title={transactions ? 'Transaction history' : 'Payments & balances'}>
+      <PageHeading
+        title={transactions ? 'Transaction history' : 'Payments & balances'}
+      >
         {transactions
           ? 'A record of your server-confirmed payments and refunds.'
           : 'All amounts are in Philippine pesos. Manage a payment from its reservation.'}
@@ -554,7 +685,8 @@ export function Payments({ transactions = false }: { transactions?: boolean }) {
             reservations.data
               ?.filter(
                 (r) =>
-                  r.total > r.paid && ['approved', 'pending', 'for_approval'].includes(r.status),
+                  r.total > r.paid &&
+                  ['approved', 'pending', 'for_approval'].includes(r.status),
               )
               .map((r) => (
                 <div className="balance-row" key={r.id}>
@@ -563,14 +695,18 @@ export function Payments({ transactions = false }: { transactions?: boolean }) {
                     <small>{date(r.event_date)}</small>
                   </div>
                   <strong>{money(r.total - r.paid)}</strong>
-                  <Link className="button small secondary" to={'/customer/reservations/' + r.id}>
+                  <Link
+                    className="button small secondary"
+                    to={'/customer/reservations/' + r.id}
+                  >
                     View & pay <ArrowRight size={14} />
                   </Link>
                 </div>
               ))
           )}
           <p className="muted">
-            Open a reservation to pay a down payment, pay in full, or settle its balance.
+            Open a reservation to pay a down payment, pay in full, or settle its
+            balance.
           </p>
         </section>
       )}
@@ -582,18 +718,26 @@ export function Payments({ transactions = false }: { transactions?: boolean }) {
         <DataTable
           rows={query.data}
           columns={[
-            { key: 'created_at', label: 'Date', render: (r) => date(String(r.created_at)) },
+            {
+              key: 'created_at',
+              label: 'Date',
+              render: (r) => date(String(r.created_at)),
+            },
             {
               key: 'reservation_id',
               label: 'Reservation',
               render: (r) => (
                 <Link to={'/customer/reservations/' + r.reservation_id}>
-                  {reservations.data?.find((x) => x.id === r.reservation_id)?.event_name ||
-                    String(r.reservation_id).slice(0, 8)}
+                  {reservations.data?.find((x) => x.id === r.reservation_id)
+                    ?.event_name || String(r.reservation_id).slice(0, 8)}
                 </Link>
               ),
             },
-            { key: 'amount', label: 'Amount', render: (r) => money(Number(r.amount)) },
+            {
+              key: 'amount',
+              label: 'Amount',
+              render: (r) => money(Number(r.amount)),
+            },
             {
               key: transactions ? 'kind' : 'intent',
               label: 'Type',
@@ -603,7 +747,11 @@ export function Payments({ transactions = false }: { transactions?: boolean }) {
               key: transactions ? 'reference' : 'status',
               label: transactions ? 'Reference' : 'Status',
               render: (r) =>
-                transactions ? String(r.reference) : <Badge value={String(r.status)} />,
+                transactions ? (
+                  String(r.reference)
+                ) : (
+                  <Badge value={String(r.status)} />
+                ),
             },
           ]}
         />
@@ -613,7 +761,10 @@ export function Payments({ transactions = false }: { transactions?: boolean }) {
 }
 export function Feedback({ staff = false }: { staff?: boolean }) {
   const reservations = useReservations()
-  const query = useQuery({ queryKey: ['feedback'], queryFn: () => records<RecordRow>('feedback') })
+  const query = useQuery({
+    queryKey: ['feedback'],
+    queryFn: () => records<RecordRow>('feedback'),
+  })
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -643,17 +794,23 @@ export function Feedback({ staff = false }: { staff?: boolean }) {
             {
               key: 'rating',
               label: 'Rating',
-              render: (r) => <span className="rating">{'★'.repeat(Number(r.rating))}</span>,
+              render: (r) => (
+                <span className="rating">{'★'.repeat(Number(r.rating))}</span>
+              ),
             },
             { key: 'message', label: 'Feedback' },
             {
               key: 'reservation_id',
               label: 'Reservation',
               render: (r) =>
-                reservations.data?.find((x) => x.id === r.reservation_id)?.event_name ||
-                String(r.reservation_id).slice(0, 8),
+                reservations.data?.find((x) => x.id === r.reservation_id)
+                  ?.event_name || String(r.reservation_id).slice(0, 8),
             },
-            { key: 'created_at', label: 'Submitted', render: (r) => date(String(r.created_at)) },
+            {
+              key: 'created_at',
+              label: 'Submitted',
+              render: (r) => date(String(r.created_at)),
+            },
           ]}
         />
       )}{' '}
@@ -674,7 +831,10 @@ export function Feedback({ staff = false }: { staff?: boolean }) {
                 name: 'rating',
                 label: 'Your rating',
                 required: true,
-                options: [1, 2, 3, 4, 5].map((n) => ({ label: n + ' stars', value: String(n) })),
+                options: [1, 2, 3, 4, 5].map((n) => ({
+                  label: n + ' stars',
+                  value: String(n),
+                })),
               },
               {
                 name: 'message',
@@ -686,7 +846,11 @@ export function Feedback({ staff = false }: { staff?: boolean }) {
             ]}
             label="Share feedback"
             submit={(v) =>
-              rpc('submit_feedback', { rid: v.rid, rating: Number(v.rating), message: v.message })
+              rpc('submit_feedback', {
+                rid: v.rid,
+                rating: Number(v.rating),
+                message: v.message,
+              })
             }
             onSuccess={() => setOpen(false)}
           />

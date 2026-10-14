@@ -1,6 +1,16 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom'
 import { lazy, Suspense, useEffect } from 'react'
-import { MaintenanceBoundary, PortalLayout, PublicLayout } from '../layouts/Layouts'
+import {
+  MaintenanceBoundary,
+  PortalLayout,
+  PublicLayout,
+} from '../layouts/Layouts'
 import { RoleGuard, useAuth } from '../features/auth'
 import { roleHome } from '../lib/permissions'
 import { About, Gallery, Home, Packages, Policies } from '../pages/Public'
@@ -12,8 +22,12 @@ const AvailableDates = lazy(() =>
 const CustomerWorkflow = lazy(() =>
   import('../pages/Customer').then((m) => ({ default: m.CustomerWorkflow })),
 )
-const Feedback = lazy(() => import('../pages/Customer').then((m) => ({ default: m.Feedback })))
-const Payments = lazy(() => import('../pages/Customer').then((m) => ({ default: m.Payments })))
+const Feedback = lazy(() =>
+  import('../pages/Customer').then((m) => ({ default: m.Feedback })),
+)
+const Payments = lazy(() =>
+  import('../pages/Customer').then((m) => ({ default: m.Payments })),
+)
 const ReservationDetail = lazy(() =>
   import('../pages/Customer').then((m) => ({ default: m.ReservationDetail })),
 )
@@ -21,19 +35,31 @@ const Reservations = lazy(() =>
   import('../pages/Customer').then((m) => ({ default: m.Reservations })),
 )
 const ReservationWizard = lazy(() =>
-  import('../pages/ReservationWizard').then((m) => ({ default: m.ReservationWizard })),
+  import('../pages/ReservationWizard').then((m) => ({
+    default: m.ReservationWizard,
+  })),
 )
-const Support = lazy(() => import('../pages/Support').then((m) => ({ default: m.Support })))
-const Settings = lazy(() => import('../pages/Settings').then((m) => ({ default: m.Settings })))
-const AuditLogs = lazy(() => import('../pages/Admin').then((m) => ({ default: m.AuditLogs })))
+const Support = lazy(() =>
+  import('../pages/Support').then((m) => ({ default: m.Support })),
+)
+const Settings = lazy(() =>
+  import('../pages/Settings').then((m) => ({ default: m.Settings })),
+)
+const AuditLogs = lazy(() =>
+  import('../pages/Admin').then((m) => ({ default: m.AuditLogs })),
+)
 const CatalogManager = lazy(() =>
   import('../pages/Admin').then((m) => ({ default: m.CatalogManager })),
 )
-const Dashboard = lazy(() => import('../pages/Admin').then((m) => ({ default: m.Dashboard })))
+const Dashboard = lazy(() =>
+  import('../pages/Admin').then((m) => ({ default: m.Dashboard })),
+)
 const GalleryManagement = lazy(() =>
   import('../pages/Admin').then((m) => ({ default: m.GalleryManagement })),
 )
-const Maintenance = lazy(() => import('../pages/Admin').then((m) => ({ default: m.Maintenance })))
+const Maintenance = lazy(() =>
+  import('../pages/Admin').then((m) => ({ default: m.Maintenance })),
+)
 const ManagePayments = lazy(() =>
   import('../pages/Admin').then((m) => ({ default: m.ManagePayments })),
 )
@@ -46,8 +72,46 @@ const ReviewRequests = lazy(() =>
 const UserManagement = lazy(() =>
   import('../pages/Admin').then((m) => ({ default: m.UserManagement })),
 )
-const SystemOverview = lazy(() => import('../pages/SystemAdmin').then((m) => ({ default: m.SystemOverview })))
-const Backups = lazy(() => import('../pages/SystemAdmin').then((m) => ({ default: m.Backups })))
+const SystemOverview = lazy(() =>
+  import('../pages/SystemAdmin').then((m) => ({ default: m.SystemOverview })),
+)
+const Backups = lazy(() =>
+  import('../pages/SystemAdmin').then((m) => ({ default: m.Backups })),
+)
+const ManagerCalendar = lazy(() =>
+  import('../pages/ManagerOperations').then((m) => ({
+    default: m.ManagerCalendar,
+  })),
+)
+const ManagerCatalog = lazy(() =>
+  import('../pages/ManagerOperations').then((m) => ({
+    default: m.ManagerCatalog,
+  })),
+)
+const RolePermissions = lazy(() =>
+  import('../pages/AdministrationControls').then((m) => ({
+    default: m.RolePermissions,
+  })),
+)
+const SecurityMonitoring = lazy(() =>
+  import('../pages/AdministrationControls').then((m) => ({
+    default: m.SecurityMonitoring,
+  })),
+)
+const SystemReports = lazy(() =>
+  import('../pages/SystemAdmin').then((m) => ({ default: m.SystemReports })),
+)
+const SystemSettings = lazy(() =>
+  import('../pages/SystemSettings').then((m) => ({
+    default: m.SystemSettings,
+  })),
+)
+const Terms = lazy(() =>
+  import('../pages/Legal').then((m) => ({ default: m.Terms })),
+)
+const Privacy = lazy(() =>
+  import('../pages/Legal').then((m) => ({ default: m.Privacy })),
+)
 function Scroll() {
   const { pathname } = useLocation()
   useEffect(() => {
@@ -58,7 +122,9 @@ function Scroll() {
 function RecoveryRedirect() {
   const { recovery, session } = useAuth()
   const { pathname } = useLocation()
-  return recovery && session && pathname !== '/reset-password' ? <Navigate to="/reset-password" replace /> : null
+  return recovery && session && pathname !== '/reset-password' ? (
+    <Navigate to="/reset-password" replace />
+  ) : null
 }
 function Start() {
   const { profile, loading } = useAuth()
@@ -89,11 +155,25 @@ export function Router() {
               <Route path="gallery" element={<Gallery />} />
               <Route path="about" element={<About />} />
               <Route path="policies" element={<Policies />} />
+              <Route path="terms" element={<Terms />} />
+              <Route path="privacy" element={<Privacy />} />
             </Route>
-            <Route path="login" element={<AuthPage key="login" mode="login" />} />
-            <Route path="register" element={<AuthPage key="register" mode="register" />} />
-            <Route path="forgot-password" element={<AuthPage key="forgot" mode="forgot" />} />
-            <Route path="reset-password" element={<AuthPage key="reset" mode="reset" />} />
+            <Route
+              path="login"
+              element={<AuthPage key="login" mode="login" />}
+            />
+            <Route
+              path="register"
+              element={<AuthPage key="register" mode="register" />}
+            />
+            <Route
+              path="forgot-password"
+              element={<AuthPage key="forgot" mode="forgot" />}
+            />
+            <Route
+              path="reset-password"
+              element={<AuthPage key="reset" mode="reset" />}
+            />
             <Route
               element={
                 <RoleGuard>
@@ -106,8 +186,14 @@ export function Router() {
                 <Route path="available-dates" element={<AvailableDates />} />
                 <Route path="packages" element={<Packages />} />
                 <Route path="reservations" element={<Reservations />} />
-                <Route path="reservations/new" element={<ReservationWizard />} />
-                <Route path="reservations/:id" element={<ReservationDetail />} />
+                <Route
+                  path="reservations/new"
+                  element={<ReservationWizard />}
+                />
+                <Route
+                  path="reservations/:id"
+                  element={<ReservationDetail />}
+                />
                 {['edit', 'menu', 'event-setup', 'confirm'].map((step) => (
                   <Route
                     key={step}
@@ -116,10 +202,22 @@ export function Router() {
                   />
                 ))}
                 <Route path="payments" element={<Payments />} />
-                <Route path="transactions" element={<Payments transactions />} />
-                <Route path="cancellations" element={<CustomerWorkflow kind="cancellations" />} />
-                <Route path="refunds" element={<CustomerWorkflow kind="refunds" />} />
-                <Route path="reschedule" element={<CustomerWorkflow kind="reschedule" />} />
+                <Route
+                  path="transactions"
+                  element={<Payments transactions />}
+                />
+                <Route
+                  path="cancellations"
+                  element={<CustomerWorkflow kind="cancellations" />}
+                />
+                <Route
+                  path="refunds"
+                  element={<CustomerWorkflow kind="refunds" />}
+                />
+                <Route
+                  path="reschedule"
+                  element={<CustomerWorkflow kind="reschedule" />}
+                />
                 <Route path="feedback" element={<Feedback />} />
                 <Route path="support" element={<Support />} />
                 <Route path="settings" element={<Settings />} />
@@ -127,12 +225,28 @@ export function Router() {
               <Route path="manager">
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
+                <Route path="calendar" element={<ManagerCalendar />} />
+                <Route path="catalog" element={<ManagerCatalog />} />
+                <Route
+                  path="event-setups"
+                  element={<ManagerCatalog setups />}
+                />
+                <Route path="reports" element={<ManagePayments />} />
                 <Route path="menu" element={<CatalogManager area="menu" />} />
                 <Route path="reservations" element={<ManageReservations />} />
-                <Route path="cancellations" element={<ReviewRequests kind="cancellations" />} />
-                <Route path="reschedule" element={<ReviewRequests kind="reschedule" />} />
+                <Route
+                  path="cancellations"
+                  element={<ReviewRequests kind="cancellations" />}
+                />
+                <Route
+                  path="reschedule"
+                  element={<ReviewRequests kind="reschedule" />}
+                />
                 <Route path="payments" element={<ManagePayments />} />
-                <Route path="refunds" element={<ReviewRequests kind="refunds" />} />
+                <Route
+                  path="refunds"
+                  element={<ReviewRequests kind="refunds" />}
+                />
                 <Route path="feedback" element={<Feedback staff />} />
                 <Route path="support" element={<Support />} />
                 <Route path="settings" element={<Settings />} />
@@ -141,8 +255,18 @@ export function Router() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<SystemOverview />} />
                 <Route path="backups" element={<Backups />} />
-                <Route path="packages" element={<CatalogManager area="packages" />} />
-                <Route path="add-ons" element={<CatalogManager area="extras" />} />
+                <Route path="roles" element={<RolePermissions />} />
+                <Route path="system-settings" element={<SystemSettings />} />
+                <Route path="security" element={<SecurityMonitoring />} />
+                <Route path="reports" element={<SystemReports />} />
+                <Route
+                  path="packages"
+                  element={<CatalogManager area="packages" />}
+                />
+                <Route
+                  path="add-ons"
+                  element={<CatalogManager area="extras" />}
+                />
                 <Route path="users" element={<UserManagement />} />
                 <Route path="gallery" element={<GalleryManagement />} />
                 <Route path="maintenance" element={<Maintenance />} />

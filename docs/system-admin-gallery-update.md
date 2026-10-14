@@ -1,5 +1,7 @@
 # System administration and gallery update — October 15, 2026
 
+Historical release record for migration 0016. The later booking/access release supersedes its archive scope and administration controls; see [the current feature handoff](FEATURE_UPDATES_2026-10-15.md). Earlier verification results below describe that release only.
+
 The super-admin landing route now uses a dedicated system overview: registered profiles by role, active menus, published/featured photos, maintenance state and recent audit activity. The manager landing route retains reservation and revenue operations. Super admins retain access to the manager workspace for oversight. No unverified historical defense comments or former administrator responsibilities are asserted.
 
 ## Backup scope

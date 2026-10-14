@@ -4,6 +4,15 @@ export const money = (centavos: number) =>
     currency: 'PHP',
     maximumFractionDigits: 2,
   }).format(centavos / 100)
+export const dateTime = (value: string) =>
+  new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
 export const date = (value: string) =>
   new Intl.DateTimeFormat('en-PH', {
     timeZone: 'Asia/Manila',
@@ -11,7 +20,10 @@ export const date = (value: string) =>
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(value.length === 10 ? value + 'T00:00:00+08:00' : value))
-import { manilaDate, earliestBookingDate } from '../../supabase/functions/_shared/booking-date.ts'
+import {
+  manilaDate,
+  earliestBookingDate,
+} from '../../supabase/functions/_shared/booking-date.ts'
 export const dayManila = manilaDate
 export const todayManila = () => dayManila(new Date())
 export const earliestEventDate = earliestBookingDate
@@ -26,15 +38,19 @@ export const message = (error: unknown) =>
 export function exportCsv(name: string, rows: Record<string, unknown>[]) {
   const keys = Array.from(new Set(rows.flatMap((row) => Object.keys(row))))
   const cell = (value: unknown) => {
-    let text = typeof value === 'object' ? JSON.stringify(value) : String(value ?? '')
-    if (/^[=+\-@]/.test(text.trimStart()) || /^[\t\r]/.test(text)) text = "'" + text
+    let text =
+      typeof value === 'object' ? JSON.stringify(value) : String(value ?? '')
+    if (/^[=+\-@]/.test(text.trimStart()) || /^[\t\r]/.test(text))
+      text = "'" + text
     return '"' + text.replaceAll('"', '""') + '"'
   }
   const csv = [
     keys.map(cell).join(','),
     ...rows.map((row) => keys.map((k) => cell(row[k])).join(',')),
   ].join('\r\n')
-  const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }))
+  const url = URL.createObjectURL(
+    new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }),
+  )
   const a = document.createElement('a')
   a.href = url
   a.download = name

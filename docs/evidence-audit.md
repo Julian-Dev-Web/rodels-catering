@@ -45,6 +45,18 @@ as project background rather than measured current operational outcomes.
 
 ## October 15, 2026 implementation addendum
 
+The 0016 release entries below are historical. The subsequent 0017/0018 release is described in [the current handoff](FEATURE_UPDATES_2026-10-15.md), with 74 passing automated tests and deployed database/Edge changes. Its archive expands to 35 public tables plus matching application schema, excluding Auth credentials and actual Storage files.
+
+| Current feature / claim | Code path or migration | Evidence | Status |
+|---|---|---|---|
+| Location, alternate contacts and consent | `BookingFields.tsx`, `0018_booking_policy_coverage.sql` | Bulacan/Pampanga hierarchy validated in SQL; own saved contacts; primary unchanged; server version/time | Implemented and SQL-tested |
+| Selectable setup pricing | `ReservationWizard.tsx`, `booking.ts`, migration 0018 | Birthday ₱5,000/item; full Wedding ₱30,000; partial pricing requires approved configuration | Implemented; owner Wedding breakdown pending |
+| Five-day refund policy | `RefundRequest.tsx`, migration 0018 | Manila cutoff, 10%-of-paid fee once, frozen review amounts, cumulative confirmation | Implemented/SQL-tested; provider paid refund acceptance pending |
+| Reschedule calendar | `RescheduleForm.tsx`, `calendar.ts`, migration 0017 | Original month/date, no automatic replacement, ownership/capacity/duplicate guards, atomic approval | Implemented and SQL-tested |
+| Distinct staff access and account status | `ManagerOperations.tsx`, `UserAdministration.tsx`, `AdministrationControls.tsx`, migration 0017 | Operational vs system metrics; suspension denies SQL/Edge actions; protected self/last admin | Implemented and SQL-tested |
+| Persistent maintenance | `Layouts.tsx`, migration 0017 | Message/time/confirmed changes; customer RPC blocks; staff/provider reconciliation preserved | Implemented and SQL-tested |
+| Current legal disclosures | `Legal.tsx`, consent metadata | Actual readable Terms/Privacy drafts and versioned acceptance | Implemented; owner/legal approval pending |
+
 The earlier audit above reflects its original documentation snapshot. Current changes are detailed in `docs/system-admin-gallery-update.md`. This release passed 59 automated tests, frontend/Edge type checks, lint and production build. Private browser checks verified role separation, gallery filtering/photo viewing, mobile layouts, a real export download/checksum and visible generation history.
 
 | Feature / claim | Code path or migration | Evidence | Status |

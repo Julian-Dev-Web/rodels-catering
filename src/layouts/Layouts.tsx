@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowUpRight,
@@ -23,7 +29,7 @@ import {
   X,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { configured, records, supabase } from '../lib/supabase'
+import { configured, records, rpc, supabase } from '../lib/supabase'
 import { navigation, roleHome } from '../lib/permissions'
 import { useAuth } from '../features/auth'
 import { Action, ErrorState, Loading } from '../components/ui'
@@ -32,7 +38,11 @@ import type { Notice } from '../types'
 import { PublicAssistant } from '../components/PublicAssistant'
 export function Brand({ light = false }: { light?: boolean }) {
   return (
-    <Link className={'brand ' + (light ? 'light' : '')} to="/" aria-label="Rodel's Catering home">
+    <Link
+      className={'brand ' + (light ? 'light' : '')}
+      to="/"
+      aria-label="Rodel's Catering home"
+    >
       <img className="original-logo" src="/images/logo.png" alt="" />
       <span>
         Rodel’s<small>C A T E R I N G</small>
@@ -46,15 +56,10 @@ export function MaintenanceBoundary({ children }: { children: ReactNode }) {
   const query = useQuery({
     queryKey: ['maintenance'],
     enabled: configured,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'maintenance')
-        .single()
-      if (error) throw error
-      return data.value === true
-    },
+    queryFn: () =>
+      rpc<{ enabled: boolean; message: string; changed_at: string }>(
+        'maintenance_state',
+      ),
     refetchInterval: 30000,
   })
   if (configured && query.isPending) return <Loading />
@@ -65,7 +70,7 @@ export function MaintenanceBoundary({ children }: { children: ReactNode }) {
       </main>
     )
   if (
-    query.data &&
+    query.data?.enabled &&
     pathname !== '/login' &&
     !pathname.startsWith('/super-admin') &&
     !pathname.startsWith('/manager')
@@ -75,11 +80,14 @@ export function MaintenanceBoundary({ children }: { children: ReactNode }) {
       return (
         <div className="maintenance-screen">
           <Brand />
-          <span className="eyebrow">A LITTLE CARE BEHIND THE SCENES</span>
+          <span
+            className="maintenance-spinner"
+            role="status"
+            aria-label="Maintenance in progress"
+          />
+          <span className="eyebrow">RODELCONNECT · MAINTENANCE</span>
           <h1>We’ll be back at the table soon.</h1>
-          <p>
-            Our reservation service is temporarily under maintenance. Please check back shortly.
-          </p>
+          <p>{query.data.message}</p>
           <Link className="button secondary" to="/login">
             Staff sign in
           </Link>
@@ -113,7 +121,10 @@ export function PublicLayout() {
             <NavLink to="/packages">Our packages</NavLink>
             <NavLink to="/gallery">The gallery</NavLink>
             <NavLink to="/about">Our story</NavLink>
-            <Link className="button small" to={profile ? roleHome[profile.role] : '/login'}>
+            <Link
+              className="button small"
+              to={profile ? roleHome[profile.role] : '/login'}
+            >
               {profile ? 'My dashboard' : 'Plan your event'}
               <ArrowUpRight size={16} />
             </Link>
@@ -141,6 +152,8 @@ export function PublicLayout() {
           <div>
             <span className="eyebrow">A LITTLE MORE</span>
             <Link to="/about">About & contact</Link>
+            <Link to="/terms">Terms and Conditions</Link>
+            <Link to="/privacy">Privacy Notice</Link>
             <Link to="/policies">Reservation & refund policies</Link>
           </div>
         </div>
@@ -187,7 +200,10 @@ export function PortalLayout() {
   const notices = useQuery({
     queryKey: ['notifications', profile?.id],
     enabled: !!profile,
-    queryFn: () => records<Notice>('notifications', 'created_at', false, { user_id: profile!.id }),
+    queryFn: () =>
+      records<Notice>('notifications', 'created_at', false, {
+        user_id: profile!.id,
+      }),
     refetchInterval: 60000,
   })
   useEffect(() => {
@@ -211,9 +227,13 @@ export function PortalLayout() {
   }, [profile, qc])
   useEffect(() => setOpen(false), [location.pathname])
   if (!profile) return null
-  const role = location.pathname.startsWith('/manager') ? 'manager' : profile.role
+  const role = location.pathname.startsWith('/manager')
+    ? 'manager'
+    : profile.role
   const unread = notices.data?.filter((n) => !n.read_at).length ?? 0
-  const current = navigation[role].find((n) => location.pathname.startsWith(n.path))
+  const current = navigation[role].find((n) =>
+    location.pathname.startsWith(n.path),
+  )
   return (
     <div className="portal">
       <button
@@ -243,7 +263,9 @@ export function PortalLayout() {
               ? 'We’re here for your celebration.'
               : 'Keep every celebration running smoothly.'}
           </p>
-          <Link to={role === 'customer' ? '/customer/support' : '/manager/support'}>
+          <Link
+            to={role === 'customer' ? '/customer/support' : '/manager/support'}
+          >
             Open support <ArrowUpRight size={14} />
           </Link>
         </div>
@@ -274,7 +296,8 @@ export function PortalLayout() {
             <Menu />
           </button>
           <span className="breadcrumb">
-            Workspace <span>/</span> <strong>{current?.label || 'Reservation'}</strong>
+            Workspace <span>/</span>{' '}
+            <strong>{current?.label || 'Reservation'}</strong>
           </span>
           <div className="topbar-right">
             <Link to="/">
@@ -289,7 +312,9 @@ export function PortalLayout() {
               <Bell size={20} />
               {unread > 0 && <i />}
             </button>
-            <span className="avatar small">{profile.full_name.slice(0, 1) || 'R'}</span>
+            <span className="avatar small">
+              {profile.full_name.slice(0, 1) || 'R'}
+            </span>
           </div>
         </header>
         {showNotices && (
