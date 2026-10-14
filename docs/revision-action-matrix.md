@@ -25,6 +25,8 @@ or documentation action, not complete production acceptance.
 
 ## How to present this during a defense
 
+For the subsequent consolidated 0019 changes, cite [the current implementation handoff](CONSOLIDATED_UPDATES_2026-10-15.md). Add rows for owner-confirmed weekday hours/exceptions, strict canonical phone handling, selected Elegant Chair quantities, immutable references/structured details, optional rejection reasons/actual history, complete filtered CSV/PDF reports and accessible hero rotation. These are requested improvements verified in code/QA, not fabricated first-defense comments. Preserve the pending Wedding breakdown, provider payment/refund acceptance and legal/recovery limitations.
+
 The rows above remain the original reconstructed documentation baseline, not panel minutes. For the current October 15 revision, use [the feature handoff](FEATURE_UPDATES_2026-10-15.md): validated service locations and contacts/consent; selectable setup inclusions; original-date reschedule calendar; five-day/10%-of-paid refund policy; distinct staff workspaces; account suspension; persistent maintenance; and a schema-bearing application archive. Preserve the stated limitations and pending Wedding owner prices when making slides.
 
 Use the slide title **“Revision and Action Matrix — Reconstructed for Team Confirmation.”**

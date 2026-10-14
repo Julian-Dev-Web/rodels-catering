@@ -75,7 +75,9 @@ describe('booking and reschedule previews', () => {
       'Bulacan',
       'Pampanga',
     ])
-    expect(validMobile('+63 912 345 6789')).toBe(true)
+    expect(validMobile('+63 912 345 6789')).toBe(false)
+    expect(validMobile('+639123456789')).toBe(true)
+    expect(validMobile('639123456789')).toBe(true)
     expect(validMobile('09123456789')).toBe(true)
     expect(validMobile('021234567')).toBe(false)
   })

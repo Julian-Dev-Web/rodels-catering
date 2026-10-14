@@ -13,6 +13,7 @@ import { records } from '../lib/supabase'
 import { Link } from 'react-router-dom'
 import { ErrorState } from './ui'
 import type { Reservation } from '../types'
+import { EventTimeSelect, validWindowTime, timeLabel, type BookingWindow } from './EventTimeSelect'
 
 export function RescheduleForm({
   reservation,
@@ -25,7 +26,8 @@ export function RescheduleForm({
     initialRescheduleMonth(reservation.event_date, todayManila()),
   )
   const [selected, setSelected] = useState(''),
-    [reason, setReason] = useState('')
+    [reason, setReason] = useState(''),[newTime,setNewTime]=useState(reservation.event_time.slice(0,5))
+  const timeWindow=useQuery({queryKey:['booking-window',selected,reservation.id],enabled:!!selected,queryFn:()=>rpc<BookingWindow>('booking_window',{day:selected,rid:reservation.id})})
   const calendar = monthDays(month),
     earliest = earliestEventDate(),
     qc = useQueryClient()
@@ -69,10 +71,12 @@ export function RescheduleForm({
         )
       if (reason.trim().length < 5)
         throw new Error('Please give a reason of at least 5 characters.')
+      if(!validWindowTime(timeWindow.data,newTime))throw new Error('Choose a valid replacement time within the new date’s operating hours.')
       return rpc('request_reschedule', {
         rid: reservation.id,
         new_date: selected,
         reason: reason.trim(),
+        new_time:newTime,
       })
     },
     onSuccess: () => {
@@ -89,7 +93,7 @@ export function RescheduleForm({
       }}
     >
       <p>
-        Original event: <strong>{date(reservation.event_date)}</strong>. Your
+        Original event: <strong>{date(reservation.event_date)} · {timeLabel(reservation.event_time)} Manila</strong>. Your
         confirmed date stays unchanged while the request is pending.
       </p>
       <p className="date-help">
@@ -185,7 +189,7 @@ export function RescheduleForm({
                       : availability.isFetching
                         ? '…'
                         : remaining(day) === 0
-                          ? 'Full'
+                          ? 'Unavailable'
                           : remaining(day) + ' slots'}
                 </small>
               </button>
@@ -215,11 +219,13 @@ export function RescheduleForm({
           required
         />
       </label>
+      {selected&&<EventTimeSelect day={selected} rid={reservation.id} value={newTime} onChange={setNewTime}/>}
       <button
         className="button"
         disabled={
           !canRequest ||
           !selected ||
+          !validWindowTime(timeWindow.data,newTime)||
           reason.trim().length < 5 ||
           request.isPending ||
           !eligibleRescheduleDay(

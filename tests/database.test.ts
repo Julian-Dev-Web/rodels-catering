@@ -95,7 +95,7 @@ async function completeDraft(eventDate: string) {
 }
 beforeAll(async () => {
   await db.exec(`create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls; create schema auth; create schema storage; create schema extensions;
- create table auth.users(id uuid primary key,raw_user_meta_data jsonb default '{}');
+ create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}');
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
  create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
  create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text);alter table storage.objects enable row level security;
@@ -198,7 +198,7 @@ describe('system administration and private application export', () => {
       exclusions: string[]
     }>('select export_application_snapshot() as value')
     expect(snapshot.format).toBe('rodelconnect-application-export')
-    expect(Object.keys(snapshot.tables)).toHaveLength(35)
+    expect(Object.keys(snapshot.tables)).toHaveLength(38)
     expect(snapshot.tables.profiles).toHaveLength(5)
     expect(snapshot.tables).not.toHaveProperty('users')
     expect(snapshot.tables).not.toHaveProperty('storage.objects')
@@ -428,7 +428,7 @@ describe('clean migrations and actual PostgreSQL business rules', () => {
           first_name: ' Test ',
           middle_name: '',
           last_name: ' Customer ',
-          phone: '0912 345 6789',
+          phone: '639123456789',
           role: 'super_admin',
         }),
       ],
@@ -996,6 +996,11 @@ describe('clean migrations and actual PostgreSQL business rules', () => {
     ).toBe(1)
   })
   it('records a verified full payment without auto-approving a full event date', async () => {
+    // Checkout starts while capacity is available; later bookings fill it
+    // before the provider callback. New checkouts on a full date are blocked.
+    await identity('operator')
+    const occupied = (await db.query<{id:string}>("select id from reservations where event_date='2099-06-10' and holds_capacity")).rows.map(r=>r.id)
+    await db.query("update reservations set event_date='2099-06-30' where id=any($1::uuid[])",[occupied])
     const rid = await completeDraft('2099-06-10')
     await db.query('select finalize_reservation($1)', [rid])
     await identity('operator')
@@ -1008,6 +1013,7 @@ describe('clean migrations and actual PostgreSQL business rules', () => {
       "update payments set external_session_id='cs_at_capacity' where id=$1",
       [payment.id],
     )
+    await db.query("update reservations set event_date='2099-06-10' where id=any($1::uuid[])",[occupied])
     await db.exec(
       "select confirm_provider_payment('evt_capacity','cs_at_capacity','pay_capacity',2050000)",
     )
@@ -1149,7 +1155,7 @@ describe('coverage, consent, setup configuration and saved contacts', () => {
     ).toBe(primaryBefore)
     expect(
       await scalar(
-        "select count(*)::int as value from customer_contacts where phone='09123456789'",
+        "select count(*)::int as value from customer_contacts where phone='+639123456789'",
       ),
     ).toBe(1)
     const record = await scalar<{
@@ -1425,7 +1431,7 @@ describe('date-correct reschedule approval and five-day refund policy', () => {
           id,
           day,
         ]),
-      ).rejects.toThrow(/different available/)
+      ).rejects.toThrow(/different available|at least 3 days/)
     await identity('operator')
     for (const customer of [users.customer, users.other_customer, users.other])
       await db.query(
@@ -1517,4 +1523,64 @@ describe('date-correct reschedule approval and five-day refund policy', () => {
       /access/,
     )
   })
+})
+
+describe('consolidated hours, decisions, readable references and mixed guest chairs',()=>{
+ it('deduplicates all valid alternate-phone formats and denies invalid phone writes or staff contact reads by customers',async()=>{
+  await identity('customer');let saved:string|undefined;
+  for(const phone of ['09987654321','639987654321','+639987654321']){const id=await scalar<string>("select save_contact_number('QA alternate',$1) as value",[phone]);if(saved)expect(id).toBe(saved);saved=id}
+  expect(await scalar("select count(*)::int as value from customer_contacts where phone='+639987654321'")).toBe(1)
+  for(const phone of ['abc09987654321','0998 7654321','099876543210','+6399876543210']){await expect(db.query("select save_contact_number('Invalid alternate',$1)",[phone])).rejects.toThrow(/Use 09/);await expect(db.query('update profiles set phone=$1 where id=$2',[phone,users.customer])).rejects.toThrow(/Use 09/)}
+  const id=await ownerDraft('2093-01-01',100);await expect(db.query('select staff_customer_contact($1)',[id])).rejects.toThrow(/Staff/);await identity('manager');expect((await scalar<{name:string}>('select staff_customer_contact($1) as value',[id])).name).toBeTruthy()
+ })
+ it('creates immutable unique references while retaining UUID keys and rejects direct customer changes',async()=>{
+  const id=await ownerDraft('2093-02-01',100)
+  const ref=await scalar<string>('select reservation_reference as value from reservations where id=$1',[id]);expect(ref).toMatch(/^RC-\d{4}-\d{6,}$/)
+  await expect(db.query("update reservations set reservation_reference='RC-2093-000000' where id=$1",[id])).rejects.toThrow(/permission denied/)
+  await identity('operator');await expect(db.query("update reservations set reservation_reference='RC-2093-000000' where id=$1",[id])).rejects.toThrow(/cannot be changed/)
+  const refs=(await db.query<{ref:string}>('select private.next_reservation_reference() ref from generate_series(1,100)')).rows.map(r=>r.ref);expect(new Set(refs).size).toBe(100)
+ })
+ it('enforces the owner-approved Sunday hours and a blocked date at creation/approval/checkout',async()=>{
+  const sunday=new Date('2093-03-01T00:00:00Z');while(sunday.getUTCDay()!==0)sunday.setUTCDate(sunday.getUTCDate()+1);const day=sunday.toISOString().slice(0,10)
+  await identity('customer');const hours=await scalar<{opens:string;closes:string;times:string[]}>('select booking_window($1) as value',[day]);expect(hours.opens).toBe('08:00:00');expect(hours.closes).toBe('21:00:00');expect(hours.times[0]).toBe('08:00')
+  await expect(ownerDraft(day,100,'Monoblock','Simple buffet setup',undefined,'Round table',{event_time:'07:30'})).rejects.toThrow(/business hours/)
+  const id=await ownerDraft(day,100,'Monoblock','Simple buffet setup',undefined,'Round table',{event_time:'20:30'});await db.query('select finalize_reservation($1)',[id])
+  await expect(db.query("select configure_business_date($1,true)",[day])).rejects.toThrow(/Staff/)
+  await identity('manager');await db.query("select configure_business_date($1,true,null,null,'Approved test closure')",[day]);await expect(db.query("select manager_reservation_status($1,'approved')",[id])).rejects.toThrow(/closed or blocked/)
+  await identity('operator');await expect(db.query("select begin_checkout($1,$2,'full')",[id,users.customer])).rejects.toThrow(/closed or blocked/)
+  await identity('manager');await db.query('select remove_business_date($1)',[day])
+ })
+ it('records a supplied rejection reason only for the correct booking and prevents repeated/unauthorized transitions',async()=>{
+  const id=await ownerDraft('2093-04-01',100);await db.query('select finalize_reservation($1)',[id])
+  await expect(db.query("select manager_reservation_status($1,'rejected','Forged decision')",[id])).rejects.toThrow(/Staff/)
+  await identity('manager');await db.query("select manager_reservation_status($1,'rejected','We need clarification of some reservation details.')",[id]);await expect(db.query("select manager_reservation_status($1,'rejected','Second decision')",[id])).rejects.toThrow(/Invalid reservation transition/)
+  const decision=await scalar<{reason:string;decision:string}>('select to_jsonb(d) as value from reservation_decisions d where reservation_id=$1',[id]);expect(decision.reason).toContain('clarification');expect(decision.decision).toBe('rejected')
+  await identity('customer');expect(await scalar<number>("select count(*)::int as value from notifications where href='/customer/reservations/'||$1 and body like '%clarification%'",[id])).toBe(1)
+  const history=await scalar<{reason:string|null}[]>('select reservation_activity($1) as value',[id]);expect(history.some(h=>h.reason?.includes('clarification'))).toBe(true)
+  await identity('other_customer');await expect(db.query('select reservation_activity($1)',[id])).rejects.toThrow(/Access denied/)
+ })
+ it('accepts a blank optional rejection reason without fabricating one',async()=>{
+  const id=await ownerDraft('2093-04-02',100);await db.query('select finalize_reservation($1)',[id]);await identity('manager');await db.query("select manager_reservation_status($1,'rejected','   ')",[id]);expect(await scalar('select reason as value from reservation_decisions where reservation_id=$1',[id])).toBeNull()
+ })
+ it('charges only the selected elegant guest chairs and snapshots unit charges without changing the fixed setup fee',async()=>{
+  await identity('customer');const normal=await scalar<string>("select id as value from chair_types where name='Monoblock'"),elegant=await scalar<string>("select id as value from chair_types where name='Elegant chair'")
+  const id=await ownerDraft('2093-05-01',100,'Elegant chair','Birthday setup',undefined,'Round table',{chairs:[{id:elegant,quantity:30},{id:normal,quantity:70}]})
+  const quote=await scalar<{pricing:Record<string,number>;selection_snapshot:{name:string;quantity:number;unit_amount:number}[]}>('select to_jsonb(r) as value from reservations r where id=$1',[id]);expect(quote.pricing.setup).toBe(1500000);expect(quote.pricing.chair_upgrade).toBe(30000);expect(quote.pricing.total).toBe(4730000);expect(quote.selection_snapshot.find(s=>s.name==='Elegant chair')).toMatchObject({quantity:30,unit_amount:1000})
+  for(const count of [0,-1,0.5,101])await expect(ownerDraft('2093-05-02',100,'Elegant chair','Simple buffet setup',undefined,'Round table',{chairs:[{id:elegant,quantity:count}]})).rejects.toThrow(/whole numbers/)
+  await db.query('select finalize_reservation($1)',[id]);expect(await scalar('select count(*)::int as value from reservation_tables_chairs where reservation_id=$1',[id])).toBe(2)
+ })
+ it('preserves the original event/time until approval and requires a replacement time that fits the new date',async()=>{
+  const initial='2093-06-01',replacement='2093-06-02';const id=await ownerDraft(initial,100);await db.query('select finalize_reservation($1)',[id]);await identity('manager');await db.query("select manager_reservation_status($1,'approved')",[id]);await db.query("select configure_business_date($1,false,'16:00','18:00','Approved special hours')",[replacement])
+  await identity('customer');await expect(db.query("select request_reschedule($1,$2,'Different schedule please')",[id,replacement])).rejects.toThrow(/business hours/)
+  const req=await scalar<string>("select request_reschedule($1,$2,'Different schedule please','16:30') as value",[id,replacement]);expect(await scalar<string>('select event_date::text as value from reservations where id=$1',[id])).toBe(initial)
+  await identity('manager');await db.query('select review_reschedule($1,true)',[req]);expect(await scalar<string>('select event_time::text as value from reservations where id=$1',[id])).toBe('16:30:00');expect(await scalar<string>('select old_time::text as value from reservation_reschedules where reservation_id=$1',[id])).toBe('12:00:00');await db.query('select remove_business_date($1)',[replacement])
+ })
+ it('makes a genuinely available optional add-on work across buffet, birthday and wedding without inventing production products',async()=>{
+  await identity('operator');const addon=await scalar<string>("insert into add_ons(name,price) values('Isolated approved add-on fixture',13750) returning id as value")
+  for(const [i,setup] of ['Simple buffet setup','Birthday setup','Wedding setup'].entries()){
+   const id=await ownerDraft('2093-07-0'+(i+1),100,'Monoblock',setup,undefined,'Round table',{add_ons:[{id:addon,quantity:2}]});const r=await scalar<{pricing:Record<string,number>;selection_snapshot:{name:string;quantity:number;subtotal:number}[]}>('select to_jsonb(r) as value from reservations r where id=$1',[id]);expect(r.pricing.add_ons).toBe(27500);expect(r.selection_snapshot.find(x=>x.name==='Isolated approved add-on fixture')).toMatchObject({quantity:2,subtotal:27500})
+  }
+  for(const quantity of [0,-1,1.5,1001])await expect(ownerDraft('2093-07-04',100,'Monoblock','Simple buffet setup',undefined,'Round table',{add_ons:[{id:addon,quantity}]})).rejects.toThrow(/whole numbers/)
+  await identity('operator');await db.query('update add_ons set active=false where id=$1',[addon])
+ })
 })

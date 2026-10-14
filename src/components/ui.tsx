@@ -1,7 +1,14 @@
 import type { ReactNode } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, ArrowRight, Check, LoaderCircle, Search, X } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowRight,
+  Check,
+  LoaderCircle,
+  Search,
+  X,
+} from 'lucide-react'
 import { human, message } from '../lib/format'
 import type { RecordRow } from '../types'
 export function Loading() {
@@ -27,7 +34,13 @@ export function Empty({
     </div>
   )
 }
-export function ErrorState({ error, retry }: { error: unknown; retry?: () => void }) {
+export function ErrorState({
+  error,
+  retry,
+}: {
+  error: unknown
+  retry?: () => void
+}) {
   return (
     <div className="alert error" role="alert">
       <AlertCircle size={20} />
@@ -60,7 +73,9 @@ export function PageHeading({
   return (
     <div className="page-heading">
       <div>
-        <span className="eyebrow">{eyebrow || 'YOUR CELEBRATIONS, SIMPLIFIED'}</span>
+        <span className="eyebrow">
+          {eyebrow || 'YOUR CELEBRATIONS, SIMPLIFIED'}
+        </span>
         <h1>{title}</h1>
         {children && <p>{children}</p>}
       </div>
@@ -98,7 +113,9 @@ export function Action({
         disabled={mutation.isPending}
         onClick={() => (confirm ? setOpen(true) : mutation.mutate())}
       >
-        {mutation.isPending ? <LoaderCircle size={16} className="spin" /> : null}
+        {mutation.isPending ? (
+          <LoaderCircle size={16} className="spin" />
+        ) : null}
         {label}
       </button>
       {mutation.isError && <ErrorState error={mutation.error} />}{' '}
@@ -193,19 +210,47 @@ export function DataTable({
   rows,
   columns,
   actions,
+  searchValue,
+  onSearchChange,
 }: {
   rows: RecordRow[]
-  columns: { key: string; label: string; render?: (row: RecordRow) => ReactNode }[]
+  columns: {
+    key: string
+    label: string
+    render?: (row: RecordRow) => ReactNode
+  }[]
   actions?: (row: RecordRow) => ReactNode
+  searchValue?: string
+  onSearchChange?: (value: string) => void
 }) {
   const [search, setSearch] = useState(''),
     [page, setPage] = useState(0)
-  const filtered = rows.filter((r) =>
-    Object.values(r).some(
-      (v) => typeof v === 'string' && v.toLowerCase().includes(search.toLowerCase()),
-    ),
-  )
-  const pages = Math.max(1, Math.ceil(filtered.length / 10))
+  const [pageSize, setPageSize] = useState(10),
+    [sort, setSort] = useState<{ key: string; ascending: boolean } | null>(null)
+  const term = searchValue ?? search
+  const filtered = useMemo(() => {
+    const result = rows.filter((r) =>
+      Object.values(r).some(
+        (v) =>
+          (typeof v === 'string' || typeof v === 'number') &&
+          String(v).toLowerCase().includes(term.toLowerCase()),
+      ),
+    )
+    if (sort)
+      result.sort((a, b) => {
+        const x = a[sort.key],
+          y = b[sort.key]
+        const order =
+          typeof x === 'number' && typeof y === 'number'
+            ? x - y
+            : String(x ?? '').localeCompare(String(y ?? ''), undefined, {
+                numeric: true,
+              })
+        return sort.ascending ? order : -order
+      })
+    return result
+  }, [rows, term, sort])
+  const pages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const current = Math.min(page, pages - 1)
   return (
     <div className="table-panel">
@@ -215,14 +260,32 @@ export function DataTable({
           <input
             aria-label="Search records"
             placeholder="Search records…"
-            value={search}
+            value={term}
             onChange={(e) => {
               setSearch(e.target.value)
+              onSearchChange?.(e.target.value)
               setPage(0)
             }}
           />
         </label>
-        <span className="muted">{filtered.length} records</span>
+        <label>
+          Rows per page
+          <select
+            aria-label="Rows per page"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value))
+              setPage(0)
+            }}
+          >
+            {[10, 25, 50, 100].map((n) => (
+              <option key={n}>{n}</option>
+            ))}
+          </select>
+        </label>
+        <span className="muted" aria-live="polite">
+          {filtered.length} records
+        </span>
       </div>
       {filtered.length ? (
         <div className="table-scroll">
@@ -230,24 +293,57 @@ export function DataTable({
             <thead>
               <tr>
                 {columns.map((c) => (
-                  <th key={c.key}>{c.label}</th>
+                  <th
+                    key={c.key}
+                    aria-sort={
+                      sort?.key === c.key
+                        ? sort.ascending
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="table-sort"
+                      onClick={() => {
+                        setSort({
+                          key: c.key,
+                          ascending:
+                            sort?.key === c.key ? !sort.ascending : true,
+                        })
+                        setPage(0)
+                      }}
+                    >
+                      {c.label}
+                      {sort?.key === c.key
+                        ? sort.ascending
+                          ? ' ↑'
+                          : ' ↓'
+                        : ''}
+                    </button>
+                  </th>
                 ))}
                 {actions && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
-              {filtered.slice(current * 10, current * 10 + 10).map((row) => (
-                <tr key={row.id}>
-                  {columns.map((c) => (
-                    <td key={c.key}>{c.render ? c.render(row) : String(row[c.key] ?? '—')}</td>
-                  ))}
-                  {actions && (
-                    <td>
-                      <div className="row-actions">{actions(row)}</div>
-                    </td>
-                  )}
-                </tr>
-              ))}
+              {filtered
+                .slice(current * pageSize, current * pageSize + pageSize)
+                .map((row) => (
+                  <tr key={row.id}>
+                    {columns.map((c) => (
+                      <td key={c.key}>
+                        {c.render ? c.render(row) : String(row[c.key] ?? '—')}
+                      </td>
+                    ))}
+                    {actions && (
+                      <td>
+                        <div className="row-actions">{actions(row)}</div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>

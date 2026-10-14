@@ -34,6 +34,7 @@ export const navigation: Record<
   manager: [
     ['Overview', 'dashboard', 'chart'],
     ['Event calendar', 'calendar', 'date'],
+    ['Operating hours', 'operating-hours', 'clock'],
     ['Packages & menus', 'catalog', 'utensils'],
     ['Menu library', 'menu', 'utensils'],
     ['Event setups & extras', 'event-setups', 'star'],
@@ -57,6 +58,7 @@ export const navigation: Record<
     ['Gallery', 'gallery', 'image'],
     ['Website maintenance', 'maintenance', 'settings'],
     ['System settings', 'system-settings', 'settings'],
+    ['Operating hours', 'operating-hours', 'clock'],
     ['Security monitoring', 'security', 'receipt'],
     ['System reports', 'reports', 'chart'],
     ['Audit trail', 'audit-logs', 'receipt'],

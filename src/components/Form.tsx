@@ -6,6 +6,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ErrorState } from './ui'
 import { PasswordChecklist } from './PasswordChecklist'
+import {
+  mobileInput,
+  validMobileEdit,
+} from '../../supabase/functions/_shared/phone'
 export interface Field {
   name: string
   label: string
@@ -34,7 +38,9 @@ export function Form({
   validate?: (values: Record<string, string>) => Record<string, string>
 }) {
   const formId = useId()
-  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({})
+  const [visiblePasswords, setVisiblePasswords] = useState<
+    Record<string, boolean>
+  >({})
   const shape: Record<string, z.ZodType<string, string>> = {}
   for (const f of fields) {
     let s = z.string()
@@ -49,12 +55,16 @@ export function Form({
   })
   const {
     register,
+    setValue,
+    setError,
     control,
     handleSubmit,
     formState: { errors },
   } = useForm<Record<string, string>>({
     resolver: zodResolver(schema),
-    defaultValues: Object.fromEntries(Object.entries(initial).map(([k, v]) => [k, String(v)])),
+    defaultValues: Object.fromEntries(
+      Object.entries(initial).map(([k, v]) => [k, String(v)]),
+    ),
   })
   const values = useWatch({ control })
   const qc = useQueryClient()
@@ -74,7 +84,11 @@ export function Form({
             {f.required && <span aria-hidden="true"> *</span>}
           </label>
           {f.options ? (
-            <select id={formId + '-' + f.name} aria-invalid={!!errors[f.name]} {...register(f.name)}>
+            <select
+              id={formId + '-' + f.name}
+              aria-invalid={!!errors[f.name]}
+              {...register(f.name)}
+            >
               <option value="">Select {f.label.toLowerCase()}</option>
               {f.options.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -92,45 +106,131 @@ export function Form({
               {...register(f.name)}
             />
           ) : (
-            <div className={f.type === 'password' ? 'password-input' : 'input-wrap'}>
-            <input
-              id={formId + '-' + f.name}
-              aria-invalid={!!errors[f.name]}
-              aria-describedby={[
-                f.passwordRules ? formId + '-password-rules' : '',
-                errors[f.name] ? formId + '-' + f.name + '-error' : '',
-              ].filter(Boolean).join(' ') || undefined}
-              type={f.type === 'password' && visiblePasswords[f.name] ? 'text' : f.type || 'text'}
-              min={f.min}
-              max={f.type === 'number' ? f.max : undefined}
-              maxLength={f.type !== 'number' ? f.max : undefined}
-              placeholder={f.placeholder}
-              autoComplete={
-                f.autoComplete ?? (f.type === 'password' ? 'new-password' : f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : undefined)
+            <div
+              className={
+                f.type === 'password' ? 'password-input' : 'input-wrap'
               }
-              {...register(f.name)}
-            />
-            {f.type === 'password' && (
-              <button
-                type="button"
-                className="password-toggle"
-                aria-label={(visiblePasswords[f.name] ? 'Hide ' : 'Show ') + f.label.toLowerCase()}
-                aria-pressed={!!visiblePasswords[f.name]}
-                aria-controls={formId + '-' + f.name}
-                onClick={() => setVisiblePasswords((current) => ({ ...current, [f.name]: !current[f.name] }))}
-              >
-                {visiblePasswords[f.name] ? <EyeOff size={19} aria-hidden="true" /> : <Eye size={19} aria-hidden="true" />}
-              </button>
-            )}
+            >
+              <input
+                id={formId + '-' + f.name}
+                aria-invalid={!!errors[f.name]}
+                aria-describedby={
+                  [
+                    f.passwordRules ? formId + '-password-rules' : '',
+                    errors[f.name] ? formId + '-' + f.name + '-error' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ') || undefined
+                }
+                type={
+                  f.type === 'password' && visiblePasswords[f.name]
+                    ? 'text'
+                    : f.type || 'text'
+                }
+                min={f.min}
+                max={f.type === 'number' ? f.max : undefined}
+                maxLength={
+                  f.type === 'tel'
+                    ? 13
+                    : f.type !== 'number'
+                      ? f.max
+                      : undefined
+                }
+                inputMode={f.type === 'tel' ? 'tel' : undefined}
+                placeholder={f.placeholder}
+                autoComplete={
+                  f.autoComplete ??
+                  (f.type === 'password'
+                    ? 'new-password'
+                    : f.type === 'email'
+                      ? 'email'
+                      : f.type === 'tel'
+                        ? 'tel'
+                        : undefined)
+                }
+                {...register(f.name)}
+                onChange={
+                  f.type === 'tel'
+                    ? (e) =>
+                        setValue(
+                          f.name,
+                          mobileInput(e.target.value, values[f.name] || ''),
+                          { shouldDirty: true, shouldValidate: true },
+                        )
+                    : register(f.name).onChange
+                }
+                onPaste={
+                  f.type === 'tel'
+                    ? (e) => {
+                        const input = e.currentTarget,
+                          combined =
+                            input.value.slice(0, input.selectionStart ?? 0) +
+                            e.clipboardData.getData('text') +
+                            input.value.slice(
+                              input.selectionEnd ?? input.value.length,
+                            )
+                        if (!validMobileEdit(combined)) {
+                          e.preventDefault()
+                          setError(f.name, {
+                            type: 'manual',
+                            message:
+                              'That paste contains invalid characters or exceeds the mobile-number length. It was not used.',
+                          })
+                        }
+                      }
+                    : undefined
+                }
+              />
+              {f.type === 'password' && (
+                <button
+                  type="button"
+                  className="password-toggle"
+                  aria-label={
+                    (visiblePasswords[f.name] ? 'Hide ' : 'Show ') +
+                    f.label.toLowerCase()
+                  }
+                  aria-pressed={!!visiblePasswords[f.name]}
+                  aria-controls={formId + '-' + f.name}
+                  onClick={() =>
+                    setVisiblePasswords((current) => ({
+                      ...current,
+                      [f.name]: !current[f.name],
+                    }))
+                  }
+                >
+                  {visiblePasswords[f.name] ? (
+                    <EyeOff size={19} aria-hidden="true" />
+                  ) : (
+                    <Eye size={19} aria-hidden="true" />
+                  )}
+                </button>
+              )}
             </div>
           )}{' '}
-          {f.passwordRules && <PasswordChecklist id={formId + '-password-rules'} value={values[f.name] || ''} />}
+          {f.passwordRules && (
+            <PasswordChecklist
+              id={formId + '-password-rules'}
+              value={values[f.name] || ''}
+            />
+          )}
           {f.name === 'confirm_password' && values[f.name] && (
-            <span className={'password-match ' + (values[f.name] === values.password ? 'met' : '')} role="status">
-              {values[f.name] === values.password ? 'Passwords match.' : 'Passwords do not match yet.'}
+            <span
+              className={
+                'password-match ' +
+                (values[f.name] === values.password ? 'met' : '')
+              }
+              role="status"
+            >
+              {values[f.name] === values.password
+                ? 'Passwords match.'
+                : 'Passwords do not match yet.'}
             </span>
           )}
-          {errors[f.name] && <span id={formId + '-' + f.name + '-error'} className="field-error">{String(errors[f.name]?.message)}</span>}
+          {errors[f.name] && (
+            <span id={formId + '-' + f.name + '-error'} className="field-error">
+              {String(errors[f.name]?.message)}
+            </span>
+          )}
         </div>
       ))}
       {mutation.isError && <ErrorState error={mutation.error} />}

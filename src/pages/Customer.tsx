@@ -23,9 +23,13 @@ import {
   PageHeading,
 } from '../components/ui'
 import { Form } from '../components/Form'
-import { BookingSelections } from '../components/BookingDetails'
+import {
+  BookingSelections,
+  BookingActivity,
+} from '../components/BookingDetails'
 import { RefundRequest } from '../components/RefundRequest'
 import { RescheduleForm } from '../components/RescheduleForm'
+import { timeLabel } from '../components/EventTimeSelect'
 import {
   date,
   earliestEventDate,
@@ -104,6 +108,7 @@ export function Reservations() {
                 <Badge value={r.status} />
               </div>
               <h3>{r.event_name}</h3>
+              <small className="eyebrow">{r.reservation_reference||'Reference unavailable'}</small>
               <p>
                 {r.package_name} · {r.guests} guests
               </p>
@@ -167,14 +172,14 @@ export function ReservationDetail() {
     <>
       <PageHeading
         title={r.event_name}
-        eyebrow={'RESERVATION ' + r.id.slice(0, 8).toUpperCase()}
+        eyebrow={r.reservation_reference || 'RESERVATION'}
         action={
           <Link className="button secondary" to="/customer/reservations">
             All reservations
           </Link>
         }
       >
-        {date(r.event_date)} · {r.event_time.slice(0, 5)} Manila · {r.guests}{' '}
+        {date(r.event_date)} · {timeLabel(r.event_time)} Manila · {r.guests}{' '}
         guests
       </PageHeading>
       <div className="detail-layout">
@@ -188,7 +193,7 @@ export function ReservationDetail() {
             <dt>Package</dt>
             <dd>
               {catalog.data?.menu_sets.find((p) => p.id === r.menu_set_id)
-                ?.name || r.menu_set_id}
+                ?.name || 'Selected package unavailable'}
             </dd>
             <dt>Location</dt>
             <dd>
@@ -221,6 +226,8 @@ export function ReservationDetail() {
               catalog={catalog.data}
             />
           )}
+          <h3>Recorded activity</h3>
+          <BookingActivity id={r.id} />
           <div className="actions">
             {editable && (
               <Link
@@ -480,7 +487,7 @@ export function AvailableDates() {
                         ? '3-day notice required'
                         : d.remaining > 0
                           ? `${d.remaining} spots available`
-                          : 'Fully booked'}
+                          : 'Unavailable'}
                   </span>
                   {d.remaining > 0 && d.event_date >= earliestEventDate() && (
                     <Link
@@ -584,7 +591,7 @@ export function CustomerWorkflow({
               render: (r) => (
                 <Link to={'/customer/reservations/' + r.reservation_id}>
                   {reservations.data?.find((x) => x.id === r.reservation_id)
-                    ?.event_name || String(r.reservation_id).slice(0, 8)}
+                    ?.reservation_reference || 'Reference unavailable'}
                 </Link>
               ),
             },
@@ -729,7 +736,7 @@ export function Payments({ transactions = false }: { transactions?: boolean }) {
               render: (r) => (
                 <Link to={'/customer/reservations/' + r.reservation_id}>
                   {reservations.data?.find((x) => x.id === r.reservation_id)
-                    ?.event_name || String(r.reservation_id).slice(0, 8)}
+                    ?.reservation_reference || 'Reference unavailable'}
                 </Link>
               ),
             },
@@ -745,10 +752,10 @@ export function Payments({ transactions = false }: { transactions?: boolean }) {
             },
             {
               key: transactions ? 'reference' : 'status',
-              label: transactions ? 'Reference' : 'Status',
+              label: transactions ? 'Ledger reference' : 'Status',
               render: (r) =>
                 transactions ? (
-                  String(r.reference)
+                  String(r.record_reference||'Reference unavailable')
                 ) : (
                   <Badge value={String(r.status)} />
                 ),
@@ -804,7 +811,7 @@ export function Feedback({ staff = false }: { staff?: boolean }) {
               label: 'Reservation',
               render: (r) =>
                 reservations.data?.find((x) => x.id === r.reservation_id)
-                  ?.event_name || String(r.reservation_id).slice(0, 8),
+                  ?.reservation_reference || 'Reference unavailable',
             },
             {
               key: 'created_at',

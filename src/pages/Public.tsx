@@ -16,6 +16,7 @@ import { money } from '../lib/format'
 import { ErrorState, Loading } from '../components/ui'
 import { MenuIllustration } from '../components/MenuIllustration'
 import { EventShowcase } from '../components/EventShowcase'
+import { HeroCarousel } from '../components/HeroCarousel'
 const photos = [
   '/images/celebration.jpg',
   '/images/table.jpg',
@@ -149,25 +150,7 @@ export function Home() {
               <span>Prepared with care. Shared with love.</span>
             </div>
           </div>
-          <div className="hero-image">
-            <img
-              src="/images/facebook-showcase.jpg"
-              alt="Rodel’s outdoor evening setup with banquet tables and lighting"
-            />
-            <div className="hero-image-shade" />
-            <div className="image-caption">
-              <span>THE TABLE IS SET.</span>
-              <strong>All that’s missing is you.</strong>
-            </div>
-            <div className="hero-seal">
-              <Flower2 size={29} />
-              <span>
-                THOUGHTFULLY
-                <br />
-                CELEBRATED
-              </span>
-            </div>
-          </div>
+          <HeroCarousel />
         </div>
       </section>
       <div className="occasion-strip">
@@ -319,19 +302,6 @@ export function Packages() {
         </p>
       </div>
       <PackageCards />
-      <div className="info-banner">
-        <Flower2 />
-        <div>
-          <strong>Every celebration is a little different.</strong>
-          <p>
-            Sign in to explore available dates and put together your event.
-            You’ll see your full server-calculated quote before you finalize.
-          </p>
-        </div>
-        <Link to="/login" className="text-button">
-          Get started <ArrowRight size={16} />
-        </Link>
-      </div>
     </section>
   )
 }

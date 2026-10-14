@@ -2508,4 +2508,345 @@ revoke execute on function public.booking_policy_version(),public.wedding_price_
 grant execute on function public.booking_policy_version(),public.wedding_price_configuration() to anon,authenticated;
 grant execute on function public.configure_wedding_prices(jsonb,boolean),public.save_contact_number(text,text),public.refund_preview(uuid) to authenticated;
 
+-- ==================== 0019_consolidated_booking_operations.sql ====================
+
+-- Owner-confirmed hours and guest chair quantities, October 15, 2026.
+-- Existing financial amounts, addresses and quotes are preserved.
+create sequence private.reservation_reference_seq;
+create function private.next_reservation_reference(created timestamptz default now()) returns text language sql volatile security definer set search_path='' as $$
+ select 'RC-'||to_char(created at time zone 'Asia/Manila','YYYY')||'-'||lpad(n::text,greatest(6,length(n::text)),'0') from (select nextval('private.reservation_reference_seq') n)x
+$$;
+alter table public.reservations add column reservation_reference text default private.next_reservation_reference();
+-- ADD COLUMN populated each old row with a distinct sequence value; correct its
+-- year using the saved creation time without reallocating its unique number.
+alter table public.reservations disable trigger reservation_capacity;
+update public.reservations set reservation_reference='RC-'||to_char(created_at at time zone 'Asia/Manila','YYYY')||'-'||split_part(reservation_reference,'-',3);
+alter table public.reservations enable trigger reservation_capacity;
+alter table public.reservations alter column reservation_reference set not null;
+alter table public.reservations add constraint reservation_reference_unique unique(reservation_reference);
+alter table public.reservations add column selection_snapshot jsonb;
+create function private.immutable_reservation_reference() returns trigger language plpgsql set search_path='' as $$begin
+ if new.reservation_reference is distinct from old.reservation_reference then raise exception 'Reservation references cannot be changed';end if;return new;
+end $$;
+create trigger reservation_reference_immutable before update on public.reservations for each row execute function private.immutable_reservation_reference();
+alter table public.payments add column record_reference text default ('PM'||substr(private.next_reservation_reference(),3));
+alter table public.transactions add column record_reference text default ('TX'||substr(private.next_reservation_reference(),3));
+update public.payments set record_reference='PM-'||to_char(created_at at time zone 'Asia/Manila','YYYY')||'-'||split_part(record_reference,'-',3);
+update public.transactions set record_reference='TX-'||to_char(created_at at time zone 'Asia/Manila','YYYY')||'-'||split_part(record_reference,'-',3);
+alter table public.payments alter column record_reference set not null,add unique(record_reference);
+alter table public.transactions alter column record_reference set not null,add unique(record_reference);
+create function private.immutable_record_reference() returns trigger language plpgsql set search_path='' as $$begin if new.record_reference is distinct from old.record_reference then raise exception 'Record references cannot be changed';end if;return new;end $$;
+create trigger payment_reference_immutable before update on public.payments for each row execute function private.immutable_record_reference();
+create trigger transaction_reference_immutable before update on public.transactions for each row execute function private.immutable_record_reference();
+create or replace view public.reservation_summary with(security_invoker=true) as select r.id,r.customer_id,r.event_name,r.event_date,r.event_time,r.address,r.guests,r.menu_set_id,r.drink_id,r.dessert_id,r.status,r.holds_capacity,r.payment_status,r.total,r.paid,r.refunded,r.pricing,r.finalized_at,r.created_at,r.updated_at,m.name as package_name,p.full_name as customer_name,r.booking_version,r.event_preferences,r.consent_version,r.consent_at,r.reservation_reference,r.selection_snapshot from public.reservations r join public.menu_sets m on m.id=r.menu_set_id join public.profiles p on p.id=r.customer_id;
+
+create function private.normalize_phone(value text) returns text language plpgsql immutable set search_path='' as $$begin
+ if value is null or value !~ '^(09[0-9]{9}|(\+?63)9[0-9]{9})$' then raise exception 'Use 09XXXXXXXXX, 639XXXXXXXXX or +639XXXXXXXXX; digits only';end if;
+ return case when left(value,1)='0' then '+63'||substr(value,2) when left(value,1)='+' then value else '+'||value end;
+end $$;
+create or replace function private.normalize_profile() returns trigger language plpgsql security definer set search_path='' as $$begin
+ new.first_name=btrim(new.first_name);new.middle_name=btrim(new.middle_name);new.last_name=btrim(new.last_name);
+ if new.first_name<>'' or new.middle_name<>'' or new.last_name<>'' then
+  if new.first_name='' or new.last_name='' then raise exception 'First and last name are required';end if;
+  new.full_name=concat_ws(' ',new.first_name,nullif(new.middle_name,''),new.last_name);
+ end if;
+ if (TG_OP='INSERT' or new.phone is distinct from old.phone) and new.phone<>'' then new.phone=private.normalize_phone(new.phone);end if;
+ return new;
+end $$;
+alter function private.validate_event_address(jsonb) rename to validate_event_address_previous;
+create function private.validate_event_address(address jsonb) returns jsonb language plpgsql stable set search_path='' as $$begin
+ return private.validate_event_address_previous(address||jsonb_build_object('contact',private.normalize_phone(address->>'contact')));
+end $$;
+-- Deduplicate equivalent existing alternates, keeping the earliest saved contact.
+delete from public.customer_contacts a using public.customer_contacts b where a.customer_id=b.customer_id and private.normalize_phone(a.phone)=private.normalize_phone(b.phone) and (a.created_at,a.id)>(b.created_at,b.id);
+update public.customer_contacts set phone=private.normalize_phone(phone);
+create or replace function public.save_contact_number(label text,phone text) returns uuid language plpgsql security definer set search_path='' as $$declare result uuid; normalized text;begin
+ perform private.require_customer();normalized=private.normalize_phone(phone);
+ if length(btrim(coalesce(label,''))) not between 1 and 80 then raise exception 'Enter a contact label up to 80 characters';end if;
+ if exists(select 1 from public.profiles p where p.id=auth.uid() and p.phone=normalized) then return null;end if;
+ insert into public.customer_contacts(customer_id,name,phone) values(auth.uid(),btrim(label),normalized) on conflict on constraint customer_contacts_customer_id_phone_key do update set name=excluded.name returning id into result;
+ perform private.audit('contact.saved',result::text);return result;
+end $$;
+create function private.normalize_contact() returns trigger language plpgsql set search_path='' as $$begin new.phone=private.normalize_phone(new.phone);return new;end $$;
+create trigger contact_phone_normalization before insert or update of phone on public.customer_contacts for each row execute function private.normalize_contact();
+
+create table public.business_hours(weekday int primary key check(weekday between 0 and 6),closed boolean not null default false,opens time,closes time,updated_at timestamptz not null default now(),check((closed and opens is null and closes is null) or (not closed and opens is not null and closes is not null and opens<closes)));
+insert into public.business_hours(weekday,opens,closes) select d,case when d=0 then '08:00'::time else '07:00'::time end,case when d=0 then '21:00'::time else '22:00'::time end from generate_series(0,6)d;
+create table public.business_date_overrides(event_date date primary key,closed boolean not null,opens time,closes time,note text not null default '' check(length(note)<=500),updated_at timestamptz not null default now(),check((closed and opens is null and closes is null) or (not closed and opens is not null and closes is not null and opens<closes)));
+alter table public.business_hours add constraint same_day_hours check(closes is null or closes<'24:00'::time);
+alter table public.business_date_overrides add constraint same_day_override check(closes is null or closes<'24:00'::time);
+alter table public.business_hours enable row level security;
+alter table public.business_date_overrides enable row level security;
+revoke all on public.business_hours,public.business_date_overrides from anon,authenticated;
+grant select on public.business_hours,public.business_date_overrides to anon,authenticated;
+grant all on public.business_hours,public.business_date_overrides to service_role;
+create policy hours_read on public.business_hours for select using(true);
+create policy hours_exceptions_read on public.business_date_overrides for select using(true);
+create function public.configure_business_hours(day_of_week int,is_closed boolean,opening time default null,closing time default null) returns void language plpgsql security definer set search_path='' as $$begin
+ perform private.require_staff();
+ if day_of_week is null or day_of_week not between 0 and 6 or is_closed is null then raise exception 'Select a valid weekday';end if;
+ update public.business_hours set closed=is_closed,opens=case when is_closed then null else opening end,closes=case when is_closed then null else closing end,updated_at=now() where weekday=day_of_week;
+ perform private.audit('hours.weekday_changed',day_of_week::text,jsonb_build_object('closed',is_closed,'opens',opening,'closes',closing));
+end $$;
+create function public.configure_business_date(day date,is_closed boolean,opening time default null,closing time default null,message text default '') returns void language plpgsql security definer set search_path='' as $$begin
+ perform private.require_staff();if day is null or is_closed is null then raise exception 'Select a valid date';end if;
+ insert into public.business_date_overrides(event_date,closed,opens,closes,note) values(day,is_closed,case when is_closed then null else opening end,case when is_closed then null else closing end,coalesce(message,'')) on conflict(event_date) do update set closed=excluded.closed,opens=excluded.opens,closes=excluded.closes,note=excluded.note,updated_at=now();
+ perform private.audit('hours.date_changed',day::text,jsonb_build_object('closed',is_closed,'opens',opening,'closes',closing));
+end $$;
+create function public.remove_business_date(day date) returns void language plpgsql security definer set search_path='' as $$begin perform private.require_staff();delete from public.business_date_overrides where event_date=day;perform private.audit('hours.date_removed',day::text);end $$;
+create function private.event_window(day date) returns jsonb language plpgsql stable security definer set search_path='' as $$declare closed boolean; opens time;closes time;begin
+ select x.closed,x.opens,x.closes into closed,opens,closes from public.business_date_overrides x where x.event_date=day;
+ if not found then select x.closed,x.opens,x.closes into closed,opens,closes from public.business_hours x where x.weekday=extract(dow from day)::int;end if;
+ return jsonb_build_object('closed',coalesce(closed,true),'opens',opens,'closes',closes);
+end $$;
+create function private.assert_event_window(day date,start_time time,rid uuid default null,preparation boolean default true) returns void language plpgsql security definer set search_path='' as $$declare hours_data jsonb;begin
+ if day is null or start_time is null then raise exception 'Choose an event date and time';end if;
+ if preparation and day<(now() at time zone 'Asia/Manila')::date+3 then raise exception 'Choose an event date at least 3 days ahead';end if;
+ hours_data=private.event_window(day);
+ if (hours_data->>'closed')::boolean then raise exception 'The selected event date is closed or blocked';end if;
+ if start_time<(hours_data->>'opens')::time or start_time>(hours_data->>'closes')::time then raise exception 'Choose a start time within the configured business hours';end if;
+ perform pg_advisory_xact_lock(hashtextextended('capacity:'||day::text,0));
+ if (select count(*) from public.reservations where event_date=day and holds_capacity and (rid is null or id<>rid))>=3 then raise exception 'The selected event date is at capacity';end if;
+end $$;
+create function public.booking_window(day date,rid uuid default null) returns jsonb language plpgsql stable security definer set search_path='' as $$declare hours_data jsonb;remaining bigint; slots jsonb;begin
+ if public.maintenance_enabled() and not public.is_staff() then raise exception 'Maintenance is enabled';end if;
+ if rid is not null and not public.can_read_reservation(rid) then raise exception 'Access denied';end if;
+ hours_data=private.event_window(day);
+ select greatest(3-count(*),0) into remaining from public.reservations where event_date=day and holds_capacity and (rid is null or id<>rid);
+ if (hours_data->>'closed')::boolean or day<(now() at time zone 'Asia/Manila')::date+3 or remaining=0 then return hours_data||jsonb_build_object('available',false,'remaining',remaining,'times','[]'::jsonb,'reason',case when day<(now() at time zone 'Asia/Manila')::date+3 then 'Reserve at least three days ahead' when remaining=0 then 'This date is at capacity' else 'This date is closed or blocked' end);end if;
+ select jsonb_agg(to_char(t,'HH24:MI') order by t) into slots from (select t from generate_series(day+(hours_data->>'opens')::time,day+(hours_data->>'closes')::time,interval '30 minutes')t union select day+(hours_data->>'closes')::time)x;
+ return hours_data||jsonb_build_object('available',true,'remaining',remaining,'times',slots,'reason','');
+end $$;
+-- The owner supplied start-hour windows, not a duration. Capacity remains the
+-- existing three events per date; no hourly overlap/duration rule is invented.
+alter table public.reservations drop constraint reservations_event_time_check;
+create function private.reservation_hours_guard() returns trigger language plpgsql security definer set search_path='' as $$begin
+ if auth.uid() is null then return new;end if;
+ if TG_OP='INSERT' then perform private.assert_event_window(new.event_date,new.event_time,new.id);
+ elsif new.event_date is distinct from old.event_date or new.event_time is distinct from old.event_time then perform private.assert_event_window(new.event_date,new.event_time,new.id);
+ elsif new.status='approved' and old.status in ('pending','for_approval','draft') then perform private.assert_event_window(new.event_date,new.event_time,new.id,false);end if;
+ return new;
+end $$;
+create trigger reservation_hours before insert or update on public.reservations for each row execute function private.reservation_hours_guard();
+alter table public.reschedule_requests add column new_time time;
+alter table public.reservation_reschedules add column old_time time,add column new_time time;
+
+create table public.reservation_decisions(id uuid primary key default gen_random_uuid(),reservation_id uuid not null references public.reservations,request_id uuid,kind text not null check(kind in ('reservation','cancellations','refunds','reschedule')),decision text not null check(decision in ('approved','rejected','completed')),reason text check(length(reason) between 1 and 2000),actor_id uuid references public.profiles on delete set null,created_at timestamptz not null default now());
+alter table public.reservation_decisions enable row level security;
+revoke all on public.reservation_decisions from anon,authenticated;
+grant select on public.reservation_decisions to authenticated;
+grant select,insert,delete on public.reservation_decisions to service_role;
+create policy decisions_read on public.reservation_decisions for select to authenticated using(public.can_read_reservation(reservation_id));
+create function private.record_decision(rid uuid,request uuid,area text,result text,decision_reason text) returns void language plpgsql security definer set search_path='' as $$declare clean text=nullif(btrim(decision_reason),'');begin
+ if length(clean)>2000 then raise exception 'Use at most 2000 characters for a reason';end if;
+ insert into public.reservation_decisions(reservation_id,request_id,kind,decision,reason,actor_id) values(rid,request,area,result,clean,auth.uid());
+ perform private.audit('decision.recorded',rid::text,jsonb_build_object('kind',area,'decision',result,'request_id',request,'reason',clean));
+ if clean is not null then update public.notifications set body=body||' Reason: '||clean where href='/customer/reservations/'||rid and created_at=now();end if;
+end $$;
+create function public.staff_customer_contact(rid uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$declare result jsonb;begin
+ perform private.require_staff();select jsonb_build_object('name',p.full_name,'primary_phone',p.phone,'email',u.email) into result from public.reservations r join public.profiles p on p.id=r.customer_id join auth.users u on u.id=p.id where r.id=rid;
+ if result is null then raise exception 'Reservation not found';end if;return result;
+end $$;
+create function public.reservation_activity(rid uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$declare result jsonb;begin
+ if not public.can_read_reservation(rid) then raise exception 'Access denied';end if;
+ select coalesce(jsonb_agg(x order by x.created_at desc),'[]'::jsonb) into result from (
+ select created_at,'decision'::text as kind,initcap(kind)||' '||decision as description,reason,null::bigint amount from public.reservation_decisions where reservation_id=rid
+ union all select created_at,kind,case kind when 'payment' then 'Provider-confirmed payment' else 'Completed refund' end,null,amount from public.transactions where reservation_id=rid
+ union all select created_at,'reschedule','Event moved from '||to_char(old_date,'Mon DD, YYYY')||case when old_time is null then '' else ' '||to_char(old_date+old_time,'FMHH12:MI AM')||' Manila' end||' to '||to_char(new_date,'Mon DD, YYYY')||case when new_time is null then '' else ' '||to_char(new_date+new_time,'FMHH12:MI AM')||' Manila' end,null,null from public.reservation_reschedules where reservation_id=rid
+ union all select created_at,'request','Cancellation requested',reason,null from public.cancellations where reservation_id=rid
+ union all select created_at,'request','Reschedule requested for '||to_char(new_date,'Mon DD, YYYY')||case when new_time is null then '' else ' '||to_char(new_date+new_time,'FMHH12:MI AM')||' Manila' end,reason,null from public.reschedule_requests where reservation_id=rid
+ union all select created_at,'request','Refund requested',null,eligible_amount from public.refunds where reservation_id=rid
+ union all select a.created_at,'decision',initcap(replace(replace(a.action,'.',' '),'_',' '))||case when a.details ? 'approved' then case when (a.details->>'approved')::boolean then ' · Approved' else ' · Rejected' end else coalesce(' · '||(a.details->>'to'),'') end,null,null from public.audit_logs a where a.action in ('reservation.status_changed','cancellation.reviewed','refund.reviewed','reschedule.reviewed') and (a.entity_id=rid::text or a.entity_id in (select id::text from public.cancellations where reservation_id=rid union select id::text from public.refunds where reservation_id=rid union select id::text from public.reschedule_requests where reservation_id=rid)) and not exists(select 1 from public.reservation_decisions d where d.reservation_id=rid and d.created_at=a.created_at)
+ )x;return result;
+end $$;
+
+create or replace function private.calculate_price_previous(rid uuid) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare r public.reservations; m public.menu_sets; menu bigint; setup bigint; features bigint; addons bigint; chairs bigint=0; tables bigint; extra bigint; seating record; quote jsonb;
+begin
+ select * into strict r from public.reservations where id=rid;
+ select * into strict m from public.menu_sets where id=r.menu_set_id and active;
+ if r.guests<m.min_guests then raise exception 'Guest count is below the package minimum (% guests)',m.min_guests; end if;
+ if m.max_guests is not null and r.guests>m.max_guests then raise exception 'Guest count exceeds the package maximum (% guests)',m.max_guests; end if;
+ if exists(select 1 from public.reservation_event_features x join public.event_features f on f.id=x.event_feature_id
+   where x.reservation_id=rid and f.required_setup_id is not null and not exists(
+    select 1 from public.reservation_event_setups s where s.reservation_id=rid and s.event_setup_id=f.required_setup_id)) then
+  raise exception 'A selected upgrade requires its matching event setup';
+ end if;
+ menu=m.price*r.guests;
+ select coalesce(sum(s.price),0) into setup from public.reservation_event_setups x join public.event_setups s on s.id=x.event_setup_id where x.reservation_id=rid and s.active;
+ select coalesce(sum(s.price),0) into features from public.reservation_event_features x join public.event_features s on s.id=x.event_feature_id where x.reservation_id=rid and s.active;
+ select coalesce(sum(s.price*x.quantity),0) into addons from public.reservation_add_ons x join public.add_ons s on s.id=x.add_on_id where x.reservation_id=rid and s.active;
+ if m.pricing_version=2 then
+  if exists(select 1 from public.reservation_tables_chairs where reservation_id=rid) and (
+
+    (select coalesce(sum(chair_quantity),0) from public.reservation_tables_chairs where reservation_id=rid)<>r.guests) then
+   raise exception 'Choose one chair type for all guests';
+  end if;
+  -- Basic seats have a zero surcharge. Upgrades apply to every guest, even
+  -- when chair quantity equals guest count (not just to excess chairs).
+  select coalesce(sum(s.price*x.chair_quantity),0) into chairs from public.reservation_tables_chairs x join public.chair_types s on s.id=x.chair_type_id where x.reservation_id=rid and s.active;
+ else
+  -- Preserve the original calculation for archived/legacy menu versions.
+  select greatest(coalesce(sum(chair_quantity),0)-r.guests,0) into extra from public.reservation_tables_chairs where reservation_id=rid;
+  for seating in select x.chair_quantity,s.price from public.reservation_tables_chairs x join public.chair_types s on s.id=x.chair_type_id where x.reservation_id=rid and s.active order by s.price desc loop
+   chairs=chairs+least(extra,seating.chair_quantity)*seating.price; extra=greatest(extra-seating.chair_quantity,0);
+  end loop;
+ end if;
+ select coalesce(sum(x.table_quantity*s.price),0) into tables from public.reservation_tables_chairs x join public.table_types s on s.id=x.table_type_id where x.reservation_id=rid and s.active;
+ quote=jsonb_build_object('menu',menu,'setup',setup,'features',features,'add_ons',addons,'tables',tables,'total',menu+setup+features+addons+chairs+tables);
+ return quote||jsonb_build_object(case when m.pricing_version=2 then 'chair_upgrade' else 'extra_chairs' end,chairs);
+end $$;
+
+create function private.capture_selection_snapshot(rid uuid) returns void language plpgsql security definer set search_path='' as $$
+declare snapshot jsonb;r public.reservations;version int;chairs bigint;addons bigint;features bigint;
+begin
+ select * into strict r from public.reservations where id=rid;
+ select pricing_version into version from public.menu_sets where id=r.menu_set_id;
+ select coalesce(jsonb_agg(x),'[]'::jsonb) into snapshot from (
+  select c.name,s.chair_quantity as quantity,c.price as unit_amount,c.price*s.chair_quantity as subtotal,'Guest seating; remaining Monoblock chairs included'::text as basis from public.reservation_tables_chairs s join public.chair_types c on c.id=s.chair_type_id where s.reservation_id=rid and version=2
+  union all select a.name,s.quantity,a.price,a.price*s.quantity,'Optional add-on' from public.reservation_add_ons s join public.add_ons a on a.id=s.add_on_id where s.reservation_id=rid
+  union all select f.name,1,f.price,f.price,'Optional event feature' from public.reservation_event_features s join public.event_features f on f.id=s.event_feature_id where s.reservation_id=rid
+ )x;
+ select coalesce(sum((x->>'subtotal')::bigint) filter(where x->>'basis' like 'Guest seating%'),0),coalesce(sum((x->>'subtotal')::bigint) filter(where x->>'basis'='Optional add-on'),0),coalesce(sum((x->>'subtotal')::bigint) filter(where x->>'basis'='Optional event feature'),0) into chairs,addons,features from jsonb_array_elements(snapshot)x;
+ if chairs<>coalesce((r.pricing->>'chair_upgrade')::bigint,0) or addons<>coalesce((r.pricing->>'add_ons')::bigint,0) or features<>coalesce((r.pricing->>'features')::bigint,0) then raise exception 'Catalog prices changed during quotation; save again before continuing';end if;
+ update public.reservations set selection_snapshot=snapshot where id=rid;
+end $$;
+
+alter function public.save_reservation(jsonb) set schema private;
+alter function private.save_reservation(jsonb) rename to save_reservation_previous;
+create function public.save_reservation(data jsonb) returns uuid language plpgsql security definer set search_path='' as $$
+declare item jsonb;guest_count int;version int;result uuid;
+begin
+ perform private.require_customer();
+ if nullif(data->>'id','') is not null then
+  perform 1 from public.reservations where id=(data->>'id')::uuid and customer_id=auth.uid() for update;
+  if not found then raise exception 'Access denied';end if;
+  perform private.no_checkout((data->>'id')::uuid);
+ end if;
+ perform private.assert_event_window((data->>'event_date')::date,(data->>'event_time')::time,nullif(data->>'id','')::uuid);
+ select pricing_version into version from public.menu_sets where id=(data->>'menu_set_id')::uuid;
+ if version=2 then
+  guest_count=(data->>'guests')::int;
+  for item in select value from jsonb_array_elements(coalesce(data->'chairs','[]')) loop
+   if (item->>'quantity')::numeric<>trunc((item->>'quantity')::numeric) or (item->>'quantity')::numeric not between 1 and guest_count then raise exception 'Selected chair quantities must be whole numbers between 1 and the guest count';end if;
+  end loop;
+ end if;
+ for item in select value from jsonb_array_elements(coalesce(data->'add_ons','[]')) loop
+  if item->>'quantity' is null or (item->>'quantity')::numeric<>trunc((item->>'quantity')::numeric) or (item->>'quantity')::numeric not between 1 and 1000 then raise exception 'Optional add-on quantities must be whole numbers from 1 to 1000';end if;
+ end loop;
+ result=private.save_reservation_previous(data);
+ perform private.capture_selection_snapshot(result);
+ return result;
+end $$;
+alter function public.finalize_reservation(uuid) set schema private;
+alter function private.finalize_reservation(uuid) rename to finalize_reservation_previous;
+create function public.finalize_reservation(rid uuid) returns jsonb language plpgsql security definer set search_path='' as $$declare r public.reservations;quote jsonb;begin
+ perform private.require_customer();select * into strict r from public.reservations where id=rid for update;
+ if r.customer_id<>auth.uid() then raise exception 'Access denied';end if;
+ perform private.assert_event_window(r.event_date,r.event_time,rid);quote=private.finalize_reservation_previous(rid);perform private.capture_selection_snapshot(rid);return quote;
+end $$;
+alter function public.begin_checkout(uuid,uuid,text) set schema private;
+alter function private.begin_checkout(uuid,uuid,text) rename to begin_checkout_previous;
+create function public.begin_checkout(rid uuid,customer uuid,payment_intent text) returns public.payments language plpgsql security definer set search_path='' as $$declare r public.reservations;begin
+ select * into strict r from public.reservations where id=rid for update;
+ perform private.assert_event_window(r.event_date,r.event_time,rid,false);return private.begin_checkout_previous(rid,customer,payment_intent);
+end $$;
+alter function public.manager_reservation_status(uuid,public.reservation_status) set schema private;
+alter function private.manager_reservation_status(uuid,public.reservation_status) rename to manager_reservation_status_previous;
+create function public.manager_reservation_status(rid uuid,new_status public.reservation_status,decision_reason text default null) returns void language plpgsql security definer set search_path='' as $$begin
+ perform private.require_staff();perform private.manager_reservation_status_previous(rid,new_status);
+ perform private.record_decision(rid,null,'reservation',new_status::text,decision_reason);
+end $$;
+alter function public.review_cancellation(uuid,boolean) set schema private;
+alter function private.review_cancellation(uuid,boolean) rename to review_cancellation_previous;
+create function public.review_cancellation(cid uuid,approve boolean,decision_reason text default null) returns void language plpgsql security definer set search_path='' as $$declare rid uuid;begin
+ perform private.require_staff();if approve is null then raise exception 'Choose an approval decision';end if;perform private.review_cancellation_previous(cid,approve);select reservation_id into strict rid from public.cancellations where id=cid;
+ perform private.record_decision(rid,cid,'cancellations',case when approve then 'approved' else 'rejected' end,decision_reason);
+end $$;
+alter function public.review_refund(uuid,boolean) set schema private;
+alter function private.review_refund(uuid,boolean) rename to review_refund_previous;
+create function public.review_refund(fid uuid,approve boolean,decision_reason text default null) returns void language plpgsql security definer set search_path='' as $$declare rid uuid;begin
+ perform private.require_staff();if approve is null then raise exception 'Choose an approval decision';end if;perform private.review_refund_previous(fid,approve);select reservation_id into strict rid from public.refunds where id=fid;
+ perform private.record_decision(rid,fid,'refunds',case when approve then 'approved' else 'rejected' end,decision_reason);
+end $$;
+alter function public.request_reschedule(uuid,date,text) set schema private;
+alter function private.request_reschedule(uuid,date,text) rename to request_reschedule_previous;
+create function public.request_reschedule(rid uuid,new_date date,reason text,new_time time default null) returns uuid language plpgsql security definer set search_path='' as $$declare r public.reservations;result uuid;selected_time time;begin
+ perform private.require_customer();select * into strict r from public.reservations where id=rid for update;
+ if r.customer_id<>auth.uid() then raise exception 'Access denied';end if;
+ selected_time=coalesce(new_time,r.event_time);perform private.assert_event_window(new_date,selected_time,rid);
+ result=private.request_reschedule_previous(rid,new_date,reason);update public.reschedule_requests set new_time=selected_time where id=result;return result;
+end $$;
+drop function public.review_reschedule(uuid,boolean);
+create function public.review_reschedule(request_id uuid,approve boolean,decision_reason text default null) returns void language plpgsql security definer set search_path='' as $$declare req public.reschedule_requests;r public.reservations;selected_time time;begin
+ perform private.require_staff();select * into strict req from public.reschedule_requests where id=request_id for update;
+ select * into strict r from public.reservations where id=req.reservation_id for update;
+ if req.status<>'pending' or r.status<>'approved' or approve is null then raise exception 'Request cannot be reviewed';end if;
+ if approve then
+  perform private.no_checkout(r.id);selected_time=coalesce(req.new_time,r.event_time);perform private.assert_event_window(req.new_date,selected_time,r.id);
+  if (select count(*) from public.reservation_reschedules where reservation_id=r.id and date_trunc('month',created_at at time zone 'Asia/Manila')=date_trunc('month',now() at time zone 'Asia/Manila'))>=3 then raise exception 'Monthly reschedule limit reached';end if;
+  update public.reservations set event_date=req.new_date,event_time=selected_time where id=r.id;
+  insert into public.reservation_reschedules(reservation_id,old_date,new_date,old_time,new_time) values(r.id,r.event_date,req.new_date,r.event_time,selected_time);
+ end if;
+ update public.reschedule_requests set status=case when approve then 'approved'::public.refund_status else 'rejected'::public.refund_status end where id=request_id;
+ perform private.audit('reschedule.reviewed',request_id::text,jsonb_build_object('approved',approve));
+ perform private.notify(r.id,'Reschedule reviewed',case when approve then 'Your new event date/time is confirmed.' else 'Reschedule request rejected.' end);
+ perform private.record_decision(r.id,request_id,'reschedule',case when approve then 'approved' else 'rejected' end,decision_reason);
+end $$;
+create or replace function public.available_dates(start_date date,end_date date) returns table(event_date date,remaining bigint) language plpgsql stable security definer set search_path='' as $$begin
+ if public.maintenance_enabled() and public.current_app_role() is distinct from 'super_admin' then raise exception 'Maintenance is enabled';end if;
+ if end_date<start_date or end_date-start_date>366 then raise exception 'Select at most one year';end if;
+ return query select d::date,case when (private.event_window(d::date)->>'closed')::boolean or d::date<(now() at time zone 'Asia/Manila')::date+3 then 0::bigint else greatest(3-count(r.id),0) end from generate_series(start_date::timestamp,end_date::timestamp,interval '1 day')d left join public.reservations r on r.event_date=d::date and r.holds_capacity group by d order by d;
+end $$;
+create or replace function private.notify(rid uuid,title text,body text) returns void language plpgsql security definer set search_path='' as $$declare ref text;begin
+ select reservation_reference into ref from public.reservations where id=rid;body=ref||' · '||body;
+ insert into public.notifications(user_id,title,body,href) select customer_id,title,body,'/customer/reservations/'||id from public.reservations where id=rid;
+ insert into public.notifications(user_id,title,body,href) select id,title,body,case when role='super_admin' then '/super-admin/dashboard' else '/manager/reservations' end from public.profiles where role in ('manager','super_admin');
+end $$;
+
+create or replace function public.confirm_provider_payment(event_id text,session_id text,provider_payment_id text,amount bigint) returns void language plpgsql security definer set search_path='' as $$
+declare p public.payments; r public.reservations; next_status public.reservation_status; total_paid bigint;
+begin
+ select * into strict p from public.payments where external_session_id=session_id for update;
+ select * into strict r from public.reservations where id=p.reservation_id for update;
+ if p.status='fully_paid' then return; end if;
+ if p.status<>'pending' or p.amount<>amount or provider_payment_id is null or r.paid+amount>r.total then raise exception 'Payment does not match the pending checkout'; end if;
+ insert into public.webhook_events(id,event_type) values(event_id,'checkout_session.payment.paid') on conflict do nothing;
+ if not found then return; end if;
+ total_paid=r.paid+amount; next_status=r.status;
+ perform pg_advisory_xact_lock(hashtextextended('capacity:'||r.event_date::text,0));
+ if r.status in ('for_approval','pending') and r.event_date>(now() at time zone 'Asia/Manila')::date and not (private.event_window(r.event_date)->>'closed')::boolean and r.event_time between (private.event_window(r.event_date)->>'opens')::time and (private.event_window(r.event_date)->>'closes')::time and (select count(*) from public.reservations where event_date=r.event_date and holds_capacity)<3 then next_status='approved'; end if;
+ update public.payments set status='fully_paid',external_payment_id=provider_payment_id where id=p.id;
+ update public.reservations set paid=total_paid,payment_status=case when total_paid=total then 'fully_paid'::public.payment_status else 'partially_paid'::public.payment_status end,status=next_status where id=r.id;
+ insert into public.balances values(r.id,r.total-total_paid,now()) on conflict(reservation_id) do update set amount=excluded.amount,updated_at=now();
+ insert into public.transactions(reservation_id,payment_id,kind,amount,reference) values(r.id,p.id,'payment',amount,provider_payment_id);
+ perform private.audit('payment.confirmed',p.id::text,jsonb_build_object('provider_payment_id',provider_payment_id,'event',event_id));
+ perform private.notify(r.id,'Payment confirmed',case when next_status='approved' then 'Your payment and event date are confirmed.' else 'Payment received. Our team must confirm date capacity with you.' end);
+end $$;
+
+create or replace function public.export_application_snapshot() returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare t text; rows jsonb; n bigint; tables jsonb='{}'; counts jsonb='{}'; result jsonb;
+begin
+ foreach t in array array['business_hours','business_date_overrides','reservation_decisions','profiles','customer_contacts','menu_sets','menu_categories','dishes','drinks','desserts','add_ons','event_setups','event_features','chair_types','table_types','reservations','reservation_items','reservation_event_setups','reservation_event_features','reservation_tables_chairs','reservation_add_ons','reservation_reschedules','reschedule_requests','payments','balances','transactions','cancellations','refunds','refund_operations','webhook_events','feedback','support_tickets','support_messages','notifications','gallery_images','app_settings','audit_logs','email_deliveries'] loop
+  execute format('select coalesce(jsonb_agg(to_jsonb(x) order by to_jsonb(x)::text),''[]''::jsonb),count(*) from (select * from public.%I limit 50001)x',t) into rows,n;
+  if n>50000 then raise exception 'Dataset too large for application export; use a PostgreSQL backup'; end if;
+  tables=tables||jsonb_build_object(t,rows); counts=counts||jsonb_build_object(t,n);
+  if octet_length(tables::text)>10485760 then raise exception 'Dataset too large for application export; use a PostgreSQL backup'; end if;
+ end loop;
+ result=jsonb_build_object('format','rodelconnect-application-export','version',1,'schema_version','0019_consolidated_booking_operations.sql','captured_at',statement_timestamp(),'sequence_values',jsonb_build_object('reservation_reference_seq',(select last_value from private.reservation_reference_seq)),'scope','Public application records only; migrations are required to interpret or restore these records.','exclusions',jsonb_build_array('Supabase Auth accounts and credentials','Storage file contents','Server secrets and deployment settings','Platform Auth/Storage internals and database role credentials'),'counts',counts,'tables',tables);
+ return result;
+end $$;
+
+revoke execute on all functions in schema private from public,anon,authenticated;
+revoke all on sequence private.reservation_reference_seq from public,anon,authenticated;
+grant usage,select on sequence private.reservation_reference_seq to service_role;
+grant usage on schema private to service_role;
+grant execute on function private.next_reservation_reference(timestamptz) to service_role;
+revoke execute on function public.booking_window(date,uuid),public.configure_business_hours(int,boolean,time,time),public.configure_business_date(date,boolean,time,time,text),public.remove_business_date(date),public.manager_reservation_status(uuid,public.reservation_status,text),public.review_cancellation(uuid,boolean,text),public.review_refund(uuid,boolean,text),public.review_reschedule(uuid,boolean,text),public.request_reschedule(uuid,date,text,time),public.save_reservation(jsonb),public.finalize_reservation(uuid),public.staff_customer_contact(uuid),public.reservation_activity(uuid),public.begin_checkout(uuid,uuid,text) from public,anon,authenticated;
+grant execute on function public.booking_window(date,uuid) to anon,authenticated;
+grant execute on function public.configure_business_hours(int,boolean,time,time),public.configure_business_date(date,boolean,time,time,text),public.remove_business_date(date),public.manager_reservation_status(uuid,public.reservation_status,text),public.review_cancellation(uuid,boolean,text),public.review_refund(uuid,boolean,text),public.review_reschedule(uuid,boolean,text),public.request_reschedule(uuid,date,text,time),public.save_reservation(jsonb),public.finalize_reservation(uuid),public.staff_customer_contact(uuid),public.reservation_activity(uuid) to authenticated;
+grant execute on function public.begin_checkout(uuid,uuid,text) to service_role;
+notify pgrst,'reload schema';
+
 commit;

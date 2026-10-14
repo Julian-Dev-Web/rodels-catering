@@ -1,5 +1,7 @@
 # RodelConnect evidence audit
 
+Current consolidated source/deployment evidence is recorded in [the 0019 handoff](CONSOLIDATED_UPDATES_2026-10-15.md) and [continuation checkpoint](CONSOLIDATED_IMPLEMENTATION_PROGRESS.md). Earlier rows retain their original historical baseline.
+
 Submission date: October 14, 2026. Repository baseline: `a5f38b2` on `main`.
 This audit precedes the paper and figures. Status refers to the inspected source
 and recorded checks, not a certification of production readiness. Real keys,

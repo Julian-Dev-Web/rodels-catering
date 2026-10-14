@@ -48,6 +48,8 @@ import {
 import { edge, records, rpc, supabase } from '../lib/supabase'
 import type { CatalogTable, Metrics, RecordRow } from '../types'
 import { refundProcessing } from '../lib/refunds'
+import { RejectionAction } from '../components/DecisionAction'
+import { timeLabel } from '../components/EventTimeSelect'
 export function Dashboard() {
   const query = useQuery({
     queryKey: ['metrics'],
@@ -225,6 +227,7 @@ export function Dashboard() {
   )
 }
 const reservationColumns = [
+  { key: 'reservation_reference', label: 'Reference' },
   { key: 'event_name', label: 'Event' },
   { key: 'customer_name', label: 'Customer' },
   {
@@ -315,14 +318,12 @@ export function ManageReservations() {
                     }
                   />
                   {Number(r.paid) === 0 && (
-                    <Action
-                      label="Reject"
-                      kind="small secondary"
-                      confirm="Reject this unpaid reservation and release its customer/date slot?"
-                      run={() =>
+                    <RejectionAction
+                      run={(decision_reason) =>
                         rpc('manager_reservation_status', {
                           rid: r.id,
                           new_status: 'rejected',
+                          decision_reason,
                         })
                       }
                     />
@@ -354,32 +355,6 @@ export function ManageReservations() {
           close={() => setSelected(null)}
         >
           <StaffBookingDetails id={selected.id} />
-          <dl className="detail-list">
-            {Object.entries(selected)
-              .filter(([key]) =>
-                [
-                  'customer_name',
-                  'event_date',
-                  'event_time',
-                  'guests',
-                  'status',
-                  'payment_status',
-                  'total',
-                  'paid',
-                  'refunded',
-                ].includes(key),
-              )
-              .map(([k, v]) => (
-                <div key={k}>
-                  <dt>{human(k)}</dt>
-                  <dd>
-                    {['total', 'paid', 'refunded'].includes(k)
-                      ? money(Number(v))
-                      : String(v ?? '—')}
-                  </dd>
-                </div>
-              ))}
-          </dl>
         </Modal>
       )}
     </>
@@ -396,7 +371,11 @@ export function ReviewRequests({
     queryFn: () => records<RecordRow>(table),
   })
   const reservations = useReservations()
-  const review = (row: RecordRow, approve: boolean) =>
+  const review = (
+    row: RecordRow,
+    approve: boolean,
+    decision_reason: string | null = null,
+  ) =>
     rpc(
       kind === 'cancellations'
         ? 'review_cancellation'
@@ -410,6 +389,7 @@ export function ReviewRequests({
             ? 'fid'
             : 'request_id']: row.id,
         approve,
+        decision_reason,
       },
     )
   return (
@@ -425,14 +405,14 @@ export function ReviewRequests({
         <ErrorState error={query.error} />
       ) : (
         <DataTable
-          rows={query.data}
+          rows={query.data.map(r=>({...r,reservation_reference:reservations.data?.find(x=>x.id===r.reservation_id)?.reservation_reference||'Reference unavailable'}))}
           columns={[
             {
               key: 'reservation_id',
               label: 'Event',
               render: (r) =>
                 reservations.data?.find((x) => x.id === r.reservation_id)
-                  ?.event_name || String(r.reservation_id).slice(0, 8),
+                  ?.reservation_reference || 'Reference unavailable',
             },
             {
               key: 'created_at',
@@ -471,6 +451,7 @@ export function ReviewRequests({
                     label: 'Requested date',
                     render: (r: RecordRow) => date(String(r.new_date)),
                   },
+                  {key:'new_time',label:'Requested time (Manila)',render:(r:RecordRow)=>r.new_time?timeLabel(String(r.new_time)):'Not separately recorded'},
                 ]
               : []),
             ...(kind === 'refunds'
@@ -498,12 +479,7 @@ export function ReviewRequests({
                     confirm={`Approve this ${kind === 'reschedule' ? 'reschedule' : 'request'}? This decision will be audited and the customer notified.`}
                     run={() => review(r, true)}
                   />
-                  <Action
-                    label="Reject"
-                    kind="small secondary"
-                    confirm="Reject this request? The customer will be notified."
-                    run={() => review(r, false)}
-                  />
+                  <RejectionAction run={(reason) => review(r, false, reason)} />
                 </>
               )}
               {kind === 'refunds' && r.status === 'approved' && (
@@ -696,7 +672,7 @@ export function CatalogManager({
               table === 'menu_sets'
                 ? 'Menu price per guest (PHP)'
                 : table === 'chair_types'
-                  ? 'Chair upgrade per guest (PHP; 0 = included)'
+                  ? 'Upgrade per selected guest chair (PHP; 0 = included)'
                   : table === 'table_types'
                     ? 'Additional charge per table (PHP; 0 = included)'
                     : 'Additional event fee (PHP)',

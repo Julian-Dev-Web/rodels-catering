@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
       schema_version: schemaVersion,
       schema_sql: applicationSchemaSQL,
       restore_notes:
-        'Application archive with repository schema and relationships. Review installer seed rows in a fresh staging Supabase project before mapping/importing records. Auth login accounts, actual Storage files and server settings need separate recovery. Never run the fresh-project installer against production.',
+        'Application archive with repository schema and relationships. Review installer seed rows in a fresh staging Supabase project before mapping/importing records. Restore the reference sequence to at least the captured sequence value and highest restored reference number before new writes. Auth login accounts, actual Storage files and server settings need separate recovery. Never run the fresh-project installer against production.',
     })
     const bytes = new TextEncoder().encode(file_content)
     const sha256 = Array.from(

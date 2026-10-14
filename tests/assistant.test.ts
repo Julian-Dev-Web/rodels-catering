@@ -57,7 +57,7 @@ describe('public assistant and preparation dates', () => {
   it('reports per-head chair charges using current public upgrade facts', () => {
     const answer = answerFromFacts({ ...intent, topics:['upgrades'], guests:100 }, [], [], 'groq', now, {chair_types:[{id:'fixture',name:'Elegant chair',price:1000}],table_types:[],event_setups:[],event_features:[]})
     expect(answer.reply).toContain('1,000.00')
-    expect(answer.reply).toContain('per guest')
+    expect(answer.reply).toContain('you can choose fewer')
     expect(answer.options?.chair_types[0].price).toBe(1000)
   })
   it('defaults to Groq and never silently switches to a paid OpenAI key', () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { callbackStatus, fullName, passwordSchema, profileSchema, registrationSchema } from '../src/lib/account'
 
 describe('registration and password recovery input', () => {
-  const input = { first_name: ' Test ', middle_name: '', last_name: ' Customer ', phone: '0912 345 6789', email: ' person@example.test ', password: 'Testing-password8!', confirm_password: 'Testing-password8!' }
+  const input = { first_name: ' Test ', middle_name: '', last_name: ' Customer ', phone: '09123456789', email: ' person@example.test ', password: 'Testing-password8!', confirm_password: 'Testing-password8!' }
   it('accepts an optional middle name, trims names and normalizes the mobile number', () => {
     const parsed = registrationSchema.parse(input)
     expect(fullName(parsed)).toBe('Test Customer')

@@ -25,6 +25,12 @@ import {
   validMobile,
 } from '../lib/booking'
 import { ErrorState, Loading, PageHeading } from '../components/ui'
+import {
+  EventTimeSelect,
+  validWindowTime,
+  timeLabel,
+  type BookingWindow,
+} from '../components/EventTimeSelect'
 import type { CatalogItem } from '../types'
 const schema = z.object({
   event_name: z.string().min(2).max(150),
@@ -56,6 +62,7 @@ const schema = z.object({
   save_contact: z.boolean(),
   chair_quantities: z.record(z.string(), z.number().int().min(0).max(10000)),
   chair_type_id: z.string(),
+  elegant_chair_quantity: z.number().int().min(0).max(10000),
   addon_quantities: z.record(z.string(), z.number().int().min(0).max(1000)),
   address: z.object({
     street: z.string(),
@@ -88,6 +95,7 @@ const defaults: Values = {
   save_contact: false,
   chair_quantities: {},
   chair_type_id: '',
+  elegant_chair_quantity: 0,
   addon_quantities: {},
   address: {
     street: '',
@@ -107,12 +115,14 @@ function Select({
   label,
   priced = false,
   unit = '',
+  error,
 }: {
   items: CatalogItem[]
   register: ReturnType<UseFormReturn<Values>['register']>
   label: string
   priced?: boolean
   unit?: string
+  error?: string
 }) {
   return (
     <label>
@@ -128,6 +138,11 @@ function Select({
           </option>
         ))}
       </select>
+      {error && (
+        <span className="field-error" role="alert">
+          {error}
+        </span>
+      )}
     </label>
   )
 }
@@ -195,7 +210,22 @@ export function ReservationWizard() {
           String(x.event_feature_id),
         ),
         table_type_id: String(seating[0]?.table_type_id || ''),
-        chair_type_id: String(seating[0]?.chair_type_id || ''),
+        chair_type_id: String(
+          seating.find(
+            (row) =>
+              (catalog.data!.chair_types.find((c) => c.id === row.chair_type_id)
+                ?.price || 0) > 0,
+          )?.chair_type_id ||
+            seating[0]?.chair_type_id ||
+            '',
+        ),
+        elegant_chair_quantity: Number(
+          seating.find(
+            (row) =>
+              (catalog.data!.chair_types.find((c) => c.id === row.chair_type_id)
+                ?.price || 0) > 0,
+          )?.chair_quantity || 0,
+        ),
         event_preferences: {
           ...defaultPreferences,
           ...r.event_preferences,
@@ -319,7 +349,23 @@ export function ReservationWizard() {
           id,
           chairs: includedSeating
             ? v.chair_type_id
-              ? [{ id: v.chair_type_id, quantity: v.guests }]
+              ? (c.chair_types.find((chair) => chair.id === v.chair_type_id)
+                  ?.price || 0) > 0
+                ? [
+                    { id: v.chair_type_id, quantity: v.elegant_chair_quantity },
+                    ...(v.guests > v.elegant_chair_quantity
+                      ? [
+                          {
+                            id: c.chair_types.find(
+                              (chair) =>
+                                chair.name === 'Monoblock' && chair.price === 0,
+                            )?.id,
+                            quantity: v.guests - v.elegant_chair_quantity,
+                          },
+                        ]
+                      : []),
+                  ]
+                : [{ id: v.chair_type_id, quantity: v.guests }]
               : []
             : Object.entries(v.chair_quantities)
                 .filter(([, q]) => q > 0)
@@ -418,7 +464,118 @@ export function ReservationWizard() {
       </div>
       <div className="wizard-layout">
         <section className="panel">
-          <form className="form" onSubmit={handleSubmit((v) => save.mutate(v))}>
+          <form
+            className="form"
+            noValidate
+            onSubmit={handleSubmit(async (v) => {
+              const fields: [Parameters<typeof form.setFocus>[0], string][] = []
+              if (!v.consent_accepted)
+                fields.push([
+                  'consent_accepted',
+                  'Accept the current Terms and Privacy Notice.',
+                ])
+              if (!validMobile(v.address.contact))
+                fields.push([
+                  'address.contact',
+                  'Enter a valid Philippine mobile number.',
+                ])
+              for (const key of [
+                'province_code',
+                'city_code',
+                'barangay_code',
+                'street',
+              ] as const)
+                if (!v.address[key])
+                  fields.push([
+                    `address.${key}`,
+                    'Complete this event location field.',
+                  ])
+              if (!selected)
+                fields.push(['menu_set_id', 'Choose a current set menu.'])
+              if (
+                selected &&
+                (v.guests < (selected.min_guests || 1) ||
+                  v.guests > (selected.max_guests || 10000))
+              )
+                fields.push([
+                  'guests',
+                  `Choose ${selected.min_guests}–${selected.max_guests || 10000} guests.`,
+                ])
+              const upgraded =
+                (c.chair_types.find((chair) => chair.id === v.chair_type_id)
+                  ?.price || 0) > 0
+              if (
+                upgraded &&
+                (!Number.isInteger(v.elegant_chair_quantity) ||
+                  v.elegant_chair_quantity < 1 ||
+                  v.elegant_chair_quantity > v.guests)
+              )
+                fields.push([
+                  'elegant_chair_quantity',
+                  'Choose a whole chair count from 1 to your guest count.',
+                ])
+              if (
+                upgraded &&
+                v.elegant_chair_quantity < v.guests &&
+                !c.chair_types.some(
+                  (chair) => chair.name === 'Monoblock' && chair.price === 0,
+                )
+              )
+                fields.push([
+                  'chair_type_id',
+                  'Included Monoblock seating is currently unavailable. Contact support.',
+                ])
+              if (step === 1) {
+                if (v.dish_ids.length !== selected?.dish_count)
+                  fields.push([
+                    'dish_ids',
+                    `Choose exactly ${selected?.dish_count} dishes.`,
+                  ])
+                if (!v.drink_id) fields.push(['drink_id', 'Choose one drink.'])
+                if (!v.dessert_id)
+                  fields.push(['dessert_id', 'Choose one dessert.'])
+              }
+              if (step === 2) {
+                if (!v.setup_id)
+                  fields.push(['setup_id', 'Choose an event setup.'])
+                if (!v.table_type_id)
+                  fields.push(['table_type_id', 'Choose the table shape.'])
+                if (includedSeating && !v.chair_type_id)
+                  fields.push(['chair_type_id', 'Choose guest seating.'])
+              }
+              if (fields.length) {
+                fields.forEach(([key, message]) =>
+                  form.setError(key, { type: 'manual', message }),
+                )
+                form.setFocus(fields[0][0])
+                return
+              }
+              try {
+                const availability = await rpc<BookingWindow>(
+                  'booking_window',
+                  { day: v.event_date, rid: id || null },
+                )
+                if (!validWindowTime(availability, v.event_time)) {
+                  form.setError('event_time', {
+                    type: 'manual',
+                    message:
+                      availability.reason ||
+                      'Choose a start time within the configured hours.',
+                  })
+                  form.setFocus('event_time')
+                  return
+                }
+              } catch {
+                form.setError('event_time', {
+                  type: 'manual',
+                  message:
+                    'Could not verify this event date/time. Retry before continuing.',
+                })
+                return
+              }
+              save.mutate(v)
+            })}
+          >
             {step === 0 && (
               <>
                 <h2>Tell us about the occasion.</h2>
@@ -454,15 +611,24 @@ export function ReservationWizard() {
                       </span>
                     )}
                   </label>
-                  <label>
-                    Event time (Manila)
-                    <input
-                      type="time"
-                      min="07:00"
-                      max="22:00"
-                      {...register('event_time')}
+                  <div>
+                    <EventTimeSelect
+                      day={values.event_date}
+                      rid={id}
+                      value={values.event_time}
+                      inputRef={register('event_time').ref}
+                      onChange={(value) =>
+                        form.setValue('event_time', value, {
+                          shouldDirty: true,
+                        })
+                      }
                     />
-                  </label>
+                    {errors.event_time && (
+                      <span className="field-error">
+                        {errors.event_time.message}
+                      </span>
+                    )}
+                  </div>
                   <label>
                     Number of guests
                     <input
@@ -471,10 +637,35 @@ export function ReservationWizard() {
                       max={selected?.max_guests || 10000}
                       {...register('guests', { valueAsNumber: true })}
                     />
+                    {errors.guests && (
+                      <span className="field-error">
+                        {errors.guests.message}
+                      </span>
+                    )}
+                    {values.elegant_chair_quantity > values.guests && (
+                      <span className="field-error">
+                        Your saved Elegant Chair count exceeds the new guest
+                        count. Reduce it below.
+                      </span>
+                    )}
                   </label>
+                  {values.elegant_chair_quantity > values.guests && (
+                    <label>
+                      Adjust Elegant Chair count
+                      <input
+                        type="number"
+                        min={1}
+                        max={values.guests}
+                        {...register('elegant_chair_quantity', {
+                          valueAsNumber: true,
+                        })}
+                      />
+                    </label>
+                  )}
                 </div>
                 <Select
                   label="Set menu"
+                  error={errors.menu_set_id?.message}
                   items={c.menu_sets}
                   register={register('menu_set_id')}
                   priced
@@ -606,11 +797,13 @@ export function ReservationWizard() {
                 <div className="form-grid">
                   <Select
                     label="Drink"
+                    error={errors.drink_id?.message}
                     items={c.drinks}
                     register={register('drink_id')}
                   />
                   <Select
                     label="Dessert"
+                    error={errors.dessert_id?.message}
                     items={c.desserts}
                     register={register('dessert_id')}
                   />
@@ -635,6 +828,15 @@ export function ReservationWizard() {
                       const setup = c.event_setups.find(
                         (item) => item.id === e.target.value,
                       )
+                      if (
+                        setup?.setup_kind === 'birthday' ||
+                        setup?.setup_kind === 'wedding'
+                      )
+                        form.setValue(
+                          'event_preferences.occasion_type',
+                          setup.setup_kind,
+                          { shouldDirty: true },
+                        )
                       form.setValue(
                         'event_preferences.setup_inclusions',
                         setup?.setup_kind === 'birthday'
@@ -703,7 +905,10 @@ export function ReservationWizard() {
                   <label className="quantity-row" key={a.id}>
                     <span>
                       {a.name}
-                      <small>{money(a.price || 0)} each</small>
+                      <small>
+                        {money(a.price || 0)} each ·{' '}
+                        {a.description || 'Optional add-on'}
+                      </small>
                     </span>
                     <input
                       aria-label={a.name + ' quantity'}
@@ -715,12 +920,18 @@ export function ReservationWizard() {
                         valueAsNumber: true,
                       })}
                     />
+                    {errors.addon_quantities?.[a.id]?.message && (
+                      <small className="field-error">
+                        {errors.addon_quantities[a.id]?.message}
+                      </small>
+                    )}
                   </label>
                 ))}
                 <h3>A place for everyone</h3>
                 <div className="form-grid">
                   <Select
                     label="Table type"
+                    error={errors.table_type_id?.message}
                     items={c.table_types}
                     register={register('table_type_id')}
                   />
@@ -731,18 +942,71 @@ export function ReservationWizard() {
                       Round and long tables are included. Monoblock chairs are
                       included for all {values.guests} guests.
                     </p>
-                    <Select
-                      label="Guest chair type"
-                      items={c.chair_types}
-                      register={register('chair_type_id')}
-                      priced
-                      unit=" / guest"
-                    />
+                    <label>
+                      Guest chair type
+                      <select
+                        {...register('chair_type_id')}
+                        onChange={(e) => {
+                          form.setValue('chair_type_id', e.target.value, {
+                            shouldDirty: true,
+                          })
+                          form.setValue(
+                            'elegant_chair_quantity',
+                            (c.chair_types.find(
+                              (chair) => chair.id === e.target.value,
+                            )?.price || 0) > 0
+                              ? Math.max(values.elegant_chair_quantity, 1)
+                              : 0,
+                            { shouldDirty: true },
+                          )
+                        }}
+                      >
+                        <option value="">Choose guest seating</option>
+                        {c.chair_types.map((chair) => (
+                          <option value={chair.id} key={chair.id}>
+                            {chair.name} ·{' '}
+                            {chair.price
+                              ? money(chair.price) + ' per selected chair'
+                              : 'Included'}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {(c.chair_types.find(
+                      (chair) => chair.id === values.chair_type_id,
+                    )?.price || 0) > 0 && (
+                      <label>
+                        Number of Elegant Chairs
+                        <input
+                          type="number"
+                          step={1}
+                          min={1}
+                          max={values.guests}
+                          {...register('elegant_chair_quantity', {
+                            valueAsNumber: true,
+                          })}
+                          aria-invalid={!!errors.elegant_chair_quantity}
+                        />
+                        {errors.elegant_chair_quantity && (
+                          <span className="field-error">
+                            {errors.elegant_chair_quantity.message}
+                          </span>
+                        )}
+                        <small className="date-help">
+                          {Math.max(
+                            values.guests - values.elegant_chair_quantity,
+                            0,
+                          )}{' '}
+                          remaining guests use included Monoblock chairs. This
+                          is separate from fixed event setup inclusions.
+                        </small>
+                      </label>
+                    )}
                     <p className="date-help">
-                      Chair prices shown are additional charges per guest. Your
-                      choice applies to all {values.guests} guests.
+                      Upgrade prices apply only to the selected guest chair
+                      quantity.
                       {values.chair_type_id &&
-                        ` Chair upgrade total: ${money((c.chair_types.find((chair) => chair.id === values.chair_type_id)?.price || 0) * values.guests)}.`}
+                        ` Chair upgrade total: ${money((c.chair_types.find((chair) => chair.id === values.chair_type_id)?.price || 0) * values.elegant_chair_quantity)}.`}
                     </p>
                   </>
                 ) : (
@@ -780,8 +1044,8 @@ export function ReservationWizard() {
                 <div className="review-summary">
                   <h3>{values.event_name}</h3>
                   <p>
-                    {date(values.event_date)} · {values.event_time} Manila ·{' '}
-                    {values.guests} guests
+                    {date(values.event_date)} · {timeLabel(values.event_time)}{' '}
+                    Manila · {values.guests} guests
                   </p>
                   <p>
                     {Object.entries(values.address)
@@ -819,7 +1083,11 @@ export function ReservationWizard() {
                   <p>
                     Setup inclusions:{' '}
                     {values.event_preferences.setup_inclusions
-                      .map((key) => setupItems.find((item) => item.key === key)?.label || key)
+                      .map(
+                        (key) =>
+                          setupItems.find((item) => item.key === key)?.label ||
+                          key,
+                      )
                       .join(', ') || 'None selected'}
                   </p>
                   <p>
@@ -852,7 +1120,10 @@ export function ReservationWizard() {
                           (chair) => chair.id === values.chair_type_id,
                         )?.name
                       }{' '}
-                      for {values.guests} guests
+                      · {values.elegant_chair_quantity || values.guests} chairs
+                      {values.elegant_chair_quantity > 0
+                        ? `; ${values.guests - values.elegant_chair_quantity} included Monoblock chairs`
+                        : ''}
                     </p>
                   )}
                 </div>
@@ -943,14 +1214,13 @@ export function ReservationWizard() {
           )}
           {includedSeating && values.chair_type_id && (
             <p className="date-help">
-              Menu + selected chairs:{' '}
+              Guest chair upgrade: {values.elegant_chair_quantity} selected
+              chairs ×{' '}
               {money(
-                (selected?.price || 0) +
-                  (c.chair_types.find(
-                    (chair) => chair.id === values.chair_type_id,
-                  )?.price || 0),
+                c.chair_types.find((chair) => chair.id === values.chair_type_id)
+                  ?.price || 0,
               )}{' '}
-              / guest. Event upgrades are added separately.
+              each. Remaining Monoblock seating is included.
             </p>
           )}
           {displayedQuote ? (
@@ -980,8 +1250,7 @@ export function ReservationWizard() {
             <div className="quote-placeholder">
               <UtensilsIcon />
               <p>
-                Choose a current menu and setup. Partial wedding pricing remains
-                pending until configured.
+                {(c.chair_types.find(chair=>chair.id===values.chair_type_id)?.price||0)>0&&(!Number.isInteger(values.elegant_chair_quantity)||values.elegant_chair_quantity<1||values.elegant_chair_quantity>values.guests)?'Choose a whole Elegant Chair quantity between 1 and your guest count. The quote is paused until corrected.':'Choose a current menu and setup. Partial wedding pricing remains pending until configured.'}
               </p>
             </div>
           )}

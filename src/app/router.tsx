@@ -61,7 +61,12 @@ const Maintenance = lazy(() =>
   import('../pages/Admin').then((m) => ({ default: m.Maintenance })),
 )
 const ManagePayments = lazy(() =>
-  import('../pages/Admin').then((m) => ({ default: m.ManagePayments })),
+  import('../pages/Reports').then((m) => ({ default: m.Reports })),
+)
+const OperatingHours = lazy(() =>
+  import('../pages/OperatingHours').then((m) => ({
+    default: m.OperatingHours,
+  })),
 )
 const ManageReservations = lazy(() =>
   import('../pages/Admin').then((m) => ({ default: m.ManageReservations })),
@@ -226,6 +231,7 @@ export function Router() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="calendar" element={<ManagerCalendar />} />
+                <Route path="operating-hours" element={<OperatingHours />} />
                 <Route path="catalog" element={<ManagerCatalog />} />
                 <Route
                   path="event-setups"
@@ -242,7 +248,10 @@ export function Router() {
                   path="reschedule"
                   element={<ReviewRequests kind="reschedule" />}
                 />
-                <Route path="payments" element={<ManagePayments />} />
+                <Route
+                  path="payments"
+                  element={<ManagePayments paymentsOnly />}
+                />
                 <Route
                   path="refunds"
                   element={<ReviewRequests kind="refunds" />}
@@ -257,6 +266,7 @@ export function Router() {
                 <Route path="backups" element={<Backups />} />
                 <Route path="roles" element={<RolePermissions />} />
                 <Route path="system-settings" element={<SystemSettings />} />
+                <Route path="operating-hours" element={<OperatingHours />} />
                 <Route path="security" element={<SecurityMonitoring />} />
                 <Route path="reports" element={<SystemReports />} />
                 <Route

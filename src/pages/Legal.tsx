@@ -19,6 +19,8 @@ export function Terms() {
         100–1,000 guests and reserve at least three calendar days ahead.
         Capacity is three approved events per date. A draft or pending request
         does not confirm capacity; check your approved reservation status.
+        Operating start hours are Monday–Saturday 7 AM–10 PM and Sunday 8 AM–9
+        PM, Manila, subject to approved closed dates or special-hour exceptions.
       </p>
       <h2>Menus and event details</h2>
       <p>
@@ -27,7 +29,10 @@ export function Terms() {
         includes three optional ₱5,000 components, totalling ₱15,000 when all
         are selected. Wedding setup adds ₱30,000 for all six inclusions; partial
         pricing requires the owner-approved breakdown. Guest elegant-chair
-        upgrades, optional features and add-ons are separately itemized.
+        upgrades, optional features and add-ons are separately itemized. Choose
+        1 up to your guest count for Elegant guest chairs at ₱10 each; remaining
+        guest seats use included Monoblock chairs. This quantity is separate
+        from the fixed event-setup inclusions, whose prices are unchanged.
         Theme/color preferences and celebrant age are optional requests; discuss
         suitability with the team before the event.
       </p>

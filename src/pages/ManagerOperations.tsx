@@ -9,6 +9,7 @@ import { monthDays, moveMonth } from '../lib/calendar'
 import { DataTable, ErrorState, Loading, PageHeading } from '../components/ui'
 import { Stat } from './Customer'
 import type { RecordRow } from '../types'
+import { timeLabel } from '../components/EventTimeSelect'
 interface Operations {
   active: number
   pending: number
@@ -118,7 +119,7 @@ export function ManagerCalendar() {
                   <strong>{date(day)}</strong>
                   {rows.map((r) => (
                     <p key={r.id}>
-                      {r.event_time.slice(0, 5)} · {r.event_name} · {r.guests}{' '}
+                      {r.reservation_reference} · {timeLabel(r.event_time)} Manila · {r.event_name} · {r.guests}{' '}
                       guests · {human(r.status)}
                     </p>
                   ))}
@@ -183,7 +184,7 @@ export function ManagerCatalog({ setups = false }: { setups?: boolean }) {
                       table === 'menu_sets'
                         ? 'Price / guest'
                         : table === 'chair_types'
-                          ? 'Upgrade / guest'
+                          ? 'Upgrade / selected guest chair'
                           : 'Catalog price',
                     render: (r) =>
                       r.price === undefined

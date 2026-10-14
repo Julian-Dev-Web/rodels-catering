@@ -23,9 +23,10 @@ export const defaultPreferences: EventPreferences = {
 }
 export const coveragePlaces = (parent: string | null) =>
   directory.filter((place) => place.parent_code === parent)
-export const normalizeMobile = (phone: string) => phone.replace(/[^+0-9]/g, '')
-export const validMobile = (phone: string) =>
-  /^(\+63|0)9[0-9]{9}$/.test(normalizeMobile(phone))
+export {
+  normalizeMobile,
+  validMobile,
+} from '../../supabase/functions/_shared/phone'
 export function validateWeddingPrices(prices: Record<string, number>) {
   return (
     Object.keys(prices).length === 6 &&
@@ -63,6 +64,7 @@ export function estimateBooking(
     menu_set_id: string
     setup_id: string
     chair_type_id: string
+    elegant_chair_quantity?: number
     feature_ids: string[]
     addon_quantities: Record<string, number>
     event_preferences: EventPreferences
@@ -72,6 +74,8 @@ export function estimateBooking(
   const menu = catalog.menu_sets.find((item) => item.id === values.menu_set_id),
     setup = catalog.event_setups.find((item) => item.id === values.setup_id)
   if (!menu) return null
+  const selectedChair=catalog.chair_types.find(item=>item.id===values.chair_type_id),chairCount=values.elegant_chair_quantity??values.guests
+  if((selectedChair?.price||0)>0&&(!Number.isInteger(chairCount)||chairCount<1||chairCount>values.guests))return null
   const setupFee = setupSubtotal(
     setup?.setup_kind,
     setup ? values.event_preferences.setup_inclusions : [],
@@ -92,7 +96,7 @@ export function estimateBooking(
     ),
     chair_upgrade:
       (catalog.chair_types.find((item) => item.id === values.chair_type_id)
-        ?.price || 0) * values.guests,
+        ?.price || 0) * (values.elegant_chair_quantity ?? values.guests),
     total: 0,
   }
   quote.total =

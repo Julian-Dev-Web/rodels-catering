@@ -14,6 +14,10 @@ import {
 } from '../lib/booking'
 import { money } from '../lib/format'
 import { ErrorState } from './ui'
+import {
+  mobileInput,
+  validMobileEdit,
+} from '../../supabase/functions/_shared/phone'
 import type { Values } from '../pages/ReservationWizard'
 import type { CatalogItem } from '../types'
 
@@ -39,6 +43,7 @@ export function LocationFields({ form }: { form: UseFormReturn<Values> }) {
       : []),
     ...(contacts.data || []).filter(
       (item) =>
+        validMobile(item.phone) &&
         normalizeMobile(item.phone) !== normalizeMobile(profile?.phone || ''),
     ),
   ]
@@ -84,6 +89,9 @@ export function LocationFields({ form }: { form: UseFormReturn<Values> }) {
                 ? 'City / municipality'
                 : 'Barangay'}
             <select
+              name={`address.${field}_code`}
+              ref={register(`address.${field}_code`).ref}
+              aria-invalid={!!form.formState.errors.address?.[`${field}_code`]}
               aria-label={
                 field === 'province'
                   ? 'Service province'
@@ -114,6 +122,11 @@ export function LocationFields({ form }: { form: UseFormReturn<Values> }) {
                 </option>
               ))}
             </select>
+            {form.formState.errors.address?.[`${field}_code`]?.message && (
+              <span className="field-error">
+                {form.formState.errors.address[`${field}_code`]?.message}
+              </span>
+            )}
           </label>
         ))}
       </div>
@@ -124,6 +137,11 @@ export function LocationFields({ form }: { form: UseFormReturn<Values> }) {
       <label>
         Street, building & venue
         <input maxLength={500} {...register('address.street')} required />
+        {form.formState.errors.address?.street && (
+          <span className="field-error">
+            {form.formState.errors.address.street.message}
+          </span>
+        )}
       </label>
       <label>
         Event contact number
@@ -153,10 +171,47 @@ export function LocationFields({ form }: { form: UseFormReturn<Values> }) {
             Other reachable mobile number
             <input
               type="tel"
-              placeholder="09XX XXX XXXX or +639XXXXXXXXX"
+              inputMode="tel"
+              maxLength={13}
+              placeholder="09XXXXXXXXX / 639XXXXXXXXX / +639XXXXXXXXX"
               {...register('address.contact')}
+              onPaste={(e) => {
+                const input = e.currentTarget,
+                  combined =
+                    input.value.slice(0, input.selectionStart ?? 0) +
+                    e.clipboardData.getData('text') +
+                    input.value.slice(input.selectionEnd ?? input.value.length)
+                if (!validMobileEdit(combined)) {
+                  e.preventDefault()
+                  form.setError('address.contact', {
+                    type: 'manual',
+                    message:
+                      'Invalid or overlong pasted mobile number; the previous value was kept.',
+                  })
+                }
+              }}
+              aria-invalid={!!form.formState.errors.address?.contact}
+              aria-describedby="event-contact-help"
+              onChange={(e) =>
+                setValue(
+                  'address.contact',
+                  mobileInput(e.target.value, address.contact),
+                  { shouldDirty: true, shouldValidate: true },
+                )
+              }
               required
             />
+            <span
+              id="event-contact-help"
+              className={
+                address.contact && !validMobile(address.contact)
+                  ? 'field-error'
+                  : 'date-help'
+              }
+            >
+              {form.formState.errors.address?.contact?.message ||
+                'Use 09XXXXXXXXX, 639XXXXXXXXX or +639XXXXXXXXX. A valid format does not verify reachability.'}
+            </span>
           </label>
           <label className="consent-check">
             <input type="checkbox" {...register('save_contact')} />
@@ -294,6 +349,11 @@ export function ConsentField({ form }: { form: UseFormReturn<Values> }) {
           Privacy Notice
         </Link>
         . This acceptance and its version are recorded with my booking.
+        {form.formState.errors.consent_accepted && (
+          <strong className="field-error" role="alert">
+            {form.formState.errors.consent_accepted.message}
+          </strong>
+        )}
       </span>
     </label>
   )

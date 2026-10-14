@@ -199,12 +199,12 @@ export function answerFromFacts(
     result.options = options
     lines.push(
       fil
-        ? 'Ito ang current setup at seating choices. Bawat guest ang chair upgrade; kasama ang basic tables. Ang birthday setup ay may tatlong optional na ₱5,000 inclusions; ang full wedding bundle ay ₱30,000 at pending ang partial pricing kung walang approved breakdown. Ang glass dance floor upgrade ay para sa wedding setup.'
-        : 'Here are the current setup and seating choices. Chair upgrades are per guest; basic tables are included. Birthday setup has three optional ₱5,000 inclusions; the full wedding bundle is ₱30,000 and partial pricing is pending until an approved breakdown is configured. The glass dance floor upgrade requires the wedding setup.',
+        ? 'Ito ang current setup at seating choices. Puwedeng pumili kung ilang guest chairs ang ia-upgrade, hanggang guest count; libre ang remaining Monoblock chairs at basic tables. Hiwalay ito sa fixed setup inclusions. Ang birthday setup ay may tatlong optional na ₱5,000 inclusions; ang full wedding bundle ay ₱30,000 at pending ang partial pricing kung walang approved breakdown. Ang glass dance floor upgrade ay para sa wedding setup.'
+        : 'Here are the current setup and seating choices. Choose how many guest chairs to upgrade, up to your guest count; remaining Monoblock chairs and basic tables are included. Guest seating is separate from fixed setup inclusions. Birthday setup has three optional ₱5,000 inclusions; the full wedding bundle is ₱30,000 and partial pricing is pending until an approved breakdown is configured. The glass dance floor upgrade requires the wedding setup.',
     )
     if (intent.guests && intent.guests >= 100 && intent.guests <= 1000)
       lines.push(
-        `Chair upgrades for ${intent.guests} guests: ` +
+        `If upgrading every chair for ${intent.guests} guests (you can choose fewer): ` +
           options.chair_types
             .map(
               (chair) =>

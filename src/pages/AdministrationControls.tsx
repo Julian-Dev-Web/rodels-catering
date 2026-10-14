@@ -113,9 +113,9 @@ export function RolePermissions() {
             id: 'manager',
             role: 'manager',
             scope:
-              'Operational reservations, reviews, reports and menu-library entries',
+              'Operational reservations, reviews, reports, approved operating hours and menu-library entries',
             restricted:
-              'No user roles, account suspension, backups, global settings or gallery publishing',
+              'No user roles, account suspension, backups, maintenance/security settings or gallery publishing',
           },
           {
             id: 'super_admin',
