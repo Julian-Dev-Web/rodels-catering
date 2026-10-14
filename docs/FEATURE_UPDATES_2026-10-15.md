@@ -73,4 +73,6 @@ Both incremental migrations were applied to the hosted project in order, and the
 
 No live paid payment/refund, actual delivery of email, automated backup schedule or restore drill is claimed. The October 14 DOCX/PDF remain their original documentation snapshot; this handoff describes the October 15 feature revision.
 
+Production release `2b9c374` was pushed to GitHub `main`; Vercel served the matching entry bundle `/assets/index-CybDaz_9.js`. The same complete test-account browser acceptance then passed on `https://rodels-catering.vercel.app`, including the mobile layout with the closed navigation drawer. Cleanup/restoration succeeded and the existing six-table reservation/financial hash comparison passed again afterwards. Private QA artifacts and downloaded customer-bearing archives remain outside Git.
+
 Terms/Privacy are readable implemented drafts, not legally approved/certified documents. Owner/legal review must confirm policy wording, the responsible privacy contact and retention schedule. Source guidance: [National Privacy Commission, RA 10173](https://privacy.gov.ph/Data-Privacy-Act/), [PSA Bulacan classifications](https://psa.gov.ph/classification/psgc/citimuni/0301400000), [PSA provincial summary](https://psa.gov.ph/classification/psgc/summary) and the [PSGC directory source](https://psgc.gitlab.io/api/provinces/), consulted October 15, 2026.
