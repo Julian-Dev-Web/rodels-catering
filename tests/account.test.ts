@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { callbackStatus, fullName, passwordSchema, profileSchema, registrationSchema } from '../src/lib/account'
 
 describe('registration and password recovery input', () => {
-  const input = { first_name: ' Test ', middle_name: '', last_name: ' Customer ', phone: '0912 345 6789', email: ' person@example.test ', password: 'testing-password', confirm_password: 'testing-password' }
+  const input = { first_name: ' Test ', middle_name: '', last_name: ' Customer ', phone: '0912 345 6789', email: ' person@example.test ', password: 'Testing-password8!', confirm_password: 'Testing-password8!' }
   it('accepts an optional middle name, trims names and normalizes the mobile number', () => {
     const parsed = registrationSchema.parse(input)
     expect(fullName(parsed)).toBe('Test Customer')
@@ -20,5 +20,12 @@ describe('registration and password recovery input', () => {
     expect(callbackStatus('#type=recovery&error_code=otp_expired', '')).toEqual({ recovery: false, failed: true })
     expect(callbackStatus('', '?error=access_denied')).toEqual({ recovery: false, failed: true })
     expect(callbackStatus('#type=signup', '')).toEqual({ recovery: false, failed: false })
+  })
+  it('requires length, uppercase, lowercase, number and a non-space special character', () => {
+    expect(passwordSchema.safeParse({ password: 'Strong8!', confirm_password: 'Strong8!' }).success).toBe(true)
+    for (const password of ['Ab1!', 'lowercase8!', 'UPPERCASE8!', 'NoNumber!', 'NoSpecial8', 'OnlySpace8 ']) {
+      expect(passwordSchema.safeParse({ password, confirm_password: password }).success).toBe(false)
+      expect(registrationSchema.safeParse({ ...input, password, confirm_password: password }).success).toBe(false)
+    }
   })
 })

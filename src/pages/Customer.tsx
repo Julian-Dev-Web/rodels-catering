@@ -358,7 +358,7 @@ export function AvailableDates() {
     <>
       <PageHeading title="Find room for your celebration.">
         Up to three approved events per date. Availability is confirmed when your reservation is
-        approved.
+        approved. Please reserve at least 3 days ahead for preparation. The earliest date is {date(earliestEventDate())} (Manila).
       </PageHeading>
       <section className="panel">
         <div className="section-title">
@@ -389,14 +389,16 @@ export function AvailableDates() {
               ))}
               {query.data?.map((d) => (
                 <div
-                  className={'calendar-day ' + (d.remaining === 0 ? 'full' : '')}
+                  className={'calendar-day ' + (d.event_date < earliestEventDate() ? 'blocked' : d.remaining === 0 ? 'full' : '')}
                   key={d.event_date}
                 >
                   <strong>{Number(d.event_date.slice(8))}</strong>
                   <span>
                     {d.event_date < todayManila()
                       ? 'Past date'
-                      : d.remaining > 0
+                      : d.event_date < earliestEventDate()
+                        ? '3-day notice required'
+                        : d.remaining > 0
                         ? `${d.remaining} spots available`
                         : 'Fully booked'}
                   </span>

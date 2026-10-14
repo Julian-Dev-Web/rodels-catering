@@ -16,8 +16,21 @@ export const profileSchema = z.object({
     context.addIssue({ code: 'custom', path: ['last_name'], message: 'Your complete name must be at most 150 characters' })
 })
 
+export const passwordRequirements = [
+  { id: 'length', label: 'At least 8 characters', test: (value: string) => value.length >= 8 },
+  { id: 'uppercase', label: 'An uppercase letter (A–Z)', test: (value: string) => /[A-Z]/.test(value) },
+  { id: 'lowercase', label: 'A lowercase letter (a–z)', test: (value: string) => /[a-z]/.test(value) },
+  { id: 'number', label: 'A number (0–9)', test: (value: string) => /[0-9]/.test(value) },
+  { id: 'special', label: 'A special character (e.g. ! @ #)', test: (value: string) => /[^A-Za-z0-9\s]/.test(value) },
+]
+
+export const strongPassword = z.string().superRefine((value, context) => {
+  for (const rule of passwordRequirements)
+    if (!rule.test(value)) context.addIssue({ code: 'custom', message: rule.label })
+})
+
 export const passwordSchema = z.object({
-  password: z.string().min(8, 'Use at least 8 characters'),
+  password: strongPassword,
   confirm_password: z.string(),
 }).refine((value) => value.password === value.confirm_password, {
   path: ['confirm_password'], message: 'Passwords do not match',
@@ -25,7 +38,7 @@ export const passwordSchema = z.object({
 
 export const registrationSchema = profileSchema.safeExtend({
   email: z.string().trim().email('Enter a valid email address'),
-  password: z.string().min(8, 'Use at least 8 characters'),
+  password: strongPassword,
   confirm_password: z.string(),
 }).refine((value) => value.password === value.confirm_password, {
   path: ['confirm_password'], message: 'Passwords do not match',

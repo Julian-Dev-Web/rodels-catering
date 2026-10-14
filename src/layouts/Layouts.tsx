@@ -28,6 +28,7 @@ import { useAuth } from '../features/auth'
 import { Action, ErrorState, Loading } from '../components/ui'
 import { date, human } from '../lib/format'
 import type { Notice } from '../types'
+import { PublicAssistant } from '../components/PublicAssistant'
 export function Brand({ light = false }: { light?: boolean }) {
   return (
     <Link className={'brand ' + (light ? 'light' : '')} to="/" aria-label="Rodel's Catering home">
@@ -147,6 +148,7 @@ export function PublicLayout() {
           <span>Made for your moments.</span>
         </div>
       </footer>
+      {pathname === '/' && <PublicAssistant />}
     </>
   )
 }
@@ -314,13 +316,14 @@ export function PortalLayout() {
                   </Link>
                   {!n.read_at && (
                     <Action
-                      label="Mark read"
-                      kind="text-button"
+                      label="Mark as read"
+                      kind="secondary small notification-read"
                       run={async () => {
                         const { error } = await supabase
                           .from('notifications')
                           .update({ read_at: new Date().toISOString() })
                           .eq('id', n.id)
+                          .eq('user_id', profile.id)
                         if (error) throw error
                       }}
                     />

@@ -11,19 +11,10 @@ export const date = (value: string) =>
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(value.length === 10 ? value + 'T00:00:00+08:00' : value))
-export const dayManila = (value: string | Date) =>
-  new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date(value))
+import { manilaDate, earliestBookingDate } from '../../supabase/functions/_shared/booking-date.ts'
+export const dayManila = manilaDate
 export const todayManila = () => dayManila(new Date())
-export const earliestEventDate = () => {
-  const value = new Date(todayManila() + 'T00:00:00Z')
-  value.setUTCDate(value.getUTCDate() + 3)
-  return value.toISOString().slice(0, 10)
-}
+export const earliestEventDate = earliestBookingDate
 export const human = (value: string) =>
   value.replaceAll('_', ' ').replace(/^./, (s) => s.toUpperCase())
 export const message = (error: unknown) =>

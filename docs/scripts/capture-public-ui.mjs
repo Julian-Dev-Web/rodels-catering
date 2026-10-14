@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { readFile, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 const profile=resolve('docs/.tools/public-browser-profile')
 const process=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',[
@@ -23,7 +23,7 @@ try{
   if(!pages)throw new Error('Owned headless browser did not start')
   socket=new WebSocket(pages.find(page=>page.type==='page').webSocketDebuggerUrl)
   await new Promise((resolve,reject)=>{socket.onopen=resolve;socket.onerror=reject})
-  socket.onmessage=event=>{const reply=JSON.parse(event.data);const item=pending.get(reply.id);if(item){pending.delete(reply.id);reply.error?item.reject(new Error(reply.error.message)):item.resolve(reply.result)}}
+  socket.onmessage=event=>{const reply=JSON.parse(event.data);const item=pending.get(reply.id);if(item){pending.delete(reply.id);if(reply.error)item.reject(new Error(reply.error.message));else item.resolve(reply.result)}}
   await send('Page.enable')
   await send('Emulation.setDeviceMetricsOverride',{width:1366,height:1050,deviceScaleFactor:2,mobile:false})
   const records=[]

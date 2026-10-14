@@ -32,7 +32,6 @@ async function draw(name,body,{landscape=false,wide=false}={}) {
    graph[label="Browser also uses PSGC address lookups with manual fallback.\nOperators apply SQL and deploy functions through the CLI.",labelloc=b,fontsize=12];`
   const dot=`digraph G {${style} ${body}}`
   const svg=viz.renderString(dot,{format:'svg',engine:'dot'})
-  const dimensions=svg.match(/viewBox="[^"]*?([\d.]+) ([\d.]+)"/)
   const image=await loadImage(Buffer.from(svg))
   const width=wide?3600:landscape?3200:2600
   const height=Math.round(width*image.height/image.width)

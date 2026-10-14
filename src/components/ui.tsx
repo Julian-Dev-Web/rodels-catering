@@ -94,7 +94,7 @@ export function Action({
   return (
     <>
       <button
-        className={'button ' + kind}
+        className={kind === 'text-button' ? 'text-button' : 'button ' + kind}
         disabled={mutation.isPending}
         onClick={() => (confirm ? setOpen(true) : mutation.mutate())}
       >

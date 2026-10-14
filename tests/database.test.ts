@@ -94,6 +94,16 @@ beforeAll(async () => {
 }, 60000)
 afterAll(() => db.close())
 describe('clean migrations and actual PostgreSQL business rules', () => {
+  it('rejects the first three Manila dates and accepts the third day ahead in the real save RPC', async () => {
+    await identity('operator')
+    const today = await scalar<string>("select ((now() at time zone 'Asia/Manila')::date)::text as value")
+    const day = (offset: number) => { const value = new Date(today! + 'T00:00:00Z'); value.setUTCDate(value.getUTCDate() + offset); return value.toISOString().slice(0, 10) }
+    for (const offset of [0, 1, 2]) await expect(completeDraft(day(offset))).rejects.toThrow('at least 3 days ahead')
+    const id = await completeDraft(day(3))
+    expect(id).toBeTruthy()
+    await identity('operator')
+    await db.query('delete from reservations where id=$1', [id])
+  })
   it('stores structured signup names and mobile while ignoring privileged metadata', async () => {
     await identity('operator')
     const id = '90000000-0000-0000-0000-000000000010'

@@ -15,7 +15,7 @@ import { ErrorState, Loading, PageHeading } from '../components/ui'
 import type { CatalogItem } from '../types'
 const schema = z.object({
   event_name: z.string().min(2).max(150),
-  event_date: z.string().min(10),
+  event_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose an event date').refine((value) => value >= earliestEventDate(), 'Choose a date at least 3 days ahead for preparation'),
   event_time: z.string().min(5),
   guests: z.number().int().min(1).max(10000),
   menu_set_id: z.string().min(1, 'Choose a package'),
@@ -413,7 +413,9 @@ export function ReservationWizard() {
                 <div className="form-grid">
                   <label>
                     Event date
-                    <input type="date" min={earliestEventDate()} {...register('event_date')} />
+                    <input type="date" min={earliestEventDate()} aria-describedby="booking-date-help" aria-invalid={!!errors.event_date} {...register('event_date')} />
+                    <small id="booking-date-help" className="date-help">Please book at least 3 days ahead for preparation. Earliest date: {date(earliestEventDate())} (Manila).</small>
+                    {errors.event_date && <span className="field-error">{errors.event_date.message}</span>}
                   </label>
                   <label>
                     Event time (Manila)

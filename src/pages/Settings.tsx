@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useAuth } from '../features/auth'
 import { supabase } from '../lib/supabase'
 import { Form } from '../components/Form'
-import { fieldErrors, fullName, profileSchema } from '../lib/account'
+import { fieldErrors, fullName, passwordSchema, profileSchema } from '../lib/account'
 import { ErrorState, PageHeading } from '../components/ui'
 export function Settings() {
   const { profile, session, refresh } = useAuth()
@@ -92,10 +92,15 @@ export function Settings() {
         <section className="panel">
           <h2>Change your password</h2>
           <Form
-            fields={[{ name: 'password', label: 'New password', type: 'password', required: true }]}
+            fields={[
+              { name: 'password', label: 'New password', type: 'password', required: true, passwordRules: true },
+              { name: 'confirm_password', label: 'Confirm new password', type: 'password', required: true },
+            ]}
+            validate={(values) => fieldErrors(passwordSchema, values)}
             label="Update password"
             submit={async (v) => {
-              const { error } = await supabase.auth.updateUser({ password: v.password })
+              const values = passwordSchema.parse(v)
+              const { error } = await supabase.auth.updateUser({ password: values.password })
               if (error) throw error
             }}
           />

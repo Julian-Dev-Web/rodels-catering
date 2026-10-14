@@ -34,12 +34,12 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' | 'forgot' | 're
           { name: 'last_name', label: 'Last name', required: true, max: 60, autoComplete: 'family-name' },
           { name: 'phone', label: 'Mobile number', type: 'tel', required: true, max: 30, placeholder: '09XXXXXXXXX' },
           { name: 'email', label: 'Email address', type: 'email', required: true },
-          { name: 'password', label: 'Password', type: 'password', required: true },
+          { name: 'password', label: 'Password', type: 'password', required: true, passwordRules: true },
           { name: 'confirm_password', label: 'Confirm password', type: 'password', required: true },
         ]
       : mode === 'reset'
         ? [
-            { name: 'password', label: 'New password', type: 'password', required: true },
+            { name: 'password', label: 'New password', type: 'password', required: true, passwordRules: true },
             { name: 'confirm_password', label: 'Confirm new password', type: 'password', required: true },
           ]
         : [
