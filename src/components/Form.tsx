@@ -12,6 +12,7 @@ export interface Field {
   max?: number
   options?: { label: string; value: string }[]
   placeholder?: string
+  autoComplete?: string
 }
 export function Form({
   fields,
@@ -19,12 +20,14 @@ export function Form({
   submit,
   label = 'Save changes',
   onSuccess,
+  validate,
 }: {
   fields: Field[]
   initial?: Record<string, string | number>
   submit: (values: Record<string, string>) => Promise<unknown>
   label?: string
   onSuccess?: () => void
+  validate?: (values: Record<string, string>) => Record<string, string>
 }) {
   const shape: Record<string, z.ZodType<string, string>> = {}
   for (const f of fields) {
@@ -35,7 +38,10 @@ export function Form({
     if (f.max) s = s.max(f.max)
     shape[f.name] = s
   }
-  const schema = z.object(shape)
+  const schema = z.object(shape).superRefine((values, context) => {
+    for (const [field, message] of Object.entries(validate?.(values) ?? {}))
+      context.addIssue({ code: 'custom', path: [field], message })
+  })
   const {
     register,
     handleSubmit,
@@ -82,7 +88,7 @@ export function Form({
               maxLength={f.type !== 'number' ? f.max : undefined}
               placeholder={f.placeholder}
               autoComplete={
-                f.type === 'password' ? 'new-password' : f.type === 'email' ? 'email' : undefined
+                f.autoComplete ?? (f.type === 'password' ? 'new-password' : f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : undefined)
               }
               {...register(f.name)}
             />

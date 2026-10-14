@@ -53,6 +53,11 @@ function Scroll() {
   }, [pathname])
   return null
 }
+function RecoveryRedirect() {
+  const { recovery, session } = useAuth()
+  const { pathname } = useLocation()
+  return recovery && session && pathname !== '/reset-password' ? <Navigate to="/reset-password" replace /> : null
+}
 function Start() {
   const { profile, loading } = useAuth()
   return loading ? (
@@ -72,6 +77,7 @@ export function Router() {
   return (
     <BrowserRouter>
       <Scroll />
+      <RecoveryRedirect />
       <Suspense fallback={<Loading />}>
         <MaintenanceBoundary>
           <Routes>
@@ -82,10 +88,10 @@ export function Router() {
               <Route path="about" element={<About />} />
               <Route path="policies" element={<Policies />} />
             </Route>
-            <Route path="login" element={<AuthPage mode="login" />} />
-            <Route path="register" element={<AuthPage mode="register" />} />
-            <Route path="forgot-password" element={<AuthPage mode="forgot" />} />
-            <Route path="reset-password" element={<AuthPage mode="reset" />} />
+            <Route path="login" element={<AuthPage key="login" mode="login" />} />
+            <Route path="register" element={<AuthPage key="register" mode="register" />} />
+            <Route path="forgot-password" element={<AuthPage key="forgot" mode="forgot" />} />
+            <Route path="reset-password" element={<AuthPage key="reset" mode="reset" />} />
             <Route
               element={
                 <RoleGuard>

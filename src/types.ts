@@ -14,6 +14,9 @@ export type ReservationStatus =
 export interface Profile {
   id: string
   full_name: string
+  first_name: string
+  middle_name: string
+  last_name: string
   phone: string
   avatar_path: string | null
   role: Role

@@ -2,7 +2,9 @@
 
 **Frontend: Vercel. Database, Auth, Storage and Edge Functions: Supabase.com.** Once deployed, your friend opens the website URL in a browser. Their laptop does not need Node, Docker, XAMPP, source files or a database installation.
 
-This developer workspace is connected to the hosted Supabase project `azjzapendjsfouysueiw` through the ignored `.env` file. A read-only API check retrieved all three seeded packages and the maintenance setting. Authenticated browser workflows, Edge Function deployment and frontend hosting still need verification/setup. For another checkout, configure its environment using the steps below. Public pages show illustrative packages while unconfigured. Catalog seed prices must be reviewed before real bookings. Original company details, logo and photos come from the legacy app.
+For this project's registration/name update, password recovery, requested test accounts and PayMongo test-mode setup, follow [HOSTED_AUTH_PAYMENTS.md](HOSTED_AUTH_PAYMENTS.md). The existing hosted database needs `supabase/updates/0013_profile_names.sql`; never rerun the full fresh-project installer to apply this update.
+
+This developer workspace is connected to the hosted Supabase project `azjzapendjsfouysueiw` through the ignored `.env` file. A read-only API check retrieved all three seeded packages and the maintenance setting. The frontend is reachable at `https://rodels-catering.vercel.app`. Authenticated browser workflows and Edge Function deployment still need verification/setup. For another checkout, configure its environment using the steps below. Public pages show illustrative packages while unconfigured. Catalog seed prices must be reviewed before real bookings. Original company details, logo and photos come from the legacy app.
 
 ## 1. Set up the database on Supabase.com
 
@@ -12,7 +14,7 @@ Use a fresh Supabase project with an empty `public` schema. If your existing pro
 2. Copy the entire contents of [`supabase/setup.sql`](supabase/setup.sql), then Run once.
 3. Confirm the tables were created under `public`.
 
-`setup.sql` contains all 12 migrations in one transaction: tables, enums, business rules, RLS, Storage policies, analytics and the sample catalog/gallery. Its initial check rejects existing public tables; it contains no DROP TABLE/TRUNCATE cleanup. An error rolls back setup rather than leaving a partially installed app. If the preflight stops, do not delete existing data to bypass it.
+`setup.sql` contains all 13 migrations in one transaction: tables, enums, business rules, RLS, Storage policies, analytics, the sample catalog/gallery and structured profile names. Its initial check rejects existing public tables; it contains no DROP TABLE/TRUNCATE cleanup. An error rolls back setup rather than leaving a partially installed app. If the preflight stops, do not delete existing data to bypass it.
 
 The original files in `supabase/migrations/` remain the source of truth. After changing one, regenerate the SQL Editor file with:
 

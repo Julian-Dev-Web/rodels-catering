@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate, useLocation } from 'react-router-dom'
-import { configured, supabase } from '../lib/supabase'
+import { authCallback, configured, supabase } from '../lib/supabase'
 import { canVisit, roleHome } from '../lib/permissions'
 import type { Profile } from '../types'
 import { ErrorState, Loading } from '../components/ui'
@@ -12,6 +12,7 @@ type Auth = {
   profile: Profile | null
   loading: boolean
   error: unknown
+  recovery: boolean
   refresh: () => void
 }
 const Context = createContext<Auth>({
@@ -19,29 +20,40 @@ const Context = createContext<Auth>({
   profile: null,
   loading: true,
   error: null,
+  recovery: false,
   refresh: () => {},
 })
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [booting, setBooting] = useState(configured)
+  const [recovery, setRecovery] = useState(authCallback.recovery)
+  const [sessionError, setSessionError] = useState<unknown>(null)
   const client = useQueryClient()
   useEffect(() => {
     if (!configured) return
     let active = true
-    supabase.auth.getSession().then(({ data }) => {
-      if (active) {
-        setSession(data.session)
-        setBooting(false)
-      }
-    })
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, value) => {
+    } = supabase.auth.onAuthStateChange((event, value) => {
+      if (!active) return
       setSession(value)
       setBooting(false)
+      setSessionError(null)
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true)
+      if (event === 'SIGNED_OUT') setRecovery(false)
       client.removeQueries({
         predicate: (q) => q.queryKey[0] !== 'catalog' && q.queryKey[0] !== 'maintenance',
       })
+    })
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!active) return
+      setSession(data.session)
+      setSessionError(error)
+      setBooting(false)
+    }).catch((error: unknown) => {
+      if (!active) return
+      setSessionError(error)
+      setBooting(false)
     })
     return () => {
       active = false
@@ -68,7 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         profile: profile.data ?? null,
         loading: booting || (!!session && profile.isPending),
-        error: profile.error,
+        error: sessionError ?? profile.error,
+        recovery,
         refresh: () => void profile.refetch(),
       }}
     >

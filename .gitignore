@@ -4,6 +4,7 @@ dist/
 .env
 .env.*
 !.env.example
+!.env.operator.example
 supabase/.temp/
 supabase/.branches/
 coverage/
@@ -11,3 +12,6 @@ test-results/
 playwright-report/
 .browsers/
 *.log
+.env.operator
+.private/
+.vercel/

@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useAuth } from '../features/auth'
 import { supabase } from '../lib/supabase'
 import { Form } from '../components/Form'
+import { fieldErrors, fullName, profileSchema } from '../lib/account'
 import { ErrorState, PageHeading } from '../components/ui'
 export function Settings() {
   const { profile, session, refresh } = useAuth()
@@ -25,6 +26,9 @@ export function Settings() {
     },
   })
   if (!profile) return null
+  // Keep an existing hosted project editable while the incremental SQL update
+  // is being applied. New signups retain explicit names in Auth metadata.
+  const structured = typeof profile.first_name === 'string'
   const avatar = profile.avatar_path
     ? supabase.storage.from('avatars').getPublicUrl(profile.avatar_path).data.publicUrl
     : null
@@ -39,13 +43,21 @@ export function Settings() {
           <p className="muted">{session?.user.email}</p>
           <Form
             key={profile.id}
-            initial={{ full_name: profile.full_name, phone: profile.phone }}
-            fields={[
+            initial={structured ? { first_name: profile.first_name, middle_name: profile.middle_name, last_name: profile.last_name, phone: profile.phone } : { full_name: profile.full_name, phone: profile.phone }}
+            validate={structured ? (values) => fieldErrors(profileSchema, values) : undefined}
+            fields={structured ? [
+              { name: 'first_name', label: 'First name', required: true, max: 60, autoComplete: 'given-name' },
+              { name: 'middle_name', label: 'Middle name (optional)', max: 60, autoComplete: 'additional-name' },
+              { name: 'last_name', label: 'Last name', required: true, max: 60, autoComplete: 'family-name' },
+              { name: 'phone', label: 'Mobile number', type: 'tel', required: true, max: 30 },
+            ] : [
               { name: 'full_name', label: 'Full name', required: true, max: 150 },
-              { name: 'phone', label: 'Phone number', type: 'tel', max: 30 },
+              { name: 'phone', label: 'Mobile number', type: 'tel', max: 30 },
             ]}
             submit={async (v) => {
-              const { error } = await supabase.from('profiles').update(v).eq('id', profile.id)
+              const values = structured ? profileSchema.parse(v) : null
+              const update = values ? { ...values, full_name: fullName(values) } : { full_name: v.full_name.trim(), phone: v.phone.trim() }
+              const { error } = await supabase.from('profiles').update(update).eq('id', profile.id)
               if (error) throw error
               refresh()
             }}

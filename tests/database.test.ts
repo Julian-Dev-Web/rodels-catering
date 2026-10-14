@@ -94,6 +94,45 @@ beforeAll(async () => {
 }, 60000)
 afterAll(() => db.close())
 describe('clean migrations and actual PostgreSQL business rules', () => {
+  it('stores structured signup names and mobile while ignoring privileged metadata', async () => {
+    await identity('operator')
+    const id = '90000000-0000-0000-0000-000000000010'
+    await db.query('insert into auth.users(id,raw_user_meta_data) values($1,$2)', [id, JSON.stringify({ first_name: ' Test ', middle_name: '', last_name: ' Customer ', phone: '0912 345 6789', role: 'super_admin' })])
+    const profile = (await db.query('select full_name,first_name,middle_name,last_name,phone,role from profiles where id=$1', [id])).rows[0]
+    expect(profile).toMatchObject({ full_name: 'Test Customer', first_name: 'Test', middle_name: '', last_name: 'Customer', phone: '+639123456789', role: 'customer' })
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id])
+    await db.exec('set role authenticated')
+    await db.query("update profiles set middle_name='Middle' where id=$1", [id])
+    expect(await scalar('select full_name as value from profiles where id=$1', [id])).toBe('Test Middle Customer')
+    await expect(db.query("update profiles set phone='1234' where id=$1", [id])).rejects.toThrow()
+    await expect(db.query("update profiles set last_name='' where id=$1", [id])).rejects.toThrow()
+    await expect(db.query("update profiles set role='super_admin' where id=$1", [id])).rejects.toThrow()
+    await identity('operator')
+    expect(await scalar('select full_name as value from profiles where id=$1', [users.customer])).toBe('customer')
+  })
+  it('applies the standalone profile upgrade to legacy data without guessing name parts', async () => {
+    const upgradeDb = new PGlite()
+    try {
+      await upgradeDb.exec(`create role anon nologin; create role authenticated nologin;
+       create schema private; create schema auth;
+       create table auth.users(id uuid primary key,raw_user_meta_data jsonb default '{}');
+       create type public.app_role as enum('customer','manager','super_admin');
+       create table public.profiles(id uuid primary key references auth.users,full_name text not null default '' check(length(full_name)<=150),phone text not null default '' check(length(phone)<=30),avatar_path text,role public.app_role default 'customer');
+       create function private.catalog_audit() returns trigger language plpgsql as $$begin return new; end$$;`)
+      const legacyId = '91000000-0000-0000-0000-000000000001'
+      const metadataId = '91000000-0000-0000-0000-000000000002'
+      await upgradeDb.query('insert into auth.users values($1,$2),($3,$4)', [legacyId, JSON.stringify({ full_name: 'Preserved Legacy Name' }), metadataId, JSON.stringify({ first_name: ' Explicit ', middle_name: ' Middle ', last_name: ' Name ', phone: '09123456789' })])
+      await upgradeDb.query('insert into profiles(id,full_name) values($1,$2),($3,$4)', [legacyId, 'Preserved Legacy Name', metadataId, 'Explicit Middle Name'])
+      const update = await readFile('supabase/updates/0013_profile_names.sql', 'utf8')
+      await upgradeDb.exec(update)
+      await upgradeDb.exec(update)
+      const result = (await upgradeDb.query('select id,full_name,first_name,middle_name,last_name,phone from profiles order by id')).rows
+      expect(result[0]).toMatchObject({ full_name: 'Preserved Legacy Name', first_name: '', middle_name: '', last_name: '' })
+      expect(result[1]).toMatchObject({ full_name: 'Explicit Middle Name', first_name: 'Explicit', middle_name: 'Middle', last_name: 'Name', phone: '+639123456789' })
+    } finally {
+      await upgradeDb.close()
+    }
+  })
   it('bootstraps customer role even with malicious registration metadata', async () => {
     await identity('operator')
     expect(
