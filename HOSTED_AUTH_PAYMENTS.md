@@ -3,6 +3,25 @@
 Frontend: `https://rodels-catering.vercel.app`.
 Supabase project: `azjzapendjsfouysueiw`.
 
+## Current verification record
+
+The existing-project name schema is available. The requested three test accounts
+were created and their password logins and authenticated profile roles verified.
+All five Edge Functions were deployed and the three PayMongo server settings
+uploaded. A read-only provider check confirmed the test key, enabled webhook,
+payment event and matching signing secret. A clearly labeled integration-test
+reservation was saved/finalized using the customer session, and its canonical
+50% checkout was created by the deployed function. The reservation remained unpaid
+and did not hold capacity; an unsigned webhook request was rejected with HTTP 401.
+
+The new guest account's recovery token, password replacement, new-password login
+and rejection of the old password were verified through Supabase APIs, without
+sending email. The hosted recovery redirect was verified after URL configuration.
+Passwords and test-result details are stored only in ignored `.private/` files.
+Actual inbox delivery, authenticated browser workflows, successful paid webhook
+reconciliation and provider refunds remain pending; checkout creation alone does
+not verify completed payment.
+
 ## 1. Apply the existing-project update
 
 In Supabase SQL Editor, run the entire file `supabase/updates/0013_profile_names.sql`.
@@ -60,7 +79,9 @@ through service-only access, records audits, and verifies password login and
 profile access. It never sends email or resets existing passwords. Passwords are
 saved in the ignored `.private/test-account-credentials.json`, not printed or
 committed. Existing users are retained. Keep the operator key out of source control.
-Account creation is pending until this operator command succeeds.
+The operator command has succeeded in this workspace. Use the private credentials
+file for the current passwords, including the guest password changed during the
+recovery API test. These credentials are not committed.
 
 ## 4. Set up Supabase CLI
 
@@ -116,8 +137,9 @@ in the provider test environment. Confirmation requires a valid signed webhook,
 an independent provider lookup and a successful database reconciliation. Returning
 from checkout alone does not confirm payment. Test refunds only against these test
 payments after cancellation/refund approval. Inspect Edge Function logs and PayMongo
-webhook deliveries when a test payment remains pending. Real payment/refund tests
-remain pending until credentials and deployment are configured.
+webhook deliveries when a test payment remains pending. Paid webhook confirmation
+and provider refund tests remain pending. Credentials and deployment are now
+configured, and test checkout creation has succeeded.
 
 ## Consulted vendor documentation
 
