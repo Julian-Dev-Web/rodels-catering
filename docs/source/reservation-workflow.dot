@@ -1,0 +1,22 @@
+digraph G {graph [bgcolor="white",fontname="Times New Roman",fontsize=19,ranksep=0.48,nodesep=0.30,pad=0.18]; node [shape=box,fontname="Times New Roman",fontsize=15,color="black",fontcolor="black",style="rounded,filled",fillcolor="white",margin="0.14,0.09"]; edge [fontname="Times New Roman",fontsize=11,color="black",fontcolor="black",arrowsize=0.65]; rankdir=TB;
+ start[label="Browse active packages / check available dates",shape=ellipse];
+ login[label="Register / sign in as customer"];
+ event[label="Enter event, future date/time, contact and address"];
+ menu[label="Select package, exact dish count, drink and dessert"];
+ setup[label="Select setup, optional features/add-ons, tables and chairs"];
+ save[label="save_reservation(data)
+Ownership, eligibility and canonical SQL quote"];
+ draft[label="Draft + saved pricing snapshot
+Edit only while unpaid / eligible"];
+ final[label="finalize_reservation(rid)
+Validate selections, seating and complete address"];
+ review[label="for_approval + balance record
+Customer/staff notification and audit"];
+ payment[label="Customer may open PayMongo checkout
+See separate payment data-flow diagram"];
+ staff[label="Staff review / valid status transition"];
+ approved[label="Approved reservation holds capacity
+Maximum three per date",shape=ellipse];
+ start->login->event->menu->setup->save->draft->final->review;
+ review->payment;review->staff->approved;
+ }

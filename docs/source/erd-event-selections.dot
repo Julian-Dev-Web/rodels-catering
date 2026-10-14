@@ -1,0 +1,27 @@
+digraph G {graph [bgcolor="white",fontname="Times New Roman",fontsize=19,ranksep=0.48,nodesep=0.30,pad=0.18]; node [shape=box,fontname="Times New Roman",fontsize=15,color="black",fontcolor="black",style="rounded,filled",fillcolor="white",margin="0.14,0.09"]; edge [fontname="Times New Roman",fontsize=11,color="black",fontcolor="black",arrowsize=0.65]; rankdir=TB; graph [splines=polyline]; edge [dir=none,fontsize=10,labeldistance=1.6];
+reservations->add_ons[style=invis,weight=2];
+event_setups->chair_types[style=invis,weight=2];
+event_features->table_types[style=invis,weight=2];
+add_ons->reservation_event_setups[style=invis,weight=2];
+chair_types->reservation_event_features[style=invis,weight=2];
+table_types->reservation_add_ons[style=invis,weight=2];
+reservation_event_setups->reservation_tables_chairs[style=invis,weight=2];
+reservations[label="reservations\nPK (id)\ncustomer_id\nmenu_set_id\ndrink_id\ndessert_id",fontsize=14];
+event_setups[label="event_setups\nPK (id)\n",fontsize=14];
+event_features[label="event_features\nPK (id)\n",fontsize=14];
+add_ons[label="add_ons\nPK (id)\n",fontsize=14];
+chair_types[label="chair_types\nPK (id)\n",fontsize=14];
+table_types[label="table_types\nPK (id)\n",fontsize=14];
+reservation_event_setups[label="reservation_event\nsetups\nPK (reservation_id)\nreservation_id\nevent_setup_id",fontsize=14];
+reservation_event_features[label="reservation_event\nfeatures\nPK (reservation_id, event_feature_id)\nreservation_id\nevent_feature_id",fontsize=14];
+reservation_add_ons[label="reservation_add_ons\nPK (reservation_id, add_on_id)\nreservation_id\nadd_on_id",fontsize=14];
+reservation_tables_chairs[label="reservation_tables\nchairs\nPK (reservation_id, chair_type_id)\nreservation_id\ntable_type_id\nchair_type_id",fontsize=14];
+add_ons->reservation_add_ons[taillabel="1",headlabel="0..*",headport=nw];
+reservations->reservation_add_ons[taillabel="1",headlabel="0..*",headport=ne];
+event_features->reservation_event_features[taillabel="1",headlabel="0..*",headport=nw];
+reservations->reservation_event_features[taillabel="1",headlabel="0..*",headport=ne];
+event_setups->reservation_event_setups[taillabel="1",headlabel="0..*",headport=nw];
+reservations->reservation_event_setups[taillabel="1",headlabel="0..1",headport=ne];
+chair_types->reservation_tables_chairs[taillabel="1",headlabel="0..*",headport=nw];
+reservations->reservation_tables_chairs[taillabel="1",headlabel="0..*",headport=n];
+table_types->reservation_tables_chairs[taillabel="0..1",headlabel="0..*",headport=ne];}

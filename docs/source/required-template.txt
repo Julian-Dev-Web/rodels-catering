@@ -1,0 +1,208 @@
+In Partial Fulfillment for the subject
+Web Commercialization and E-Commerce
+[Insert Your E-Commerce Webstore Name]
+Date Submitted:   [MM/DD/YYYY]
+Prepared By:   [Your Name/Team Name]
+
+PAGE BREAK
+
+TABLE OF CONTENTS
+1.   Project Overview
+2.   System Architecture
+3.   Technology Stack
+4.   Key API Integrations
+5.   Database Schema
+6.   Security & Legal Compliance
+7.   Deployment & CI/CD
+
+PAGE BREAK
+
+1. PROJECT OVERVIEW
+1.1 Business Objectives
+[Describe the primary goals of your e-commerce webstore. What is the main purpose of the
+platform?]
+[Insert text here...]
+1.2 Target Audience
+[Define your primary users. Who are the buyers? Who are the sellers/admins?]
+•   Buyers:   [e.g., Demographics, location, buying behavior]
+•   Sellers/Admins:   [e.g., MSMEs, specific vendors, internal staff]
+1.3 Problem Statement
+[What specific problem or gap in the market does your webstore solve?]
+[Insert text here...]
+1.4 Project Scope
+[List the core features included in this version of the project (e.g., user auth, cart, checkout, admin
+dashboard).]
+[Insert text here...]
+
+PAGE BREAK
+
+2. SYSTEM ARCHITECTURE
+2.1 Architectural Pattern
+[Describe the overall architecture (e.g., Client-Server, Microservices, Monolithic).]
+[Insert text here...]
+2.2 System Layers
+•   Presentation Layer (Frontend):   [Describe how the user interacts with the system]
+•   Application Layer (Backend):   [Describe the business logic and API handling]
+•   Data Layer:   [Describe how and where data is stored]
+2.3 Data Flow
+[Briefly explain the step-by-step flow of a core process, such as a user placing an order.]
+1.   [Step 1]
+2.   [Step 2]
+3.   [Step 3]
+2.4 Architecture Diagram
+[Insert a visual diagram of your system architecture here.]
+[Insert Image/Diagram here...]
+
+PAGE BREAK
+
+3. TECHNOLOGY STACK
+Component   Technology/Tool Chosen   Justification / Reason for Selection
+Frontend   [e.g., React, Vue, HTML/CSS]   [Why did you choose this?]
+Backend   [e.g., Node.js, PHP/Laravel, Python]   [Why did you choose this?]
+Database   [e.g., MySQL, PostgreSQL, MongoDB]   [Why did you choose this?]
+Hosting/Cloud   [e.g., AWS, Vercel, Heroku, Localhost]   [Why did you choose this?]
+Version Control   [e.g., GitHub, GitLab]   [Why did you choose this?]
+
+PAGE BREAK
+
+4. KEY API INTEGRATIONS
+[List the third-party services your webstore connects to, especially those relevant to your local
+setting.]
+4.1 Payment Gateway
+•   Provider:   [e.g., PayMongo, Xendit, PayPal, Stripe]
+•   Features Used:   [e.g., GCash, Credit Card, Over-the-Counter]
+•   Integration Method:   [e.g., REST API, Webhooks]
+4.2 Logistics & Shipping
+•   Provider:   [e.g., J&T, LBC, ShipPOp, or custom logic]
+•   Features Used:   [e.g., Rate calculation, tracking generation]
+4.3 Notifications (SMS/Email)
+•   Provider:   [e.g., Twilio, Semaphore, SendGrid]
+•   Features Used:   [e.g., OTPs, Order confirmations]
+
+PAGE BREAK
+
+5. DATABASE SCHEMA
+5.1 Core Entities
+[List the main tables/collections in your database and their primary purpose.]
+•   [Table Name 1]:   [Stores user data, authentication, etc.]
+•   [Table Name 2]:   [Stores product catalog, inventory, etc.]
+•   [Table Name 3]:   [Stores orders, transactions, etc.]
+5.2 Entity-Relationship Diagram (ERD)
+[Insert a visual diagram showing how your database tables relate to one another.]
+[Insert ERD Image here...]
+
+PAGE BREAK
+
+6. SECURITY & LEGAL COMPLIANCE
+6.1 Technical Security Measures
+[How are you protecting the application from common vulnerabilities?]
+•   Authentication & Authorization:   [e.g., JWT, OAuth, Role-Based Access Control]
+•   Data Protection:   [e.g., Password hashing (bcrypt), SSL/TLS encryption]
+•   Vulnerability Mitigation:   [e.g., Protection against SQL Injection, XSS, CSRF]
+6.2 Legal & Regulatory Compliance
+[How does your project comply with relevant laws, specifically in your target region?]
+•   Data Privacy (e.g., RA 10173 / GDPR):   [Describe your Privacy Policy, cookie consent, and
+data handling practices.]
+•   E-Commerce Regulations (e.g., RA 11967 / Consumer Act):   [Describe how you display
+business info, handle returns/refunds, and ensure fair trade.]
+•   Tax & Invoicing (e.g., BIR Compliance):   [Describe how your system handles receipts,
+invoices, and tax calculations.]
+
+PAGE BREAK
+
+7. DEPLOYMENT & CI/CD
+7.1 Development Workflow
+[Describe your branching strategy and version control workflow.]
+[Insert text here...]
+7.2 CI/CD Pipeline
+[Explain the automated steps from code commit to deployment.]
+1.   Code Commit:   [e.g., Push to GitHub]
+2.   Testing:   [e.g., Automated unit tests]
+3.   Build:   [e.g., Docker containerization]
+4.   Deployment:   [e.g., Deploy to staging/production]
+7.3 Server Management & Monitoring
+•   Web Server:   [e.g., Nginx, Apache]
+•   Process Manager:   [e.g., PM2, Docker]
+•   Monitoring/Logging:   [e.g., CloudWatch, Sentry, custom logs]
+
+PAGE BREAK
+
+APPENDICES
+Appendix A: User Manual / Guide
+[Optional: Brief instructions on how to run the project locally or use the admin panel.]
+[Insert text here...]
+Appendix B: API Documentation
+[Optional: List your custom API endpoints (Method, URL, Description).]
+[Insert text here...]
+Appendix C: References
+[List any external resources, libraries, or documentation used.]
+[Insert text here...]
+
+PAGE BREAK
+
+Rubrics
+Performance
+Level   Description of Overall Project Quality   Score
+Exemplary(90 -
+100%)
+•   The proposed e-commerce webstore is a fully realized,
+production-ready application.
+•   It seamlessly implements the proposed modern
+architecture (e.g., SSR frontend, robust backend) for
+optimal mobile performance.
+•   Localized integrations (e.g., local e-wallets, COD mitigation
+logic, local logistics APIs with geographic validation) work
+flawlessly.
+•   The business logic (e.g., B2C and B2B wholesale features,
+user verification) is fully functional.
+•   The system exhibits flawless Philippine legal compliance
+(DTI footer per RA 11967, Data Privacy portal per RA
+10173, BIR sequential e-invoicing) and robust security
+(HttpOnly JWTs, bcrypt, OWASP mitigation).
+•   Deployment is fully automated via containerization and
+CI/CD. Documentation, ERDs, and Architecture diagrams
+are professional and accurate.
+Proficient(75 -
+89%)
+•   The webstore is highly functional and meets most core
+requirements.
+•   It uses the proposed tech stack, though some advanced
+features (like caching or SSR) might be underutilized.
+•   Local payment and logistics APIs are integrated but may
+lack edge-case handling (e.g., missing specific COD logic).
+The B2C flow is solid, but advanced business features (like
+B2B wholesale) are basic or partially incomplete.
+•   Legal compliance is good (includes Privacy Policy and DTI
+details) but may miss specific technical implementations
+like the "Right to be Forgotten" endpoint.
+•   Security is present but may have minor flaws (e.g., JWT
+stored insecurely).
+•   CI/CD is set up but lacks full containerization.
+
+PAGE BREAK
+
+Developing (60
+- 74%)
+•   The webstore is functional but lacks the proposed depth
+and localization.
+•   It relies on a generic tech stack rather than the specific
+modern framework proposed. Local-specific integrations
+are missing (e.g., relies on manual bank transfers or
+generic shipping forms instead of APIs).
+•   Advanced business logic (like B2B) is entirely missing. Legal
+compliance is weak (missing DTI footer, weak return policy,
+or basic security like plain-text passwords).
+•   Deployment is done manually without a CI/CD pipeline.
+Documentation is disorganized or missing key diagrams.
+Beginning
+(Below 60%)
+•   The webstore is incomplete, non-functional, or severely
+broken.
+•   It fails to implement the proposed tech stack or core e-
+commerce features (cart/checkout do not work).
+•   There is no Philippine context, no API integrations, and no
+advanced business logic.
+•   The project completely ignores Philippine legal compliance
+(RA 11967/RA 10173) and data security.
+•   There is no version control strategy, no deployment plan,
+and documentation is missing or plagiarized.

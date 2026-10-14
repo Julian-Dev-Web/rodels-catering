@@ -1,0 +1,26 @@
+digraph G {graph [bgcolor="white",fontname="Times New Roman",fontsize=19,ranksep=0.48,nodesep=0.30,pad=0.18]; node [shape=box,fontname="Times New Roman",fontsize=15,color="black",fontcolor="black",style="rounded,filled",fillcolor="white",margin="0.14,0.09"]; edge [fontname="Times New Roman",fontsize=11,color="black",fontcolor="black",arrowsize=0.65]; rankdir=TB; graph [splines=polyline]; edge [dir=none,fontsize=10,labeldistance=1.6];
+reservations->cancellations[style=invis,weight=2];
+payments->refunds[style=invis,weight=2];
+balances->reschedule_requests[style=invis,weight=2];
+cancellations->reservation_reschedules[style=invis,weight=2];
+refunds->transactions[style=invis,weight=2];
+reschedule_requests->refund_operations[style=invis,weight=2];
+reservations[label="reservations\nPK (id)\ncustomer_id\nmenu_set_id\ndrink_id\ndessert_id",fontsize=14];
+payments[label="payments\nPK (id)\nreservation_id\nexternal_session_id\nexternal_payment_id",fontsize=14];
+balances[label="balances\nPK (reservation_id)\nreservation_id",fontsize=14];
+transactions[label="transactions\nPK (id)\nreservation_id\npayment_id",fontsize=14];
+cancellations[label="cancellations\nPK (id)\nreservation_id",fontsize=14];
+refunds[label="refunds\nPK (id)\nreservation_id",fontsize=14];
+refund_operations[label="refund_operations\nPK (id)\nrefund_id\npayment_id\nexternal_refund_id",fontsize=14];
+reschedule_requests[label="reschedule_requests\nPK (id)\nreservation_id",fontsize=14];
+reservation_reschedules[label="reservation_reschedules\nPK (id)\nreservation_id",fontsize=14];
+reservations->balances[taillabel="1",headlabel="0..1",headport=n];
+reservations->cancellations[taillabel="1",headlabel="0..*",headport=n];
+reservations->payments[taillabel="1",headlabel="0..*",headport=n];
+payments->refund_operations[taillabel="1",headlabel="0..*",headport=nw];
+refunds->refund_operations[taillabel="1",headlabel="0..*",headport=ne];
+reservations->refunds[taillabel="1",headlabel="0..1",headport=n];
+reservations->reschedule_requests[taillabel="1",headlabel="0..*",headport=n];
+reservations->reservation_reschedules[taillabel="1",headlabel="0..*",headport=n];
+payments->transactions[taillabel="0..1",headlabel="0..*",headport=nw];
+reservations->transactions[taillabel="1",headlabel="0..*",headport=ne];}

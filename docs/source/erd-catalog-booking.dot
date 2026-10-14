@@ -1,0 +1,21 @@
+digraph G {graph [bgcolor="white",fontname="Times New Roman",fontsize=19,ranksep=0.48,nodesep=0.30,pad=0.18]; node [shape=box,fontname="Times New Roman",fontsize=15,color="black",fontcolor="black",style="rounded,filled",fillcolor="white",margin="0.14,0.09"]; edge [fontname="Times New Roman",fontsize=11,color="black",fontcolor="black",arrowsize=0.65]; rankdir=TB; graph [splines=polyline]; edge [dir=none,fontsize=10,labeldistance=1.6];
+profiles->drinks[style=invis,weight=2];
+menu_sets->desserts[style=invis,weight=2];
+menu_categories->dishes[style=invis,weight=2];
+drinks->reservations[style=invis,weight=2];
+desserts->reservation_items[style=invis,weight=2];
+profiles[label="profiles\nPK (id)\n",fontsize=14];
+menu_sets[label="menu_sets\nPK (id)\n",fontsize=14];
+menu_categories[label="menu_categories\nPK (id)\n",fontsize=14];
+dishes[label="dishes\nPK (id)\ncategory_id",fontsize=14];
+drinks[label="drinks\nPK (id)\n",fontsize=14];
+desserts[label="desserts\nPK (id)\n",fontsize=14];
+reservations[label="reservations\nPK (id)\ncustomer_id\nmenu_set_id\ndrink_id\ndessert_id",fontsize=14];
+reservation_items[label="reservation_items\nPK (reservation_id, dish_id)\nreservation_id\ndish_id",fontsize=14];
+menu_categories->dishes[taillabel="0..1",headlabel="0..*",headport=n];
+dishes->reservation_items[taillabel="1",headlabel="0..*",headport=nw];
+reservations->reservation_items[taillabel="1",headlabel="0..*",headport=ne];
+profiles->reservations[taillabel="1",headlabel="0..*",headport=ne];
+desserts->reservations[taillabel="0..1",headlabel="0..*",headport=w];
+drinks->reservations[taillabel="0..1",headlabel="0..*",headport=e];
+menu_sets->reservations[taillabel="1",headlabel="0..*",headport=nw];}

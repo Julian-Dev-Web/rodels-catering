@@ -1,0 +1,25 @@
+digraph G {graph [bgcolor="white",fontname="Times New Roman",fontsize=19,ranksep=0.48,nodesep=0.30,pad=0.18]; node [shape=box,fontname="Times New Roman",fontsize=15,color="black",fontcolor="black",style="rounded,filled",fillcolor="white",margin="0.14,0.09"]; edge [fontname="Times New Roman",fontsize=11,color="black",fontcolor="black",arrowsize=0.65]; rankdir=TB;
+   actors[label="Customer / manager / super_admin",shape=ellipse];
+   client[label="Browser SPA: React + TypeScript
+Static assets served by Vercel
+GitHub main triggers frontend builds"];
+   api[label="Supabase platform APIs
+Auth, PostgREST/RPC, Storage, Realtime"];
+   functions[label="Supabase Edge Functions: Deno
+User verification; server-held secrets"];
+   database[label="PostgreSQL
+34 public tables; RLS, constraints and SQL rules",shape=cylinder];
+   provider[label="PayMongo
+Hosted checkout / refunds / signed webhook"];
+   optional[label="Optional Resend email code
+Delivery configuration unverified",style="rounded,dashed"];
+   actors->client[label="Use application"];
+   client->api[label="User JWT / public reads"];
+   client->functions[label="Checkout and staff requests"];
+   api->database[label="Authorized data and business RPCs"];
+   functions->api[label="Verify user / service RPCs"];
+   functions->provider[label="REST API / signed webhook",dir=both];
+   functions->optional[label="Internal worker only",style=dashed];
+   provider->optional[style=invis];
+   graph[label="Browser also uses PSGC address lookups with manual fallback.
+Operators apply SQL and deploy functions through the CLI.",labelloc=b,fontsize=12];}

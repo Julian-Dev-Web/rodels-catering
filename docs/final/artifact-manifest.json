@@ -1,0 +1,118 @@
+{
+  "date": "2026-10-14",
+  "title": "RodelConnect: A Digital Reservation System for Catering Services with Integrated Chatbot",
+  "authors": [
+    "Japle Ligaya",
+    "Wesley Manabat",
+    "Julian Quiel Santos"
+  ],
+  "pages": 42,
+  "figures": 10,
+  "tables": 5,
+  "publicTables": 34,
+  "foreignKeys": 35,
+  "publicRPCs": 29,
+  "references": 26,
+  "entries": [
+    {
+      "file": "README.md",
+      "bytes": 3816,
+      "sha256": "1ae162852b182c0e6da79fae6ff258ee9e83739e2b8b48e9fc490e48cd19592d"
+    },
+    {
+      "file": "PPT_AND_PROCEEDINGS_PROMPT.md",
+      "bytes": 6729,
+      "sha256": "059389a54f9f2b5bf18d35d3270c94c9ce494484a04225e51789bdd5f440eded"
+    },
+    {
+      "file": "revision-action-matrix.md",
+      "bytes": 5727,
+      "sha256": "c2fddaa0ccf2bf67c7d502dec18ef59f12b669722d24815354036c8096e25e06"
+    },
+    {
+      "file": "evidence-audit.md",
+      "bytes": 7668,
+      "sha256": "087569dd2392e5ba765e9e16fa46d7439a94b6e9de91c5d9df7172b63a6c2be0"
+    },
+    {
+      "file": "gaps-and-questions.md",
+      "bytes": 4090,
+      "sha256": "782e4220803fc05c09c28edcf3f357ac9b228722176e62c062a0ce377e379ce0"
+    },
+    {
+      "file": "rendered-qa.md",
+      "bytes": 2650,
+      "sha256": "7ae5aaea49c5615739ca47148b34be9065e2d7f659aed55132ecfd037f79e448"
+    },
+    {
+      "file": "final/RodelConnect_ELEC5_Technical_Documentation_2026-10-14.docx",
+      "bytes": 13764761,
+      "sha256": "6c83710ca496197c04da28ff4c659ea9c79255d5e2f7e9f2ec93dbde243e3dcb"
+    },
+    {
+      "file": "final/RodelConnect_ELEC5_Technical_Documentation_2026-10-14.pdf",
+      "bytes": 11147180,
+      "sha256": "ff76b0ad681ef8f5349abd3e0257d252a320dce92d40d96a6eef213b0b37128d"
+    },
+    {
+      "file": "source/schema-manifest.json",
+      "bytes": 98913,
+      "sha256": "f4624daf1a607c65b13d274d39baaa4462d0ae00cf6ce1b2eb7174cd97253a4e"
+    },
+    {
+      "file": "source/dependency-versions.json",
+      "bytes": 331,
+      "sha256": "e61cca648122e8cfdd6495b23866a08f9b36dee723bcca3773fca84b1b8cc833"
+    },
+    {
+      "file": "figures/architecture.png",
+      "bytes": 686066,
+      "sha256": "b819a2dc55172f899a95389531cb28da5ed11fc82a2480af53070d0f28ba82cf"
+    },
+    {
+      "file": "figures/reservation-workflow.png",
+      "bytes": 921469,
+      "sha256": "4de33d6481560eb302e1c45782dde237790a998102f19e3ec359d0ad668e4927"
+    },
+    {
+      "file": "figures/payment-data-flow.png",
+      "bytes": 878712,
+      "sha256": "85e703a4f205bd002adc7e02eb4ec53fa9ba727c1c091e629b6b4fb92aa10026"
+    },
+    {
+      "file": "figures/erd-complete.png",
+      "bytes": 1459372,
+      "sha256": "04feca83b0e46a916d90ce39bd5c4a9395877b41f0396c6021bf91dfbf6c98e2"
+    },
+    {
+      "file": "figures/erd-catalog-booking.png",
+      "bytes": 716930,
+      "sha256": "04b354fd68682ef99313177ada666a65369b8e819e51e6ddb610e3a95b17dd0a"
+    },
+    {
+      "file": "figures/erd-event-selections.png",
+      "bytes": 851411,
+      "sha256": "3d9068290f4dd5b51a9919f56ec40a29828d465c4aa89af8b1b88d22ae4f4d3e"
+    },
+    {
+      "file": "figures/erd-finance-scheduling.png",
+      "bytes": 744523,
+      "sha256": "b133f79617e270c770a9571e68af0fb9da71685133ff960ee9aa1e666f034e3a"
+    },
+    {
+      "file": "figures/erd-identity-service.png",
+      "bytes": 915550,
+      "sha256": "b2483dbfddf05d92d7d17d99384c3ebe73001628957693ddc4472bcd0d1305fc"
+    },
+    {
+      "file": "figures/ui-register.png",
+      "bytes": 3801822,
+      "sha256": "eb6ee1011d95f57c6b7c4ce360d8331fe2587d304cdac7f3fb81496ead46b651"
+    },
+    {
+      "file": "figures/ui-login.png",
+      "bytes": 3505240,
+      "sha256": "8151998215a566942b00903c2fd8e4de17b6e63ddd2fc22614fd3507c8681960"
+    }
+  ]
+}

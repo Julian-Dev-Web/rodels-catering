@@ -1,0 +1,40 @@
+[
+  {
+    "file": "ui-home.png",
+    "source": "https://rodels-catering.vercel.app/",
+    "captured_date": "2026-10-14",
+    "type": "real unauthenticated live UI screenshot",
+    "title": "Rodel's Catering | Made for your moments",
+    "h1": "For the moments\nyou’ll remember.",
+    "fieldLabels": []
+  },
+  {
+    "file": "ui-register.png",
+    "source": "https://rodels-catering.vercel.app/register",
+    "captured_date": "2026-10-14",
+    "type": "real unauthenticated live UI screenshot",
+    "title": "Rodel's Catering | Made for your moments",
+    "h1": "Your next celebration starts here.",
+    "fieldLabels": [
+      "First name *",
+      "Middle name (optional)",
+      "Last name *",
+      "Mobile number *",
+      "Email address *",
+      "Password *",
+      "Confirm password *"
+    ]
+  },
+  {
+    "file": "ui-login.png",
+    "source": "https://rodels-catering.vercel.app/login",
+    "captured_date": "2026-10-14",
+    "type": "real unauthenticated live UI screenshot",
+    "title": "Rodel's Catering | Made for your moments",
+    "h1": "Good to see you again.",
+    "fieldLabels": [
+      "Email address *",
+      "Password *"
+    ]
+  }
+]

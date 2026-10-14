@@ -1,0 +1,3582 @@
+{
+  "source": "13 repository migrations executed in isolated PostgreSQL/PGlite with mocked platform Auth/Storage scaffolding; no hosted records read",
+  "tables": [
+    {
+      "name": "add_ons",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "add_ons",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "add_ons",
+          "column_name": "name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "add_ons",
+          "column_name": "price",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "add_ons",
+          "column_name": "active",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "table_name": "add_ons",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "add_ons",
+          "name": "add_ons_price_check",
+          "type": "c",
+          "definition": "CHECK ((price >= 0))"
+        },
+        {
+          "table_name": "add_ons",
+          "name": "add_ons_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "add_ons",
+          "policyname": "catalog_manage",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "ALL",
+          "qual": "(current_app_role() = 'super_admin'::app_role)",
+          "with_check": "(current_app_role() = 'super_admin'::app_role)"
+        },
+        {
+          "tablename": "add_ons",
+          "policyname": "catalog_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((active AND (NOT maintenance_enabled())) OR is_staff())",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "app_settings",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "app_settings",
+          "column_name": "key",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "app_settings",
+          "column_name": "value",
+          "data_type": "jsonb",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "app_settings",
+          "column_name": "updated_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "app_settings",
+          "name": "app_settings_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (key)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "app_settings",
+          "policyname": "settings_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((key = ANY (ARRAY['maintenance'::text, 'refund_partial_rate'::text, 'refund_full_rate'::text])) OR (current_app_role() = 'super_admin'::app_role))",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "audit_logs",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "audit_logs",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "audit_logs",
+          "column_name": "actor_id",
+          "data_type": "uuid",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "audit_logs",
+          "column_name": "action",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "audit_logs",
+          "column_name": "entity_id",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "audit_logs",
+          "column_name": "details",
+          "data_type": "jsonb",
+          "is_nullable": "NO",
+          "column_default": "'{}'::jsonb"
+        },
+        {
+          "table_name": "audit_logs",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "audit_logs",
+          "name": "audit_logs_actor_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (actor_id) REFERENCES profiles(id) ON DELETE SET NULL"
+        },
+        {
+          "table_name": "audit_logs",
+          "name": "audit_logs_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "audit_logs",
+          "policyname": "audit_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "(current_app_role() = 'super_admin'::app_role)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "balances",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "balances",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "balances",
+          "column_name": "amount",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "balances",
+          "column_name": "updated_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "balances",
+          "name": "balances_amount_check",
+          "type": "c",
+          "definition": "CHECK ((amount >= 0))"
+        },
+        {
+          "table_name": "balances",
+          "name": "balances_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+        },
+        {
+          "table_name": "balances",
+          "name": "balances_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (reservation_id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "balances",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "cancellations",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "cancellations",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "cancellations",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "cancellations",
+          "column_name": "reason",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "cancellations",
+          "column_name": "previous_status",
+          "data_type": "USER-DEFINED",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "cancellations",
+          "column_name": "status",
+          "data_type": "USER-DEFINED",
+          "is_nullable": "NO",
+          "column_default": "'pending'::refund_status"
+        },
+        {
+          "table_name": "cancellations",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "cancellations",
+          "name": "cancellations_reason_check",
+          "type": "c",
+          "definition": "CHECK (((length(reason) >= 5) AND (length(reason) <= 2000)))"
+        },
+        {
+          "table_name": "cancellations",
+          "name": "cancellations_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+        },
+        {
+          "table_name": "cancellations",
+          "name": "cancellations_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "cancellations",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "chair_types",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "chair_types",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "chair_types",
+          "column_name": "name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "chair_types",
+          "column_name": "price",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "chair_types",
+          "column_name": "active",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "table_name": "chair_types",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "chair_types",
+          "name": "chair_types_price_check",
+          "type": "c",
+          "definition": "CHECK ((price >= 0))"
+        },
+        {
+          "table_name": "chair_types",
+          "name": "chair_types_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "chair_types",
+          "policyname": "catalog_manage",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "ALL",
+          "qual": "(current_app_role() = 'super_admin'::app_role)",
+          "with_check": "(current_app_role() = 'super_admin'::app_role)"
+        },
+        {
+          "tablename": "chair_types",
+          "policyname": "catalog_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((active AND (NOT maintenance_enabled())) OR is_staff())",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "desserts",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "desserts",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "desserts",
+          "column_name": "name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "desserts",
+          "column_name": "active",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "table_name": "desserts",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "desserts",
+          "name": "desserts_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "desserts",
+          "policyname": "catalog_manage",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "ALL",
+          "qual": "is_staff()",
+          "with_check": "is_staff()"
+        },
+        {
+          "tablename": "desserts",
+          "policyname": "catalog_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((active AND (NOT maintenance_enabled())) OR is_staff())",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "dishes",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "dishes",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "dishes",
+          "column_name": "name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "dishes",
+          "column_name": "category_id",
+          "data_type": "uuid",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "dishes",
+          "column_name": "description",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": "''::text"
+        },
+        {
+          "table_name": "dishes",
+          "column_name": "active",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "table_name": "dishes",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "dishes",
+          "name": "dishes_category_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (category_id) REFERENCES menu_categories(id)"
+        },
+        {
+          "table_name": "dishes",
+          "name": "dishes_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "dishes",
+          "policyname": "catalog_manage",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "ALL",
+          "qual": "is_staff()",
+          "with_check": "is_staff()"
+        },
+        {
+          "tablename": "dishes",
+          "policyname": "catalog_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((active AND (NOT maintenance_enabled())) OR is_staff())",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "drinks",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "drinks",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "drinks",
+          "column_name": "name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "drinks",
+          "column_name": "active",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "table_name": "drinks",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "drinks",
+          "name": "drinks_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "drinks",
+          "policyname": "catalog_manage",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "ALL",
+          "qual": "is_staff()",
+          "with_check": "is_staff()"
+        },
+        {
+          "tablename": "drinks",
+          "policyname": "catalog_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((active AND (NOT maintenance_enabled())) OR is_staff())",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "email_deliveries",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "email_deliveries",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "email_deliveries",
+          "column_name": "notification_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "email_deliveries",
+          "column_name": "provider_id",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "email_deliveries",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "email_deliveries",
+          "name": "email_deliveries_notification_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (notification_id) REFERENCES notifications(id)"
+        },
+        {
+          "table_name": "email_deliveries",
+          "name": "email_deliveries_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "table_name": "email_deliveries",
+          "name": "email_deliveries_notification_id_key",
+          "type": "u",
+          "definition": "UNIQUE (notification_id)"
+        }
+      ],
+      "policies": []
+    },
+    {
+      "name": "event_features",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "event_features",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "event_features",
+          "column_name": "name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "event_features",
+          "column_name": "price",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "event_features",
+          "column_name": "active",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "table_name": "event_features",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "event_features",
+          "name": "event_features_price_check",
+          "type": "c",
+          "definition": "CHECK ((price >= 0))"
+        },
+        {
+          "table_name": "event_features",
+          "name": "event_features_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "event_features",
+          "policyname": "catalog_manage",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "ALL",
+          "qual": "(current_app_role() = 'super_admin'::app_role)",
+          "with_check": "(current_app_role() = 'super_admin'::app_role)"
+        },
+        {
+          "tablename": "event_features",
+          "policyname": "catalog_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((active AND (NOT maintenance_enabled())) OR is_staff())",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "event_setups",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "event_setups",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "event_setups",
+          "column_name": "name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "event_setups",
+          "column_name": "price",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "event_setups",
+          "column_name": "active",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "table_name": "event_setups",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "event_setups",
+          "name": "event_setups_price_check",
+          "type": "c",
+          "definition": "CHECK ((price >= 0))"
+        },
+        {
+          "table_name": "event_setups",
+          "name": "event_setups_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "event_setups",
+          "policyname": "catalog_manage",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "ALL",
+          "qual": "(current_app_role() = 'super_admin'::app_role)",
+          "with_check": "(current_app_role() = 'super_admin'::app_role)"
+        },
+        {
+          "tablename": "event_setups",
+          "policyname": "catalog_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((active AND (NOT maintenance_enabled())) OR is_staff())",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "feedback",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "feedback",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "feedback",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "feedback",
+          "column_name": "customer_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "feedback",
+          "column_name": "rating",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "feedback",
+          "column_name": "message",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "feedback",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "feedback",
+          "name": "feedback_message_check",
+          "type": "c",
+          "definition": "CHECK (((length(message) >= 5) AND (length(message) <= 3000)))"
+        },
+        {
+          "table_name": "feedback",
+          "name": "feedback_rating_check",
+          "type": "c",
+          "definition": "CHECK (((rating >= 1) AND (rating <= 5)))"
+        },
+        {
+          "table_name": "feedback",
+          "name": "feedback_customer_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (customer_id) REFERENCES profiles(id)"
+        },
+        {
+          "table_name": "feedback",
+          "name": "feedback_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+        },
+        {
+          "table_name": "feedback",
+          "name": "feedback_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "table_name": "feedback",
+          "name": "feedback_reservation_id_key",
+          "type": "u",
+          "definition": "UNIQUE (reservation_id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "feedback",
+          "policyname": "feedback_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "(is_staff() OR ((customer_id = auth.uid()) AND customer_access()))",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "gallery_images",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "gallery_images",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "gallery_images",
+          "column_name": "name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "gallery_images",
+          "column_name": "image_url",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "gallery_images",
+          "column_name": "active",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "table_name": "gallery_images",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "gallery_images",
+          "name": "gallery_images_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "gallery_images",
+          "policyname": "catalog_manage",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "ALL",
+          "qual": "(current_app_role() = 'super_admin'::app_role)",
+          "with_check": "(current_app_role() = 'super_admin'::app_role)"
+        },
+        {
+          "tablename": "gallery_images",
+          "policyname": "catalog_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((active AND (NOT maintenance_enabled())) OR is_staff())",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "menu_categories",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "menu_categories",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "menu_categories",
+          "column_name": "name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "menu_categories",
+          "column_name": "active",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "table_name": "menu_categories",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "menu_categories",
+          "name": "menu_categories_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "table_name": "menu_categories",
+          "name": "menu_categories_name_key",
+          "type": "u",
+          "definition": "UNIQUE (name)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "menu_categories",
+          "policyname": "catalog_manage",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "ALL",
+          "qual": "is_staff()",
+          "with_check": "is_staff()"
+        },
+        {
+          "tablename": "menu_categories",
+          "policyname": "catalog_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((active AND (NOT maintenance_enabled())) OR is_staff())",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "menu_sets",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "menu_sets",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "menu_sets",
+          "column_name": "name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "menu_sets",
+          "column_name": "description",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": "''::text"
+        },
+        {
+          "table_name": "menu_sets",
+          "column_name": "price",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "menu_sets",
+          "column_name": "dish_count",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "menu_sets",
+          "column_name": "min_guests",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "30"
+        },
+        {
+          "table_name": "menu_sets",
+          "column_name": "image_url",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "menu_sets",
+          "column_name": "active",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "table_name": "menu_sets",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "menu_sets",
+          "name": "menu_sets_dish_count_check",
+          "type": "c",
+          "definition": "CHECK (((dish_count >= 1) AND (dish_count <= 20)))"
+        },
+        {
+          "table_name": "menu_sets",
+          "name": "menu_sets_min_guests_check",
+          "type": "c",
+          "definition": "CHECK ((min_guests > 0))"
+        },
+        {
+          "table_name": "menu_sets",
+          "name": "menu_sets_price_check",
+          "type": "c",
+          "definition": "CHECK ((price > 0))"
+        },
+        {
+          "table_name": "menu_sets",
+          "name": "menu_sets_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "menu_sets",
+          "policyname": "catalog_manage",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "ALL",
+          "qual": "(current_app_role() = 'super_admin'::app_role)",
+          "with_check": "(current_app_role() = 'super_admin'::app_role)"
+        },
+        {
+          "tablename": "menu_sets",
+          "policyname": "catalog_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((active AND (NOT maintenance_enabled())) OR is_staff())",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "notifications",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "notifications",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "notifications",
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "notifications",
+          "column_name": "title",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "notifications",
+          "column_name": "body",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "notifications",
+          "column_name": "href",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "notifications",
+          "column_name": "read_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "notifications",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "notifications",
+          "name": "notifications_user_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (user_id) REFERENCES profiles(id)"
+        },
+        {
+          "table_name": "notifications",
+          "name": "notifications_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "notifications",
+          "policyname": "notifications_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "((user_id = auth.uid()) AND (customer_access() OR is_staff()))",
+          "with_check": null
+        },
+        {
+          "tablename": "notifications",
+          "policyname": "notifications_update",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "UPDATE",
+          "qual": "((user_id = auth.uid()) AND (customer_access() OR is_staff()))",
+          "with_check": "(user_id = auth.uid())"
+        }
+      ]
+    },
+    {
+      "name": "payments",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "payments",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "payments",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "payments",
+          "column_name": "amount",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "payments",
+          "column_name": "intent",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "payments",
+          "column_name": "status",
+          "data_type": "USER-DEFINED",
+          "is_nullable": "NO",
+          "column_default": "'pending'::payment_status"
+        },
+        {
+          "table_name": "payments",
+          "column_name": "external_session_id",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "payments",
+          "column_name": "external_payment_id",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "payments",
+          "column_name": "checkout_url",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "payments",
+          "column_name": "provider_claimed_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "payments",
+          "column_name": "expires_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "(now() + '24:00:00'::interval)"
+        },
+        {
+          "table_name": "payments",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "payments",
+          "name": "payments_amount_check",
+          "type": "c",
+          "definition": "CHECK ((amount > 0))"
+        },
+        {
+          "table_name": "payments",
+          "name": "payments_intent_check",
+          "type": "c",
+          "definition": "CHECK ((intent = ANY (ARRAY['partial'::text, 'full'::text, 'balance'::text])))"
+        },
+        {
+          "table_name": "payments",
+          "name": "payments_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+        },
+        {
+          "table_name": "payments",
+          "name": "payments_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "table_name": "payments",
+          "name": "payments_external_payment_id_key",
+          "type": "u",
+          "definition": "UNIQUE (external_payment_id)"
+        },
+        {
+          "table_name": "payments",
+          "name": "payments_external_session_id_key",
+          "type": "u",
+          "definition": "UNIQUE (external_session_id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "payments",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "profiles",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "profiles",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "profiles",
+          "column_name": "full_name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": "''::text"
+        },
+        {
+          "table_name": "profiles",
+          "column_name": "phone",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": "''::text"
+        },
+        {
+          "table_name": "profiles",
+          "column_name": "avatar_path",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "profiles",
+          "column_name": "role",
+          "data_type": "USER-DEFINED",
+          "is_nullable": "NO",
+          "column_default": "'customer'::app_role"
+        },
+        {
+          "table_name": "profiles",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        },
+        {
+          "table_name": "profiles",
+          "column_name": "first_name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": "''::text"
+        },
+        {
+          "table_name": "profiles",
+          "column_name": "middle_name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": "''::text"
+        },
+        {
+          "table_name": "profiles",
+          "column_name": "last_name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": "''::text"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "profiles",
+          "name": "profiles_first_name_check",
+          "type": "c",
+          "definition": "CHECK ((length(first_name) <= 60))"
+        },
+        {
+          "table_name": "profiles",
+          "name": "profiles_full_name_check",
+          "type": "c",
+          "definition": "CHECK ((length(full_name) <= 150))"
+        },
+        {
+          "table_name": "profiles",
+          "name": "profiles_last_name_check",
+          "type": "c",
+          "definition": "CHECK ((length(last_name) <= 60))"
+        },
+        {
+          "table_name": "profiles",
+          "name": "profiles_middle_name_check",
+          "type": "c",
+          "definition": "CHECK ((length(middle_name) <= 60))"
+        },
+        {
+          "table_name": "profiles",
+          "name": "profiles_phone_check",
+          "type": "c",
+          "definition": "CHECK ((length(phone) <= 30))"
+        },
+        {
+          "table_name": "profiles",
+          "name": "profiles_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE"
+        },
+        {
+          "table_name": "profiles",
+          "name": "profiles_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "profiles",
+          "policyname": "profiles_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "((id = auth.uid()) OR is_staff())",
+          "with_check": null
+        },
+        {
+          "tablename": "profiles",
+          "policyname": "profiles_update",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "UPDATE",
+          "qual": "((id = auth.uid()) AND customer_access())",
+          "with_check": "(id = auth.uid())"
+        }
+      ]
+    },
+    {
+      "name": "refund_operations",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "refund_operations",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "refund_operations",
+          "column_name": "refund_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "refund_operations",
+          "column_name": "payment_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "refund_operations",
+          "column_name": "amount",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "refund_operations",
+          "column_name": "claimed",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "false"
+        },
+        {
+          "table_name": "refund_operations",
+          "column_name": "external_refund_id",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "refund_operations",
+          "column_name": "status",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": "'not_started'::text"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "refund_operations",
+          "name": "refund_operations_amount_check",
+          "type": "c",
+          "definition": "CHECK ((amount > 0))"
+        },
+        {
+          "table_name": "refund_operations",
+          "name": "refund_operations_status_check",
+          "type": "c",
+          "definition": "CHECK ((status = ANY (ARRAY['not_started'::text, 'pending'::text, 'processing'::text, 'succeeded'::text, 'failed'::text])))"
+        },
+        {
+          "table_name": "refund_operations",
+          "name": "refund_operations_payment_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (payment_id) REFERENCES payments(id)"
+        },
+        {
+          "table_name": "refund_operations",
+          "name": "refund_operations_refund_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (refund_id) REFERENCES refunds(id)"
+        },
+        {
+          "table_name": "refund_operations",
+          "name": "refund_operations_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "table_name": "refund_operations",
+          "name": "refund_operations_external_refund_id_key",
+          "type": "u",
+          "definition": "UNIQUE (external_refund_id)"
+        },
+        {
+          "table_name": "refund_operations",
+          "name": "refund_operations_refund_id_payment_id_key",
+          "type": "u",
+          "definition": "UNIQUE (refund_id, payment_id)"
+        }
+      ],
+      "policies": []
+    },
+    {
+      "name": "refunds",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "refunds",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "refunds",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "refunds",
+          "column_name": "eligible_amount",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "refunds",
+          "column_name": "status",
+          "data_type": "USER-DEFINED",
+          "is_nullable": "NO",
+          "column_default": "'pending'::refund_status"
+        },
+        {
+          "table_name": "refunds",
+          "column_name": "external_refund_ids",
+          "data_type": "jsonb",
+          "is_nullable": "NO",
+          "column_default": "'[]'::jsonb"
+        },
+        {
+          "table_name": "refunds",
+          "column_name": "processing",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "false"
+        },
+        {
+          "table_name": "refunds",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "refunds",
+          "name": "refunds_eligible_amount_check",
+          "type": "c",
+          "definition": "CHECK ((eligible_amount > 0))"
+        },
+        {
+          "table_name": "refunds",
+          "name": "refunds_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+        },
+        {
+          "table_name": "refunds",
+          "name": "refunds_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "table_name": "refunds",
+          "name": "refunds_reservation_id_key",
+          "type": "u",
+          "definition": "UNIQUE (reservation_id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "refunds",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "reschedule_requests",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "reschedule_requests",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "reschedule_requests",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reschedule_requests",
+          "column_name": "new_date",
+          "data_type": "date",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reschedule_requests",
+          "column_name": "reason",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reschedule_requests",
+          "column_name": "status",
+          "data_type": "USER-DEFINED",
+          "is_nullable": "NO",
+          "column_default": "'pending'::refund_status"
+        },
+        {
+          "table_name": "reschedule_requests",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "reschedule_requests",
+          "name": "reschedule_requests_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+        },
+        {
+          "table_name": "reschedule_requests",
+          "name": "reschedule_requests_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "reschedule_requests",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "reservation_add_ons",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "reservation_add_ons",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservation_add_ons",
+          "column_name": "add_on_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservation_add_ons",
+          "column_name": "quantity",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "1"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "reservation_add_ons",
+          "name": "reservation_add_ons_quantity_check",
+          "type": "c",
+          "definition": "CHECK (((quantity >= 1) AND (quantity <= 1000)))"
+        },
+        {
+          "table_name": "reservation_add_ons",
+          "name": "reservation_add_ons_add_on_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (add_on_id) REFERENCES add_ons(id)"
+        },
+        {
+          "table_name": "reservation_add_ons",
+          "name": "reservation_add_ons_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE"
+        },
+        {
+          "table_name": "reservation_add_ons",
+          "name": "reservation_add_ons_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (reservation_id, add_on_id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "reservation_add_ons",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "reservation_event_features",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "reservation_event_features",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservation_event_features",
+          "column_name": "event_feature_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "reservation_event_features",
+          "name": "reservation_event_features_event_feature_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (event_feature_id) REFERENCES event_features(id)"
+        },
+        {
+          "table_name": "reservation_event_features",
+          "name": "reservation_event_features_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE"
+        },
+        {
+          "table_name": "reservation_event_features",
+          "name": "reservation_event_features_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (reservation_id, event_feature_id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "reservation_event_features",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "reservation_event_setups",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "reservation_event_setups",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservation_event_setups",
+          "column_name": "event_setup_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "reservation_event_setups",
+          "name": "reservation_event_setups_event_setup_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (event_setup_id) REFERENCES event_setups(id)"
+        },
+        {
+          "table_name": "reservation_event_setups",
+          "name": "reservation_event_setups_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE"
+        },
+        {
+          "table_name": "reservation_event_setups",
+          "name": "reservation_event_setups_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (reservation_id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "reservation_event_setups",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "reservation_items",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "reservation_items",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservation_items",
+          "column_name": "dish_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "reservation_items",
+          "name": "reservation_items_dish_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (dish_id) REFERENCES dishes(id)"
+        },
+        {
+          "table_name": "reservation_items",
+          "name": "reservation_items_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE"
+        },
+        {
+          "table_name": "reservation_items",
+          "name": "reservation_items_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (reservation_id, dish_id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "reservation_items",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "reservation_reschedules",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "reservation_reschedules",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "reservation_reschedules",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservation_reschedules",
+          "column_name": "old_date",
+          "data_type": "date",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservation_reschedules",
+          "column_name": "new_date",
+          "data_type": "date",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservation_reschedules",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "reservation_reschedules",
+          "name": "reservation_reschedules_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+        },
+        {
+          "table_name": "reservation_reschedules",
+          "name": "reservation_reschedules_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "reservation_reschedules",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "reservation_tables_chairs",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "reservation_tables_chairs",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservation_tables_chairs",
+          "column_name": "table_type_id",
+          "data_type": "uuid",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "reservation_tables_chairs",
+          "column_name": "chair_type_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservation_tables_chairs",
+          "column_name": "table_quantity",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "0"
+        },
+        {
+          "table_name": "reservation_tables_chairs",
+          "column_name": "chair_quantity",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "0"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "reservation_tables_chairs",
+          "name": "reservation_tables_chairs_chair_quantity_check",
+          "type": "c",
+          "definition": "CHECK (((chair_quantity >= 0) AND (chair_quantity <= 10000)))"
+        },
+        {
+          "table_name": "reservation_tables_chairs",
+          "name": "reservation_tables_chairs_table_quantity_check",
+          "type": "c",
+          "definition": "CHECK (((table_quantity >= 0) AND (table_quantity <= 1000)))"
+        },
+        {
+          "table_name": "reservation_tables_chairs",
+          "name": "reservation_tables_chairs_chair_type_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (chair_type_id) REFERENCES chair_types(id)"
+        },
+        {
+          "table_name": "reservation_tables_chairs",
+          "name": "reservation_tables_chairs_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE"
+        },
+        {
+          "table_name": "reservation_tables_chairs",
+          "name": "reservation_tables_chairs_table_type_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (table_type_id) REFERENCES table_types(id)"
+        },
+        {
+          "table_name": "reservation_tables_chairs",
+          "name": "reservation_tables_chairs_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (reservation_id, chair_type_id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "reservation_tables_chairs",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "reservations",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "reservations",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "customer_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "event_name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "event_date",
+          "data_type": "date",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "event_time",
+          "data_type": "time without time zone",
+          "is_nullable": "NO",
+          "column_default": "'12:00:00'::time without time zone"
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "address",
+          "data_type": "jsonb",
+          "is_nullable": "NO",
+          "column_default": "'{}'::jsonb"
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "guests",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "menu_set_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "drink_id",
+          "data_type": "uuid",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "dessert_id",
+          "data_type": "uuid",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "status",
+          "data_type": "USER-DEFINED",
+          "is_nullable": "NO",
+          "column_default": "'draft'::reservation_status"
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "holds_capacity",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "false"
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "payment_status",
+          "data_type": "USER-DEFINED",
+          "is_nullable": "NO",
+          "column_default": "'unpaid'::payment_status"
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "total",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": "0"
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "paid",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": "0"
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "refunded",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": "0"
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "pricing",
+          "data_type": "jsonb",
+          "is_nullable": "NO",
+          "column_default": "'{}'::jsonb"
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "finalized_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        },
+        {
+          "table_name": "reservations",
+          "column_name": "updated_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "reservations",
+          "name": "reservations_address_check",
+          "type": "c",
+          "definition": "CHECK ((jsonb_typeof(address) = 'object'::text))"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_check",
+          "type": "c",
+          "definition": "CHECK ((paid <= total))"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_check1",
+          "type": "c",
+          "definition": "CHECK ((refunded <= paid))"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_event_name_check",
+          "type": "c",
+          "definition": "CHECK (((length(event_name) >= 2) AND (length(event_name) <= 150)))"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_event_time_check",
+          "type": "c",
+          "definition": "CHECK (((event_time >= '07:00:00'::time without time zone) AND (event_time <= '22:00:00'::time without time zone)))"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_guests_check",
+          "type": "c",
+          "definition": "CHECK (((guests >= 1) AND (guests <= 10000)))"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_paid_check",
+          "type": "c",
+          "definition": "CHECK ((paid >= 0))"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_refunded_check",
+          "type": "c",
+          "definition": "CHECK ((refunded >= 0))"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_total_check",
+          "type": "c",
+          "definition": "CHECK ((total >= 0))"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_customer_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (customer_id) REFERENCES profiles(id)"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_dessert_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (dessert_id) REFERENCES desserts(id)"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_drink_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (drink_id) REFERENCES drinks(id)"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_menu_set_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (menu_set_id) REFERENCES menu_sets(id)"
+        },
+        {
+          "table_name": "reservations",
+          "name": "reservations_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "reservations",
+          "policyname": "reservation_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "support_messages",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "support_messages",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "support_messages",
+          "column_name": "ticket_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "support_messages",
+          "column_name": "author_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "support_messages",
+          "column_name": "body",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "support_messages",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "support_messages",
+          "name": "support_messages_body_check",
+          "type": "c",
+          "definition": "CHECK (((length(body) >= 1) AND (length(body) <= 5000)))"
+        },
+        {
+          "table_name": "support_messages",
+          "name": "support_messages_author_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (author_id) REFERENCES profiles(id)"
+        },
+        {
+          "table_name": "support_messages",
+          "name": "support_messages_ticket_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE"
+        },
+        {
+          "table_name": "support_messages",
+          "name": "support_messages_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "support_messages",
+          "policyname": "message_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "(EXISTS ( SELECT 1\n   FROM support_tickets t\n  WHERE (t.id = support_messages.ticket_id)))",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "support_tickets",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "support_tickets",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "support_tickets",
+          "column_name": "customer_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "support_tickets",
+          "column_name": "subject",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "support_tickets",
+          "column_name": "status",
+          "data_type": "USER-DEFINED",
+          "is_nullable": "NO",
+          "column_default": "'pending'::support_status"
+        },
+        {
+          "table_name": "support_tickets",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "support_tickets",
+          "name": "support_tickets_subject_check",
+          "type": "c",
+          "definition": "CHECK (((length(subject) >= 3) AND (length(subject) <= 150)))"
+        },
+        {
+          "table_name": "support_tickets",
+          "name": "support_tickets_customer_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (customer_id) REFERENCES profiles(id)"
+        },
+        {
+          "table_name": "support_tickets",
+          "name": "support_tickets_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "support_tickets",
+          "policyname": "ticket_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "(is_staff() OR ((customer_id = auth.uid()) AND customer_access()))",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "table_types",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "table_types",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "table_types",
+          "column_name": "name",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "table_types",
+          "column_name": "price",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": "0"
+        },
+        {
+          "table_name": "table_types",
+          "column_name": "active",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true"
+        },
+        {
+          "table_name": "table_types",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "table_types",
+          "name": "table_types_price_check",
+          "type": "c",
+          "definition": "CHECK ((price >= 0))"
+        },
+        {
+          "table_name": "table_types",
+          "name": "table_types_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "table_types",
+          "policyname": "catalog_manage",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "ALL",
+          "qual": "(current_app_role() = 'super_admin'::app_role)",
+          "with_check": "(current_app_role() = 'super_admin'::app_role)"
+        },
+        {
+          "tablename": "table_types",
+          "policyname": "catalog_read",
+          "roles": [
+            "public"
+          ],
+          "cmd": "SELECT",
+          "qual": "((active AND (NOT maintenance_enabled())) OR is_staff())",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "transactions",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "transactions",
+          "column_name": "id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": "gen_random_uuid()"
+        },
+        {
+          "table_name": "transactions",
+          "column_name": "reservation_id",
+          "data_type": "uuid",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "transactions",
+          "column_name": "payment_id",
+          "data_type": "uuid",
+          "is_nullable": "YES",
+          "column_default": null
+        },
+        {
+          "table_name": "transactions",
+          "column_name": "kind",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "transactions",
+          "column_name": "amount",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "transactions",
+          "column_name": "reference",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "transactions",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "transactions",
+          "name": "transactions_amount_check",
+          "type": "c",
+          "definition": "CHECK ((amount > 0))"
+        },
+        {
+          "table_name": "transactions",
+          "name": "transactions_kind_check",
+          "type": "c",
+          "definition": "CHECK ((kind = ANY (ARRAY['payment'::text, 'refund'::text])))"
+        },
+        {
+          "table_name": "transactions",
+          "name": "transactions_payment_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (payment_id) REFERENCES payments(id)"
+        },
+        {
+          "table_name": "transactions",
+          "name": "transactions_reservation_id_fkey",
+          "type": "f",
+          "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+        },
+        {
+          "table_name": "transactions",
+          "name": "transactions_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "table_name": "transactions",
+          "name": "transactions_reference_key",
+          "type": "u",
+          "definition": "UNIQUE (reference)"
+        }
+      ],
+      "policies": [
+        {
+          "tablename": "transactions",
+          "policyname": "related_read",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "can_read_reservation(reservation_id)",
+          "with_check": null
+        }
+      ]
+    },
+    {
+      "name": "webhook_events",
+      "rls": true,
+      "columns": [
+        {
+          "table_name": "webhook_events",
+          "column_name": "id",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "webhook_events",
+          "column_name": "event_type",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null
+        },
+        {
+          "table_name": "webhook_events",
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "table_name": "webhook_events",
+          "name": "webhook_events_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "policies": []
+    }
+  ],
+  "foreignKeys": [
+    {
+      "child": "audit_logs",
+      "parent_schema": "public",
+      "parent": "profiles",
+      "child_columns": [
+        "actor_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": false,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (actor_id) REFERENCES profiles(id) ON DELETE SET NULL"
+    },
+    {
+      "child": "balances",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": true,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+    },
+    {
+      "child": "cancellations",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+    },
+    {
+      "child": "dishes",
+      "parent_schema": "public",
+      "parent": "menu_categories",
+      "child_columns": [
+        "category_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": false,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (category_id) REFERENCES menu_categories(id)"
+    },
+    {
+      "child": "email_deliveries",
+      "parent_schema": "public",
+      "parent": "notifications",
+      "child_columns": [
+        "notification_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": true,
+      "definition": "FOREIGN KEY (notification_id) REFERENCES notifications(id)"
+    },
+    {
+      "child": "feedback",
+      "parent_schema": "public",
+      "parent": "profiles",
+      "child_columns": [
+        "customer_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (customer_id) REFERENCES profiles(id)"
+    },
+    {
+      "child": "feedback",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": true,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+    },
+    {
+      "child": "notifications",
+      "parent_schema": "public",
+      "parent": "profiles",
+      "child_columns": [
+        "user_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (user_id) REFERENCES profiles(id)"
+    },
+    {
+      "child": "payments",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+    },
+    {
+      "child": "profiles",
+      "parent_schema": "auth",
+      "parent": "users",
+      "child_columns": [
+        "id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": true,
+      "definition": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "child": "refund_operations",
+      "parent_schema": "public",
+      "parent": "payments",
+      "child_columns": [
+        "payment_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (payment_id) REFERENCES payments(id)"
+    },
+    {
+      "child": "refund_operations",
+      "parent_schema": "public",
+      "parent": "refunds",
+      "child_columns": [
+        "refund_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (refund_id) REFERENCES refunds(id)"
+    },
+    {
+      "child": "refunds",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": true,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+    },
+    {
+      "child": "reschedule_requests",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+    },
+    {
+      "child": "reservation_add_ons",
+      "parent_schema": "public",
+      "parent": "add_ons",
+      "child_columns": [
+        "add_on_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (add_on_id) REFERENCES add_ons(id)"
+    },
+    {
+      "child": "reservation_add_ons",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE"
+    },
+    {
+      "child": "reservation_event_features",
+      "parent_schema": "public",
+      "parent": "event_features",
+      "child_columns": [
+        "event_feature_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (event_feature_id) REFERENCES event_features(id)"
+    },
+    {
+      "child": "reservation_event_features",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE"
+    },
+    {
+      "child": "reservation_event_setups",
+      "parent_schema": "public",
+      "parent": "event_setups",
+      "child_columns": [
+        "event_setup_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (event_setup_id) REFERENCES event_setups(id)"
+    },
+    {
+      "child": "reservation_event_setups",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": true,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE"
+    },
+    {
+      "child": "reservation_items",
+      "parent_schema": "public",
+      "parent": "dishes",
+      "child_columns": [
+        "dish_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (dish_id) REFERENCES dishes(id)"
+    },
+    {
+      "child": "reservation_items",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE"
+    },
+    {
+      "child": "reservation_reschedules",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+    },
+    {
+      "child": "reservation_tables_chairs",
+      "parent_schema": "public",
+      "parent": "chair_types",
+      "child_columns": [
+        "chair_type_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (chair_type_id) REFERENCES chair_types(id)"
+    },
+    {
+      "child": "reservation_tables_chairs",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE"
+    },
+    {
+      "child": "reservation_tables_chairs",
+      "parent_schema": "public",
+      "parent": "table_types",
+      "child_columns": [
+        "table_type_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": false,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (table_type_id) REFERENCES table_types(id)"
+    },
+    {
+      "child": "reservations",
+      "parent_schema": "public",
+      "parent": "profiles",
+      "child_columns": [
+        "customer_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (customer_id) REFERENCES profiles(id)"
+    },
+    {
+      "child": "reservations",
+      "parent_schema": "public",
+      "parent": "desserts",
+      "child_columns": [
+        "dessert_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": false,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (dessert_id) REFERENCES desserts(id)"
+    },
+    {
+      "child": "reservations",
+      "parent_schema": "public",
+      "parent": "drinks",
+      "child_columns": [
+        "drink_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": false,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (drink_id) REFERENCES drinks(id)"
+    },
+    {
+      "child": "reservations",
+      "parent_schema": "public",
+      "parent": "menu_sets",
+      "child_columns": [
+        "menu_set_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (menu_set_id) REFERENCES menu_sets(id)"
+    },
+    {
+      "child": "support_messages",
+      "parent_schema": "public",
+      "parent": "profiles",
+      "child_columns": [
+        "author_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (author_id) REFERENCES profiles(id)"
+    },
+    {
+      "child": "support_messages",
+      "parent_schema": "public",
+      "parent": "support_tickets",
+      "child_columns": [
+        "ticket_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE"
+    },
+    {
+      "child": "support_tickets",
+      "parent_schema": "public",
+      "parent": "profiles",
+      "child_columns": [
+        "customer_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (customer_id) REFERENCES profiles(id)"
+    },
+    {
+      "child": "transactions",
+      "parent_schema": "public",
+      "parent": "payments",
+      "child_columns": [
+        "payment_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": false,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (payment_id) REFERENCES payments(id)"
+    },
+    {
+      "child": "transactions",
+      "parent_schema": "public",
+      "parent": "reservations",
+      "child_columns": [
+        "reservation_id"
+      ],
+      "parent_columns": [
+        "id"
+      ],
+      "required_parent": true,
+      "unique_child": false,
+      "definition": "FOREIGN KEY (reservation_id) REFERENCES reservations(id)"
+    }
+  ],
+  "functions": [
+    {
+      "schema": "private",
+      "name": "audit",
+      "arguments": "action text, entity text, details jsonb",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "private",
+      "name": "bootstrap_profile",
+      "arguments": "",
+      "result": "trigger",
+      "security_definer": true
+    },
+    {
+      "schema": "private",
+      "name": "calculate_price",
+      "arguments": "rid uuid",
+      "result": "jsonb",
+      "security_definer": true
+    },
+    {
+      "schema": "private",
+      "name": "capacity_guard",
+      "arguments": "",
+      "result": "trigger",
+      "security_definer": true
+    },
+    {
+      "schema": "private",
+      "name": "catalog_audit",
+      "arguments": "",
+      "result": "trigger",
+      "security_definer": true
+    },
+    {
+      "schema": "private",
+      "name": "no_checkout",
+      "arguments": "rid uuid",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "private",
+      "name": "normalize_profile",
+      "arguments": "",
+      "result": "trigger",
+      "security_definer": true
+    },
+    {
+      "schema": "private",
+      "name": "notify",
+      "arguments": "rid uuid, title text, body text",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "private",
+      "name": "require_customer",
+      "arguments": "",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "private",
+      "name": "require_staff",
+      "arguments": "",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "admin_set_role",
+      "arguments": "target_id uuid, target_role app_role",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "available_dates",
+      "arguments": "start_date date, end_date date",
+      "result": "TABLE(event_date date, remaining bigint)",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "begin_checkout",
+      "arguments": "rid uuid, customer uuid, payment_intent text",
+      "result": "payments",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "can_read_reservation",
+      "arguments": "rid uuid",
+      "result": "boolean",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "claim_refund",
+      "arguments": "fid uuid",
+      "result": "jsonb",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "claim_refund_operation",
+      "arguments": "operation_id uuid",
+      "result": "jsonb",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "confirm_provider_payment",
+      "arguments": "event_id text, session_id text, provider_payment_id text, amount bigint",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "create_ticket",
+      "arguments": "subject text, body text",
+      "result": "uuid",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "current_app_role",
+      "arguments": "",
+      "result": "app_role",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "customer_access",
+      "arguments": "",
+      "result": "boolean",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "dashboard_metrics",
+      "arguments": "",
+      "result": "jsonb",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "finalize_reservation",
+      "arguments": "rid uuid",
+      "result": "jsonb",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "finish_refund",
+      "arguments": "fid uuid",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "is_staff",
+      "arguments": "",
+      "result": "boolean",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "maintenance_enabled",
+      "arguments": "",
+      "result": "boolean",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "manager_reservation_status",
+      "arguments": "rid uuid, new_status reservation_status",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "pending_notification_emails",
+      "arguments": "limit_count integer",
+      "result": "TABLE(id uuid)",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "refund_eligibility",
+      "arguments": "total bigint, paid bigint",
+      "result": "bigint",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "reply_ticket",
+      "arguments": "tid uuid, body text",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "request_cancellation",
+      "arguments": "rid uuid, reason text",
+      "result": "uuid",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "request_refund",
+      "arguments": "rid uuid",
+      "result": "uuid",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "request_reschedule",
+      "arguments": "rid uuid, new_date date, reason text",
+      "result": "uuid",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "resolve_ticket",
+      "arguments": "tid uuid",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "review_cancellation",
+      "arguments": "cid uuid, approve boolean",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "review_refund",
+      "arguments": "fid uuid, approve boolean",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "review_reschedule",
+      "arguments": "request_id uuid, approve boolean",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "save_reservation",
+      "arguments": "data jsonb",
+      "result": "uuid",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "submit_feedback",
+      "arguments": "rid uuid, rating integer, message text",
+      "result": "void",
+      "security_definer": true
+    },
+    {
+      "schema": "public",
+      "name": "update_setting",
+      "arguments": "setting_key text, setting_value jsonb",
+      "result": "void",
+      "security_definer": true
+    }
+  ]
+}

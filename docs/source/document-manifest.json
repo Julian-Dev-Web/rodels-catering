@@ -1,0 +1,84 @@
+{
+  "title": "RodelConnect: A Digital Reservation System for Catering Services with Integrated Chatbot",
+  "authors": [
+    "Japle Ligaya",
+    "Wesley Manabat",
+    "Julian Quiel Santos"
+  ],
+  "date": "2026-10-14",
+  "chapters": 11,
+  "publicTables": 34,
+  "foreignKeys": 35,
+  "rpcCount": 29,
+  "figures": [
+    {
+      "caption": "Figure 2.1. Current React, Supabase and serverless architecture.",
+      "file": "architecture.png",
+      "width": 2600,
+      "height": 1895
+    },
+    {
+      "caption": "Figure 2.2. Reservation workflow and server validation.",
+      "file": "reservation-workflow.png",
+      "width": 2600,
+      "height": 3789
+    },
+    {
+      "caption": "Figure 2.3. Verified payment data-flow design.",
+      "file": "payment-data-flow.png",
+      "width": 2600,
+      "height": 3303
+    },
+    {
+      "caption": "Figure 5.1. Complete current foreign-key overview.",
+      "file": "erd-complete.png",
+      "width": 3600,
+      "height": 2695
+    },
+    {
+      "caption": "Figure 5.2. Catalog and core booking relationships.",
+      "file": "erd-catalog-booking.png",
+      "width": 2600,
+      "height": 2920
+    },
+    {
+      "caption": "Figure 5.3. Event setup, extras and seating relationships.",
+      "file": "erd-event-selections.png",
+      "width": 2600,
+      "height": 2633
+    },
+    {
+      "caption": "Figure 5.4. Payment, refund and scheduling relationships.",
+      "file": "erd-finance-scheduling.png",
+      "width": 2600,
+      "height": 2124
+    },
+    {
+      "caption": "Figure 5.5. Identity, support, notification and administration relationships.",
+      "file": "erd-identity-service.png",
+      "width": 2600,
+      "height": 2882
+    },
+    {
+      "caption": "Figure A.1. Actual registration interface on the deployed site.",
+      "file": "ui-register.png",
+      "width": 2732,
+      "height": 2356
+    },
+    {
+      "caption": "Figure A.2. Actual login interface on the deployed site.",
+      "file": "ui-login.png",
+      "width": 2732,
+      "height": 2100
+    }
+  ],
+  "tables": [
+    "Table 3.1. Verified technology stack and technical justification.",
+    "Table 5.1. Actual public domain entities, keys and access scopes.",
+    "Table B.1. Implemented Edge Function contracts and authentication.",
+    "Table B.2. Public SQL RPC signatures, authorization and purpose.",
+    "Table D.1. Reconstructed revisions, actions, status and evidence locations."
+  ],
+  "referenceCount": 26,
+  "filename": "RodelConnect_ELEC5_Technical_Documentation_2026-10-14"
+}

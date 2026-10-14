@@ -1,0 +1,50 @@
+[
+  {
+    "file": "architecture.png",
+    "width": 2600,
+    "height": 1895,
+    "dpi": 300
+  },
+  {
+    "file": "reservation-workflow.png",
+    "width": 2600,
+    "height": 3789,
+    "dpi": 300
+  },
+  {
+    "file": "payment-data-flow.png",
+    "width": 2600,
+    "height": 3303,
+    "dpi": 300
+  },
+  {
+    "file": "erd-complete.png",
+    "width": 3600,
+    "height": 2695,
+    "dpi": 300
+  },
+  {
+    "file": "erd-catalog-booking.png",
+    "width": 2600,
+    "height": 2920,
+    "dpi": 300
+  },
+  {
+    "file": "erd-event-selections.png",
+    "width": 2600,
+    "height": 2633,
+    "dpi": 300
+  },
+  {
+    "file": "erd-finance-scheduling.png",
+    "width": 2600,
+    "height": 2124,
+    "dpi": 300
+  },
+  {
+    "file": "erd-identity-service.png",
+    "width": 2600,
+    "height": 2882,
+    "dpi": 300
+  }
+]

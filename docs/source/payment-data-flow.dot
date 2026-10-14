@@ -1,0 +1,26 @@
+digraph G {graph [bgcolor="white",fontname="Times New Roman",fontsize=19,ranksep=0.48,nodesep=0.30,pad=0.18]; node [shape=box,fontname="Times New Roman",fontsize=15,color="black",fontcolor="black",style="rounded,filled",fillcolor="white",margin="0.14,0.09"]; edge [fontname="Times New Roman",fontsize=11,color="black",fontcolor="black",arrowsize=0.65]; rankdir=TB;
+ client[label="Customer requests partial / full / balance checkout"];
+ edgefn[label="Edge verifies user and customer role"];
+ rpc[label="begin_checkout: lock reservation
+Calculate canonical amount; one pending checkout"];
+ claim[label="Claim provider operation once
+Ambiguous failures require reconciliation"];
+ checkout[label="Create PayMongo hosted Checkout Session
+Store provider session and safe checkout URL"];
+ provider[label="Customer pays in provider checkout"];
+ redirect[label="Return redirect
+Displays status; cannot mark paid",style="rounded,dashed"];
+ signed[label="PayMongo payment webhook"];
+ verify[label="Verify raw-body HMAC, timestamp and mode
+Fetch provider session independently"];
+ confirm[label="confirm_provider_payment
+Match session/amount, deduplicate, update ledger"];
+ capacity[label="Future date has available capacity?",shape=diamond];
+ approved[label="Record payment + approve
+Hold capacity, balance, transaction, audit and notices"];
+ pending[label="Record payment; retain for_approval
+Staff coordinates date capacity with customer"];
+ client->edgefn->rpc->claim->checkout->provider;
+ provider->redirect[style=dashed];provider->signed->verify->confirm->capacity;
+ capacity->approved[label="Yes"];capacity->pending[label="No"];
+ }

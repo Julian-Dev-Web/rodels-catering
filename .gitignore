@@ -15,3 +15,7 @@ playwright-report/
 .env.operator
 .private/
 .vercel/
+docs/.tools/
+docs/qa/
+# Microsoft Office temporary lock files.
+~$*
