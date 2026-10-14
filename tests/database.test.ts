@@ -100,6 +100,48 @@ beforeAll(async () => {
 }, 60000)
 afterAll(() => db.close())
 
+describe('system administration and private application export', () => {
+  it('restricts system metrics to super admins and reports actual role counts', async () => {
+    for (const role of ['customer','manager'] as const) {
+      await identity(role)
+      await expect(db.exec('select system_overview()')).rejects.toThrow('Super admin required')
+    }
+    await identity('super')
+    const overview = await scalar<{users:number;customers:number;managers:number;super_admins:number}>('select system_overview() as value')
+    expect(overview).toMatchObject({users:4,customers:2,managers:1,super_admins:1})
+  })
+  it('denies direct snapshot access even to super-admin browser identities', async () => {
+    for (const role of ['customer','manager','super'] as const) {
+      await identity(role)
+      await expect(db.exec('select export_application_snapshot()')).rejects.toThrow(/permission denied/)
+    }
+  })
+  it('exports only the fixed application tables with complete row counts', async () => {
+    await identity('operator')
+    await db.exec('set role service_role')
+    const snapshot = await scalar<{format:string;version:number;tables:Record<string,unknown[]>;counts:Record<string,number>;exclusions:string[]}>('select export_application_snapshot() as value')
+    expect(snapshot.format).toBe('rodelconnect-application-export')
+    expect(Object.keys(snapshot.tables)).toHaveLength(34)
+    expect(snapshot.tables.profiles).toHaveLength(4)
+    expect(snapshot.tables).not.toHaveProperty('users')
+    expect(snapshot.tables).not.toHaveProperty('storage.objects')
+    for (const [table,rows] of Object.entries(snapshot.tables)) expect(snapshot.counts[table]).toBe(rows.length)
+    expect(snapshot.exclusions).toContain('Supabase Auth accounts and credentials')
+    await identity('operator')
+  })
+  it('lets only super admins edit event metadata and preserves provider-independent photos', async () => {
+    await identity('manager')
+    expect((await db.query("update gallery_images set featured=false returning id")).rows).toHaveLength(0)
+    await identity('super')
+    const id = '60000000-0000-0000-0000-000000000004'
+    await db.query('update gallery_images set featured=false where id=$1',[id])
+    expect(await scalar('select featured as value from gallery_images where id=$1',[id])).toBe(false)
+    await expect(db.query("update gallery_images set event_type='imaginary' where id=$1",[id])).rejects.toThrow(/check constraint/)
+    await expect(db.query("update gallery_images set source_url='javascript:alert(1)' where id=$1",[id])).rejects.toThrow(/check constraint/)
+    await db.query('update gallery_images set featured=true where id=$1',[id])
+  })
+})
+
 async function ownerDraft(day: string, guests: number, chair = 'Monoblock', setup = 'Simple buffet setup', feature?: string, table = 'Round table') {
   await identity('customer')
   const lookup = (table: string, name: string) => scalar<string>(`select id as value from ${table} where name=$1`, [name])

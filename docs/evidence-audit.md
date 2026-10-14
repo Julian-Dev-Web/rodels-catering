@@ -42,3 +42,15 @@ cannot verify means no supporting implementation/evidence was found. Prior setup
 checks are reported as observations from this session, not fabricated test-user
 statistics. Business problem statements from the earlier chapters are identified
 as project background rather than measured current operational outcomes.
+
+## October 15, 2026 implementation addendum
+
+The earlier audit above reflects its original documentation snapshot. Current changes are detailed in `docs/system-admin-gallery-update.md`. This release passed 59 automated tests, frontend/Edge type checks, lint and production build. Private browser checks verified role separation, gallery filtering/photo viewing, mobile layouts, a real export download/checksum and visible generation history.
+
+| Feature / claim | Code path or migration | Evidence | Status |
+|---|---|---|---|
+| Distinct super-admin overview | `src/pages/SystemAdmin.tsx`, `src/app/router.tsx`, `0016_system_admin_gallery.sql` | Dedicated system metrics RPC requires `super_admin`; manager retains business operations | Implemented |
+| Application-data archive | `supabase/functions/export-application-data/index.ts`, `public.export_application_snapshot()` | Verified Auth identity/role, service-only SQL, fixed 34-table snapshot, checksum and generation audit; credentials and Storage files excluded | Implemented; full PostgreSQL disaster recovery remains an operator procedure |
+| Event gallery and showcases | `EventShowcase.tsx`, `GalleryManagement.tsx`, `0016_system_admin_gallery.sql` | Occasion filters, photo viewer, featured public content, multi-photo uploads and editor; super-admin write RLS | Implemented |
+| Business Facebook photo | `public/images/facebook-showcase.jpg`, `docs/system-admin-gallery-update.md` | Original public 960 × 466 image viewed without login; caption limited to visible setup | Implemented; larger Facebook collection inaccessible without sign-in |
+| Four food-card illustrations | `MenuIllustration.tsx`, `Public.tsx` | Original SVG visuals for 3/4/5/6 dishes; actual uploaded menu photos can override illustrations | Implemented |

@@ -46,6 +46,8 @@ const ReviewRequests = lazy(() =>
 const UserManagement = lazy(() =>
   import('../pages/Admin').then((m) => ({ default: m.UserManagement })),
 )
+const SystemOverview = lazy(() => import('../pages/SystemAdmin').then((m) => ({ default: m.SystemOverview })))
+const Backups = lazy(() => import('../pages/SystemAdmin').then((m) => ({ default: m.Backups })))
 function Scroll() {
   const { pathname } = useLocation()
   useEffect(() => {
@@ -137,7 +139,8 @@ export function Router() {
               </Route>
               <Route path="super-admin">
                 <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="dashboard" element={<SystemOverview />} />
+                <Route path="backups" element={<Backups />} />
                 <Route path="packages" element={<CatalogManager area="packages" />} />
                 <Route path="add-ons" element={<CatalogManager area="extras" />} />
                 <Route path="users" element={<UserManagement />} />

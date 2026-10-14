@@ -907,4 +907,56 @@ update public.chair_types set name=name||' (legacy)' where not active and name i
 
 notify pgrst, 'reload schema';
 
+-- ==================== 0016_system_admin_gallery.sql ====================
+
+-- System administration is separate from day-to-day catering operations.
+alter table public.gallery_images
+ add column event_type text not null default 'event_setup' check(event_type in ('birthday','wedding','school','corporate','gathering','event_setup')),
+ add column description text not null default '' check(length(description)<=1500),
+ add column featured boolean not null default false,
+ add column source_url text check(source_url is null or (length(source_url)<=2000 and source_url ~ '^https?://'));
+
+-- Captions describe only details visible in the existing photographs.
+update public.gallery_images set name='Floral birthday celebration setup',event_type='birthday',description='A floral entrance, gold accents and a birthday celebration backdrop.',featured=true where image_url='/images/celebration.jpg';
+update public.gallery_images set name='Green and ivory event setup',event_type='event_setup',description='Floral arrangements, an elegant stage and coordinated green-and-ivory details.',featured=true where image_url='/images/table.jpg';
+update public.gallery_images set name='School recognition ceremony setup',event_type='school',description='Blue-and-white stage styling for a school recognition ceremony.',featured=true where image_url='/images/food.jpg';
+insert into public.gallery_images(id,name,image_url,event_type,description,featured,source_url) values
+ ('60000000-0000-0000-0000-000000000004','Outdoor evening celebration','/images/facebook-showcase.jpg','gathering','Round tables, an outdoor buffet and evening lighting from Rodel’s public Facebook gallery.',true,'https://www.facebook.com/profile.php?id=100069001067978');
+
+create function public.system_overview() returns jsonb language plpgsql stable security definer set search_path='' as $$
+begin
+ if public.current_app_role() is distinct from 'super_admin' then raise exception 'Super admin required'; end if;
+ return jsonb_build_object(
+  'users',(select count(*) from public.profiles),
+  'customers',(select count(*) from public.profiles where role='customer'),
+  'managers',(select count(*) from public.profiles where role='manager'),
+  'super_admins',(select count(*) from public.profiles where role='super_admin'),
+  'menus',(select count(*) from public.menu_sets where active),
+  'published_photos',(select count(*) from public.gallery_images where active),
+  'featured_photos',(select count(*) from public.gallery_images where active and featured),
+  'maintenance',public.maintenance_enabled(),
+  'last_export',(select created_at from public.audit_logs where action='backup.application_export_created' order by created_at desc limit 1),
+  'recent_activity',coalesce((select jsonb_agg(x) from (select action,created_at from public.audit_logs order by created_at desc limit 8)x),'[]'::jsonb)
+ );
+end $$;
+revoke execute on function public.system_overview() from public,anon;
+grant execute on function public.system_overview() to authenticated;
+
+-- Fixed allowlist; never export auth.users, credentials, secrets or Storage files.
+-- STABLE reads share the calling statement's database snapshot. No truncation.
+create function public.export_application_snapshot() returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare t text; rows jsonb; n bigint; tables jsonb='{}'; counts jsonb='{}'; result jsonb;
+begin
+ foreach t in array array['profiles','menu_sets','menu_categories','dishes','drinks','desserts','add_ons','event_setups','event_features','chair_types','table_types','reservations','reservation_items','reservation_event_setups','reservation_event_features','reservation_tables_chairs','reservation_add_ons','reservation_reschedules','reschedule_requests','payments','balances','transactions','cancellations','refunds','refund_operations','webhook_events','feedback','support_tickets','support_messages','notifications','gallery_images','app_settings','audit_logs','email_deliveries'] loop
+  execute format('select coalesce(jsonb_agg(to_jsonb(x) order by to_jsonb(x)::text),''[]''::jsonb),count(*) from (select * from public.%I limit 50001)x',t) into rows,n;
+  if n>50000 then raise exception 'Dataset too large for application export; use a PostgreSQL backup'; end if;
+  tables=tables||jsonb_build_object(t,rows); counts=counts||jsonb_build_object(t,n);
+  if octet_length(tables::text)>10485760 then raise exception 'Dataset too large for application export; use a PostgreSQL backup'; end if;
+ end loop;
+ result=jsonb_build_object('format','rodelconnect-application-export','version',1,'captured_at',statement_timestamp(),'scope','Public application records only; migrations are required to interpret or restore these records.','exclusions',jsonb_build_array('Supabase Auth accounts and credentials','Storage file contents','Server secrets and deployment settings','Database schema and role definitions'),'counts',counts,'tables',tables);
+ return result;
+end $$;
+revoke execute on function public.export_application_snapshot() from public,anon,authenticated;
+grant execute on function public.export_application_snapshot() to service_role;
+
 commit;

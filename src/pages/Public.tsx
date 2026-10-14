@@ -14,8 +14,9 @@ import {
 import { useCatalog } from '../features/catalog'
 import { configured, records } from '../lib/supabase'
 import { money } from '../lib/format'
-import type { CatalogItem } from '../types'
-import { Empty, ErrorState, Loading } from '../components/ui'
+import { ErrorState, Loading } from '../components/ui'
+import { MenuIllustration } from '../components/MenuIllustration'
+import { EventShowcase } from '../components/EventShowcase'
 const photos = ['/images/celebration.jpg', '/images/table.jpg', '/images/food.jpg']
 export function PackageCards() {
   const query = useCatalog()
@@ -31,11 +32,9 @@ export function PackageCards() {
       <div className="package-grid">
         {query.data.menu_sets.map((p, i) => (
           <article className={'package-card ' + (i === 1 ? 'featured' : '')} key={p.id}>
-            <div
-              className="package-photo"
-              style={{ backgroundImage: `url(${p.image_url || photos[i % 3]})` }}
-            >
-              <span>{['THE EVERYDAY SPECIAL', 'A LITTLE EXTRA MAGIC', 'GO ALL OUT'][i % 3]}</span>
+            <div className={'package-photo ' + (!p.image_url ? 'menu-artwork' : '')} style={p.image_url ? { backgroundImage: `url(${p.image_url})` } : undefined}>
+              {!p.image_url && <MenuIllustration dishes={p.dish_count || 3} />}
+              <span>{p.dish_count} DISHES · PICK YOUR FAVORITES</span>
               {i === 1 && <span className="popular">SIGNATURE PICK</span>}
             </div>
             <div className="package-content">
@@ -112,7 +111,7 @@ export function Home() {
             </div>
           </div>
           <div className="hero-image">
-            <img src={photos[0]} alt="A warmly lit venue prepared for a celebration" />
+            <img src="/images/facebook-showcase.jpg" alt="Rodel’s outdoor evening setup with banquet tables and lighting" />
             <div className="hero-image-shade" />
             <div className="image-caption">
               <span>THE TABLE IS SET.</span>
@@ -234,6 +233,7 @@ export function Home() {
           </Link>
         </div>
       </section>
+      <section className="section container"><EventShowcase compact /></section>
       <section className="cta-section">
         <div className="container">
           <Flower2 size={35} />
@@ -286,61 +286,7 @@ export function Packages() {
   )
 }
 export function Gallery() {
-  const query = useQuery({
-    queryKey: ['gallery'],
-    enabled: configured,
-    queryFn: () => records<CatalogItem>('gallery_images', 'created_at', false, { active: true }),
-  })
-  return (
-    <section className="section container">
-      <div className="public-page-heading">
-        <span className="eyebrow">A LITTLE INSPIRATION</span>
-        <h1>
-          Beautiful moments,
-          <br />
-          <em>shared together.</em>
-        </h1>
-        <p>Find inspiration for the celebration you have in mind.</p>
-      </div>
-      {configured ? (
-        query.isPending ? (
-          <Loading />
-        ) : query.error ? (
-          <ErrorState error={query.error} />
-        ) : query.data?.length ? (
-          <div className="gallery-grid">
-            {query.data.map((p) => (
-              <figure key={p.id}>
-                <img src={p.image_url} alt={p.name} loading="lazy" />
-                <figcaption>{p.name}</figcaption>
-              </figure>
-            ))}
-          </div>
-        ) : (
-          <Empty title="Our gallery is being prepared">
-            Check back soon for celebrations from Rodel’s.
-          </Empty>
-        )
-      ) : (
-        <>
-          <p className="demo-note">A selection from Rodel’s original event gallery.</p>
-          <div className="gallery-grid">
-            {photos.map((p, i) => (
-              <figure key={p}>
-                <img
-                  src={p}
-                  alt={['Floral celebration venue', 'Wedding setup', 'Corporate event'][i]}
-                />
-                <figcaption>
-                  {['A warm welcome', 'Details to remember', 'Gather around the table'][i]}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </>
-      )}
-    </section>
-  )
+  return <section className="section container"><div className="public-page-heading"><span className="eyebrow">RODEL’S EVENT SHOWCASE</span><h1>Celebrations,<br /><em>beautifully set.</em></h1><p>Explore real event photos, from birthday details to school ceremonies and outdoor gatherings. Tap a photo for a closer look.</p></div><EventShowcase /></section>
 }
 export function About() {
   return (

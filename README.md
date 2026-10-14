@@ -4,7 +4,9 @@
 
 For this project's registration/name update, password recovery, requested test accounts and PayMongo test-mode setup, follow [HOSTED_AUTH_PAYMENTS.md](HOSTED_AUTH_PAYMENTS.md). The existing hosted database needs `supabase/updates/0013_profile_names.sql`; never rerun the full fresh-project installer to apply this update.
 
-This developer workspace is connected to the hosted Supabase project `azjzapendjsfouysueiw` through the ignored `.env` file. A read-only API check retrieved all three seeded packages and the maintenance setting. The frontend is reachable at `https://rodels-catering.vercel.app`. All five server functions have been deployed, three explicitly requested test-account logins/roles verified, and a PayMongo test checkout created through the customer API. Recovery token verification, password replacement and the hosted recovery redirect were checked; actual email delivery, browser acceptance, paid webhook confirmation and provider refunds still need testing. For another checkout, configure its environment using the steps below. Public pages show illustrative packages while unconfigured. Catalog seed prices must be reviewed before real bookings. Original company details, logo and photos come from the legacy app.
+This developer workspace is connected to the hosted Supabase project `azjzapendjsfouysueiw` through the ignored `.env` file. The frontend is reachable at `https://rodels-catering.vercel.app`. The owner-confirmed catalog has four 3/4/5/6-dish menus at ₱320/₱350/₱380/₱420 per guest, 100–1,000 guests, included basic seating/setup and an elegant-chair upgrade of ₱10 per guest. Supabase handles authentication, booking/payment state and server functions; the public chatbot uses Groq. PayMongo checkout has been exercised in test mode; actual paid-webhook confirmation, provider refunds and live merchant operation require separate acceptance.
+
+The October 15 update adds a dedicated super-admin system overview, an authenticated application-data export with checksum and audit history, event-gallery filters/viewer/showcases, a public business Facebook photograph and four SVG food illustrations. See [the implementation and backup-scope notes](docs/system-admin-gallery-update.md). Existing projects apply the incremental `supabase/updates/0016_system_admin_gallery.sql` and deploy `export-application-data`; this workspace's hosted project has already received both. The JSON archive excludes Auth credentials, actual Storage files and database schema; full database recovery remains an operator task in Supabase.
 
 ## 1. Set up the database on Supabase.com
 
@@ -14,7 +16,7 @@ Use a fresh Supabase project with an empty `public` schema. If your existing pro
 2. Copy the entire contents of [`supabase/setup.sql`](supabase/setup.sql), then Run once.
 3. Confirm the tables were created under `public`.
 
-`setup.sql` contains all 13 migrations in one transaction: tables, enums, business rules, RLS, Storage policies, analytics, the sample catalog/gallery and structured profile names. Its initial check rejects existing public tables; it contains no DROP TABLE/TRUNCATE cleanup. An error rolls back setup rather than leaving a partially installed app. If the preflight stops, do not delete existing data to bypass it.
+`setup.sql` contains all 16 migrations in one transaction: tables, enums, business rules, RLS, Storage policies, analytics, structured profile names, the owner-confirmed catalog and system/gallery updates. Its initial check rejects existing public tables; it contains no DROP TABLE/TRUNCATE cleanup. An error rolls back setup rather than leaving a partially installed app. If the preflight stops, do not delete existing data to bypass it.
 
 The original files in `supabase/migrations/` remain the source of truth. After changing one, regenerate the SQL Editor file with:
 

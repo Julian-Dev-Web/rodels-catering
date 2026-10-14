@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   Area,
   AreaChart,
@@ -742,130 +742,7 @@ export function UserManagement() {
     </>
   )
 }
-export function GalleryManagement() {
-  const [editing, setEditing] = useState<RecordRow | null>(null)
-  const query = useQuery({
-    queryKey: ['manage-gallery'],
-    queryFn: () => records<RecordRow>('gallery_images'),
-  })
-  const [file, setFile] = useState<File | null>(null),
-    [caption, setCaption] = useState('')
-  const qc = useQueryClient()
-  const upload = useMutation({
-    mutationFn: async () => {
-      if (!file || caption.trim().length < 2)
-        throw new Error('Choose an image and add a descriptive caption')
-      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10485760)
-        throw new Error('Use a JPG, PNG or WebP smaller than 10 MB.')
-      const path = `events/${crypto.randomUUID()}.${file.type.split('/')[1]}`
-      const { error } = await supabase.storage.from('gallery').upload(path, file)
-      if (error) throw error
-      const url = supabase.storage.from('gallery').getPublicUrl(path).data.publicUrl
-      const { error: e } = await supabase
-        .from('gallery_images')
-        .insert({ name: caption, image_url: url })
-      if (e) throw e
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries()
-      setFile(null)
-      setCaption('')
-    },
-  })
-  return (
-    <>
-      <PageHeading title="A gallery of good memories.">
-        Share the celebrations that tell your story. Use photos you have permission to publish.
-      </PageHeading>
-      <section className="panel upload-panel">
-        <h2>Add a celebration</h2>
-        <label>
-          Image caption
-          <input maxLength={150} value={caption} onChange={(e) => setCaption(e.target.value)} />
-        </label>
-        <label>
-          Photo · up to 10 MB
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-          />
-        </label>
-        <button className="button" disabled={upload.isPending} onClick={() => upload.mutate()}>
-          {upload.isPending ? 'Uploading…' : 'Upload to gallery'}
-        </button>
-        {upload.error && <ErrorState error={upload.error} />}
-      </section>
-      {query.isPending ? (
-        <Loading />
-      ) : query.error ? (
-        <ErrorState error={query.error} />
-      ) : (
-        <DataTable
-          rows={query.data}
-          columns={[
-            {
-              key: 'image_url',
-              label: 'Photo',
-              render: (r) => (
-                <img className="table-thumbnail" src={String(r.image_url)} alt={String(r.name)} />
-              ),
-            },
-            { key: 'name', label: 'Caption' },
-            {
-              key: 'active',
-              label: 'Visibility',
-              render: (r) => <Badge value={r.active ? 'active' : 'archived'} />,
-            },
-          ]}
-          actions={(r) => (
-            <>
-              <button className="text-button" onClick={() => setEditing(r)}>
-                Edit caption
-              </button>
-              <Action
-                label={r.active ? 'Unpublish' : 'Publish'}
-                kind="small secondary"
-                run={async () => {
-                  const { error } = await supabase
-                    .from('gallery_images')
-                    .update({ active: !r.active })
-                    .eq('id', r.id)
-                  if (error) throw error
-                }}
-              />
-              <Action
-                label="Delete"
-                kind="small secondary"
-                confirm="Delete this gallery entry? Its image remains in Storage for recovery and can be removed there by an operator."
-                run={async () => {
-                  const { error } = await supabase.from('gallery_images').delete().eq('id', r.id)
-                  if (error) throw error
-                }}
-              />
-            </>
-          )}
-        />
-      )}
-      {editing && (
-        <Modal title="Edit gallery caption" close={() => setEditing(null)}>
-          <Form
-            fields={[{ name: 'name', label: 'Caption', required: true, max: 150 }]}
-            initial={{ name: String(editing.name) }}
-            submit={async (values) => {
-              const { error } = await supabase
-                .from('gallery_images')
-                .update({ name: values.name })
-                .eq('id', editing.id)
-              if (error) throw error
-            }}
-            onSuccess={() => setEditing(null)}
-          />
-        </Modal>
-      )}
-    </>
-  )
-}
+export { GalleryManagement } from './GalleryManagement'
 export function Maintenance() {
   const query = useQuery({
     queryKey: ['settings'],

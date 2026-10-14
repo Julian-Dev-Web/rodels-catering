@@ -13,3 +13,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.public-assistant]
 verify_jwt = false
+[functions.export-application-data]
+verify_jwt = false

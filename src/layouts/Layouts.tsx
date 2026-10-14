@@ -7,6 +7,7 @@ import {
   CalendarDays,
   ChartNoAxesCombined,
   Clock,
+  Database,
   Headphones,
   Image,
   LogOut,
@@ -167,6 +168,7 @@ const icons: Record<string, typeof CalendarDays> = {
   chart: ChartNoAxesCombined,
   users: Users,
   image: Image,
+  database: Database,
 }
 export function PortalLayout() {
   const { profile } = useAuth(),
