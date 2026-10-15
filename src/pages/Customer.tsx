@@ -9,7 +9,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react'
-import { useReservations, useReservation } from '../features/reservations'
+import { useReservations, useReservation, useSavedDrafts } from '../features/reservations'
 import { useCatalog } from '../features/catalog'
 import { useAuth } from '../features/auth'
 import {
@@ -28,6 +28,9 @@ import {
   BookingActivity,
 } from '../components/BookingDetails'
 import { RefundRequest } from '../components/RefundRequest'
+import { FinancialBreakdown } from '../components/FinancialBreakdown'
+import { financialRows } from '../lib/financial'
+import { downloadReportPdf, savedFinancialLabel } from '../lib/reports'
 import { RescheduleForm } from '../components/RescheduleForm'
 import { timeLabel } from '../components/EventTimeSelect'
 import {
@@ -43,6 +46,7 @@ import { refundProcessing } from '../lib/refunds'
 import type { RecordRow, Reservation } from '../types'
 export function Reservations() {
   const query = useReservations()
+  const drafts = useSavedDrafts()
   const { profile } = useAuth()
   if (query.isPending) return <Loading />
   if (query.error)
@@ -84,6 +88,11 @@ export function Reservations() {
         />
       </div>
       <div className="section-title">
+        <h2>My drafts</h2>
+      </div>
+      {drafts.error&&<ErrorState error={drafts.error}/>}
+      <div className="reservation-grid">{drafts.data?.filter(d=>!d.submitted_at).map(d=><article className="reservation-card" key={d.id}><Badge value="draft"/><h3>{String(d.data.event_name||'Untitled event')}</h3><p>Saved incomplete · no date or equipment reserved</p><Link className="button secondary" to={`/customer/drafts/${d.id}/${['edit','menu','event-setup','confirm'][d.wizard_step]}`}>Continue editing</Link></article>)}</div>
+      <div className="section-title">
         <h2>My reservations</h2>
         <Link className="text-button" to="/customer/available-dates">
           Explore available dates <ArrowRight size={15} />
@@ -91,7 +100,7 @@ export function Reservations() {
       </div>
       {rows.length ? (
         <div className="reservation-grid">
-          {rows.map((r) => (
+          {rows.filter(r=>r.status!=='draft'||!drafts.data?.some(d=>!d.submitted_at&&d.reservation_id===r.id)).map((r) => (
             <article key={r.id} className="reservation-card">
               <div className="reservation-card-head">
                 <span className="date-block">
@@ -160,6 +169,7 @@ export function ReservationDetail() {
     query = useReservation(id),
     catalog = useCatalog({ includeArchived: true })
   const [modal, setModal] = useState<'cancel' | 'reschedule' | null>(null)
+  const [statementError,setStatementError]=useState<unknown>(null),[statementBusy,setStatementBusy]=useState(false)
   if (query.isPending) return <Loading />
   if (query.error) return <ErrorState error={query.error} />
   const { reservation: r, children: c } = query.data
@@ -227,6 +237,8 @@ export function ReservationDetail() {
             />
           )}
           <h3>Recorded activity</h3>
+          <button className="button secondary" disabled={statementBusy} onClick={async()=>{setStatementBusy(true);setStatementError(null);try{await downloadReportPdf({title:'Booking and payment record',filters:'System-generated record; not an official BIR tax invoice',generated:date(new Date().toISOString())+' Manila',summary:[r.reservation_reference||'Reservation',r.event_name,date(r.event_date)+' '+timeLabel(r.event_time)+' Asia/Manila',['street','barangay','city','province'].map(key=>r.address[key]).filter(Boolean).join(', ')],headers:['Description','Saved amount / information'],rows:financialRows(r.financial_snapshot,r.total,r.paid,['cancelled','rejected','pending_refund','refund_approved','refunded'].includes(r.status)?0:undefined).map(([label,value])=>[label,typeof value==='number'?money(value):value]),filename:'RodelConnect-booking-'+(r.reservation_reference||'record')})}catch(error){setStatementError(error)}finally{setStatementBusy(false)}}}>{statementBusy?'Preparing record…':'Download booking / payment record'}</button>
+          {!!statementError&&<ErrorState error={statementError}/>}
           <BookingActivity id={r.id} />
           <div className="actions">
             {editable && (
@@ -240,9 +252,9 @@ export function ReservationDetail() {
             {r.status === 'draft' && (
               <Link
                 className="button"
-                to={`/customer/reservations/${r.id}/confirm`}
+                to={`/customer/reservations/${r.id}/edit`}
               >
-                Review & finalize
+                Continue editing draft
               </Link>
             )}
             {['draft', 'pending', 'for_approval', 'approved'].includes(
@@ -330,33 +342,10 @@ export function ReservationDetail() {
                 <strong>{money(v)}</strong>
               </div>
             ))}
-          <div className="price-total">
-            <span>Total</span>
-            <strong>{money(r.total)}</strong>
-          </div>
-          <div className="price-line">
-            <span>Paid</span>
-            <strong>{money(r.paid)}</strong>
-          </div>
+          <FinancialBreakdown snapshot={r.financial_snapshot} total={r.total} paid={r.paid} balance={['cancelled','rejected','pending_refund','refund_approved','refunded'].includes(r.status)?0:undefined}/>
           <div className="price-line">
             <span>Refunded</span>
             <strong>{money(r.refunded)}</strong>
-          </div>
-          <div className="price-line">
-            <span>Balance</span>
-            <strong>
-              {money(
-                [
-                  'cancelled',
-                  'pending_refund',
-                  'refund_approved',
-                  'refunded',
-                  'rejected',
-                ].includes(r.status)
-                  ? 0
-                  : Math.max(0, r.total - r.paid),
-              )}
-            </strong>
           </div>
         </aside>
       </div>
@@ -745,6 +734,7 @@ export function Payments({ transactions = false }: { transactions?: boolean }) {
               label: 'Amount',
               render: (r) => money(Number(r.amount)),
             },
+            {key:'tax',label:'Saved VAT / discount',render:row=>savedFinancialLabel(reservations.data?.find(r=>r.id===row.reservation_id)?.financial_snapshot)},
             {
               key: transactions ? 'kind' : 'intent',
               label: 'Type',

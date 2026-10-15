@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ReminderPreferences } from '../components/ReminderPreferences'
 import { useMutation } from '@tanstack/react-query'
 import { useAuth } from '../features/auth'
 import { supabase } from '../lib/supabase'
@@ -38,6 +39,7 @@ export function Settings() {
         Keep your details up to date for your next celebration.
       </PageHeading>
       <div className="settings-grid">
+        <ReminderPreferences/>
         <section className="panel">
           <h2>Your profile</h2>
           <p className="muted">{session?.user.email}</p>

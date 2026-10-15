@@ -1,4 +1,5 @@
 import type { RecordRow, Reservation } from '../types'
+import type { FinancialSnapshot } from './financial'
 import { dateTime, dayManila, human, todayManila } from './format'
 export type ReportRow = RecordRow & {
   reservation: string
@@ -14,6 +15,10 @@ export interface ReportDocument {
   headers: string[]
   rows: (string | number)[][]
   filename: string
+}
+export function savedFinancialLabel(snapshot?: FinancialSnapshot | null) {
+  if (!snapshot) return 'Historical tax/discount breakdown not recorded'
+  return `VAT ${human(snapshot.tax_mode)}: PHP ${(snapshot.vat_amount / 100).toFixed(2)}; discount ${snapshot.discount_name || 'none'}: PHP ${(snapshot.discount_amount / 100).toFixed(2)}${snapshot.discount_reason ? '; reason: ' + snapshot.discount_reason : ''}; ${snapshot.business_confirmed ? 'configured' : 'tax confirmation pending'}`
 }
 export function paymentReportRows(
   reservations: Reservation[],
@@ -54,6 +59,7 @@ export function paymentReportRows(
       received: t.kind === 'payment' ? Number(t.amount) / 100 : 0,
       refunded: t.kind === 'refund' ? Number(t.amount) / 100 : 0,
       balance: (r ? (due.get(r.id) ?? Math.max(r.total - r.paid, 0)) : 0) / 100,
+      tax_discount: savedFinancialLabel(r?.financial_snapshot),
     }
   })
 }
@@ -87,6 +93,7 @@ export function reservationReportRows(rows: Reservation[]): ReportRow[] {
     guests: r.guests,
     status: human(r.status),
     total: r.total / 100,
+    tax_discount: savedFinancialLabel(r.financial_snapshot),
     paid: r.paid / 100,
     remaining: Math.max(r.total - r.paid, 0) / 100,
     theme: r.event_preferences?.theme || 'Not provided',

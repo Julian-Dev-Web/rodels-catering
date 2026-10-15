@@ -49,6 +49,9 @@ export async function records<T>(
     'reservation_event_features',
     'reservation_tables_chairs',
     'reservation_add_ons',
+    'equipment_allocations',
+    'dish_allergens',
+    'reservation_discounts',
   ]
   for (let offset = 0; ; offset += 500) {
     let query = supabase
@@ -69,6 +72,8 @@ export async function records<T>(
       reservation_event_features: 'event_feature_id',
       reservation_tables_chairs: 'chair_type_id',
       reservation_add_ons: 'add_on_id',
+      equipment_allocations: 'equipment_id',
+      dish_allergens: 'allergen_id',
     }
     if (compositeOrder[table] && order !== compositeOrder[table])
       query = query.order(compositeOrder[table], { ascending: true })

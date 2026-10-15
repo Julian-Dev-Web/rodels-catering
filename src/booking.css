@@ -5,6 +5,14 @@
   background: #fffcf7;
 }
 .food-menu {margin-top:64px;padding-top:40px;border-top:1px solid #ded5ca}
+.allergy-panel,.equipment-availability {margin:24px 0;padding:18px;border:1px solid #ccbca6;border-radius:10px;background:#fffaf1}
+.allergy-warning {padding:14px;margin:12px 0;background:#fff1d9;border:1px solid #ab824c;border-radius:8px;color:#503713;line-height:1.7}
+.allergy-warning label {display:flex;align-items:flex-start;gap:12px}
+.allergy-warning input {flex-shrink:0;width:20px;height:20px;margin-top:5px}
+.financial-breakdown {margin:20px 0;padding-top:16px;border-top:1px solid #d5c7b8}
+.financial-breakdown .price-line {align-items:flex-start;gap:12px}
+.financial-breakdown .price-line small {max-width:60%;text-align:right;line-height:1.6;color:#5c4533}
+.financial-breakdown>small {display:block;color:#665447;line-height:1.7;margin-top:12px}
 .food-photo-notice {font-size:.8rem;line-height:1.7;color:#615347;margin:16px 0 24px}
 .food-photo-notice a {color:#74233b;text-decoration:underline;font-weight:600}
 .food-card-grid,.selection-grid.food-choice-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:16px}

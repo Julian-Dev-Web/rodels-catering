@@ -7,13 +7,14 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, ArrowRight, Check, ShieldCheck } from 'lucide-react'
 import { useCatalog } from '../features/catalog'
-import { useReservation } from '../features/reservations'
+import { useReservation, useSavedDraft, type SavedDraft } from '../features/reservations'
 import { useAuth } from '../features/auth'
 import {
   bookingDraftKey,
   readBookingDraft,
   writeBookingDraft,
   clearBookingDraft,
+  restorePersistedDraft,
 } from '../lib/booking-draft'
 import { rpc, supabase } from '../lib/supabase'
 import { money, date, human, earliestEventDate } from '../lib/format'
@@ -33,6 +34,10 @@ import {
 } from '../lib/booking'
 import { ErrorState, Loading, PageHeading } from '../components/ui'
 import { FoodPhoto } from '../components/FoodPhoto'
+import { AllergyFields, useAllergyWarnings } from '../components/AllergyFields'
+import { FinancialBreakdown } from '../components/FinancialBreakdown'
+import { financialQuote, type TaxPolicy } from '../lib/financial'
+import { EquipmentAvailability, type EquipmentAvailabilityRow } from '../components/EquipmentAvailability'
 import {
   EventTimeSelect,
   validWindowTime,
@@ -56,6 +61,9 @@ const schema = z.object({
   dessert_id: z.string(),
   setup_id: z.string(),
   dish_ids: z.array(z.string()),
+  allergy_allergen_ids: z.array(z.string()),
+  allergy_notes: z.string().max(2000),
+  allergy_acknowledgments: z.array(z.object({dish_id:z.string(),allergen_id:z.string(),token:z.string()})),
   feature_ids: z.array(z.string()),
   table_type_id: z.string(),
   event_preferences: z.object({
@@ -95,6 +103,9 @@ const defaults: Values = {
   dessert_id: '',
   setup_id: '',
   dish_ids: [],
+  allergy_allergen_ids: [],
+  allergy_notes: '',
+  allergy_acknowledgments: [],
   feature_ids: [],
   table_type_id: '',
   event_preferences: defaultPreferences,
@@ -155,9 +166,12 @@ function Select({
   )
 }
 export function ReservationWizard() {
-  const { id } = useParams()
+  const { id, draftId } = useParams()
   const { profile } = useAuth()
-  const draftKey = bookingDraftKey(profile?.id, id)
+  const draftKey = bookingDraftKey(profile?.id, draftId ? 'saved:'+draftId : id)
+  const savedDraft = useSavedDraft(draftId)
+  const reservationKey=id||savedDraft.data?.reservation_id||undefined
+  const savedVersion = useRef<number|null>(null)
   const location = useLocation(),
     navigate = useNavigate(),
     qc = useQueryClient()
@@ -182,7 +196,7 @@ export function ReservationWizard() {
         : 0
   const params = new URLSearchParams(location.search)
   const initial = {
-    ...(!id ? readBookingDraft(draftKey, defaults, null) : defaults),
+    ...(!id && !draftId ? readBookingDraft(draftKey, defaults, null) : defaults),
     ...(params.has('date') ? { event_date: params.get('date')! } : {}),
     ...(params.has('package') ? { menu_set_id: params.get('package')! } : {}),
   }
@@ -190,6 +204,7 @@ export function ReservationWizard() {
     resolver: zodResolver(schema),
     defaultValues: initial,
   })
+  useEffect(()=>{if(draftId&&savedDraft.data&&location.pathname==='/customer/drafts/'+draftId)navigate(`/customer/drafts/${draftId}/${['edit','menu','event-setup','confirm'][savedDraft.data.wizard_step]}`,{replace:true})},[draftId,savedDraft.data,location.pathname,navigate])
   const {
     register,
     reset,
@@ -197,7 +212,7 @@ export function ReservationWizard() {
     formState: { errors },
   } = form
   useEffect(() => {
-    if (!id && initialized.current !== 'new') {
+    if (!id && !draftId && initialized.current !== 'new') {
       const switchingFromSavedBooking = !!initialized.current
       initialized.current = 'new'
       draftRevision.current = null
@@ -212,6 +227,10 @@ export function ReservationWizard() {
             : {}),
         })
       setQuote(null)
+    }
+    if(draftId&&savedDraft.data&&initialized.current!=='saved:'+draftId){
+      const d=savedDraft.data;initialized.current='saved:'+draftId;savedVersion.current=d.version;draftRevision.current=d.updated_at
+      reset(readBookingDraft(draftKey,restorePersistedDraft(defaults,d.data),d.updated_at));setQuote(null)
     }
     if (detail.data && catalog.data && initialized.current !== id) {
       const { reservation: r, children: c } = detail.data
@@ -235,6 +254,9 @@ export function ReservationWizard() {
               c.reservation_event_setups[0]?.event_setup_id || '',
             ),
             dish_ids: c.reservation_items.map((x) => String(x.dish_id)),
+            allergy_allergen_ids: r.allergy_allergen_ids || [],
+            allergy_notes: r.allergy_notes || '',
+            allergy_acknowledgments: r.allergy_acknowledgments || [],
             feature_ids: c.reservation_event_features.map((x) =>
               String(x.event_feature_id),
             ),
@@ -294,17 +316,27 @@ export function ReservationWizard() {
         ),
       )
     }
-  }, [detail.data, catalog.data, id, reset, draftKey, location.search])
+  }, [detail.data, catalog.data, id, draftId, savedDraft.data, reset, draftKey, location.search])
   useEffect(() => {
     return form.subscribe({
       formState: { values: true },
       callback: ({ values }) => {
-        if (initialized.current === (id || 'new'))
+        if (initialized.current === (draftId ? 'saved:'+draftId : id || 'new'))
           writeBookingDraft(draftKey, values, draftRevision.current)
       },
     })
-  }, [form, draftKey, id])
+  }, [form, draftKey, id, draftId])
   const values = useWatch({ control: form.control }) as Values
+  const persistDraft = useMutation({mutationFn:async({data,target}:{data:Values;target:number})=>rpc<SavedDraft>('save_booking_draft',{payload:data,did:draftId||null,step:target,expected_version:savedVersion.current,existing_reservation:id||null}),onSuccess:(d,args)=>{
+    savedVersion.current=d.version;draftRevision.current=d.updated_at
+    qc.setQueryData(['saved-draft',d.id],d);void qc.invalidateQueries({queryKey:['saved-drafts']})
+    writeBookingDraft(bookingDraftKey(profile?.id,'saved:'+d.id),args.data,d.updated_at)
+    if(!draftId)clearBookingDraft(draftKey)
+    navigate(`/customer/drafts/${d.id}/${['edit','menu','event-setup','confirm'][args.target]}`)
+  }})
+  const allergyWarnings = useAllergyWarnings(values.allergy_allergen_ids,values.allergy_notes,values.dish_ids)
+  const taxPolicy = useQuery({queryKey:['tax-policy'],queryFn:()=>rpc<TaxPolicy>('tax_configuration')})
+  const assignedDiscount = useQuery({queryKey:['assigned-discount',reservationKey],enabled:!!reservationKey,queryFn:async()=>{const r=await supabase.from('reservation_discounts').select('*').eq('reservation_id',reservationKey!).maybeSingle();if(r.error)throw r.error;return r.data}})
   const selected = catalog.data?.menu_sets.find(
     (p) => p.id === values.menu_set_id,
   )
@@ -445,16 +477,20 @@ export function ReservationWizard() {
     onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
   })
   const finalize = useMutation({
-    mutationFn: () => rpc('finalize_reservation', { rid: id }),
-    onSuccess: () => {
+    mutationFn: async () => {
+      if(draftId){const d=await rpc<SavedDraft>('save_booking_draft',{payload:form.getValues(),did:draftId,step:3,expected_version:savedVersion.current});savedVersion.current=d.version;return rpc<string>('submit_booking_draft',{did:draftId,expected_version:d.version})}
+      await rpc('finalize_reservation',{rid:id});return id!
+    },
+    onSuccess: (rid) => {
       clearBookingDraft(draftKey)
       void qc.invalidateQueries()
-      navigate('/customer/reservations/' + id)
+      navigate('/customer/reservations/' + rid)
     },
   })
-  if (catalog.isPending || (id && detail.isPending)) return <Loading />
-  if (catalog.error || detail.error)
-    return <ErrorState error={catalog.error || detail.error} />
+  if (catalog.isPending || (id && detail.isPending) || (draftId&&savedDraft.isPending)) return <Loading />
+  if (catalog.error || detail.error || savedDraft.error)
+    return <ErrorState error={catalog.error || detail.error || savedDraft.error} />
+  if(savedDraft.data?.submitted_at)return <section className="panel"><h2>This draft was already submitted.</h2><Link className="button" to={'/customer/reservations/'+savedDraft.data.reservation_id}>Open saved reservation</Link></section>
   if (
     detail.data &&
     (!['draft', 'pending', 'for_approval'].includes(
@@ -477,7 +513,12 @@ export function ReservationWizard() {
     values,
     weddingConfiguration.data || null,
   )
-  const displayedQuote = step === 3 ? quote : estimated
+  let financialPreview = null
+  try { if(estimated&&taxPolicy.data) financialPreview=financialQuote(estimated.total,assignedDiscount.data,taxPolicy.data) } catch { /* Keep incomplete drafts editable; validation runs on Next/finalize. */ }
+  const financialSnapshot = step===3&&id ? detail.data?.reservation.financial_snapshot : financialPreview
+  const rawQuote = step===3&&quote ? quote : estimated
+  const displayedQuote = rawQuote&&Number.isSafeInteger(rawQuote.total) ? {...rawQuote,total:financialSnapshot?.total ?? rawQuote.total} : null
+  const wizardPath = (target:number) => draftId ? `/customer/drafts/${draftId}/${['edit','menu','event-setup','confirm'][target]}` : `/customer/reservations/${id}/${['edit','menu','event-setup','confirm'][target]}`
   return (
     <>
       <PageHeading title="Let’s plan your celebration." eyebrow="MAKE IT YOURS">
@@ -498,11 +539,11 @@ export function ReservationWizard() {
             <button
               key={label}
               type="button"
-              disabled={i > step || !id}
+              disabled={i > step || (!id&&!draftId)}
               className={i === step ? 'current' : i < step ? 'complete' : ''}
               onClick={() =>
                 navigate(
-                  `/customer/reservations/${id}/${['edit', 'menu', 'event-setup', 'confirm'][i]}`,
+                  wizardPath(i),
                 )
               }
             >
@@ -576,6 +617,7 @@ export function ReservationWizard() {
                   'Included Monoblock seating is currently unavailable. Contact support.',
                 ])
               if (step === 1) {
+                if (allergyWarnings.isFetching || allergyWarnings.error || allergyWarnings.data?.some(w=>!v.allergy_acknowledgments.some(a=>a.token===w.token))) fields.push(['allergy_acknowledgments','Review and acknowledge each matching allergy warning before continuing.'])
                 if (v.dish_ids.length !== selected?.dish_count)
                   fields.push([
                     'dish_ids',
@@ -601,6 +643,8 @@ export function ReservationWizard() {
                 return
               }
               try {
+                const chair=c.chair_types.find(chair=>chair.id===v.chair_type_id)
+                if(step===2&&chair?.equipment_id){const stock=await rpc<EquipmentAvailabilityRow[]>('equipment_availability',{day:v.event_date,rid:id||null});const item=stock.find(i=>i.equipment_id===chair.equipment_id);if(!item?.active||item.total===null||v.elegant_chair_quantity>(item.available??0))throw new Error('Not enough confirmed Elegant Chair stock for this event date. Review the availability panel or choose Monoblock seating.')}
                 const availability = await rpc<BookingWindow>(
                   'booking_window',
                   { day: v.event_date, rid: id || null },
@@ -615,15 +659,16 @@ export function ReservationWizard() {
                   form.setFocus('event_time')
                   return
                 }
-              } catch {
+              } catch (error) {
                 form.setError('event_time', {
                   type: 'manual',
                   message:
-                    'Could not verify this event date/time. Retry before continuing.',
+                      error instanceof Error ? error.message : 'Could not verify this event date/time. Retry before continuing.',
                 })
                 return
               }
-              save.mutate(v)
+              if(!id)persistDraft.mutate({data:v,target:Math.min(step+1,3)})
+              else save.mutate(v)
             })}
           >
             {step === 0 && (
@@ -810,6 +855,7 @@ export function ReservationWizard() {
                   </label>
                 </div>
                 <p className="food-photo-notice">Representative photos; actual servings may differ. <Link to="/food-photo-credits" target="_blank" rel="noopener noreferrer">Photo credits</Link></p>
+                <AllergyFields form={form} dishes={c.dishes}/>
                 <div className="selection-grid food-choice-grid">
                   {c.dishes
                     .filter(
@@ -964,6 +1010,7 @@ export function ReservationWizard() {
                   </label>
                 ))}
                 <h3>A place for everyone</h3>
+                {!!c.chair_types.find(chair=>chair.id===values.chair_type_id)?.equipment_id&&<EquipmentAvailability day={values.event_date} rid={id} requested={values.elegant_chair_quantity}/>}
                 <div className="form-grid">
                   <Select
                     label="Table type"
@@ -1076,6 +1123,7 @@ export function ReservationWizard() {
             )}
             {step === 3 && (
               <>
+                <AllergyFields form={form} dishes={c.dishes} review/>
                 <h2>Here’s to your celebration.</h2>
                 <div className="review-summary">
                   <h3>{values.event_name}</h3>
@@ -1188,8 +1236,8 @@ export function ReservationWizard() {
                 <button
                   type="button"
                   className="button"
-                  disabled={finalize.isPending || !values.consent_accepted}
-                  onClick={() => finalize.mutate()}
+                  disabled={finalize.isPending || persistDraft.isPending || !values.consent_accepted || allergyWarnings.isFetching || !!allergyWarnings.error || !!allergyWarnings.data?.some(w=>!values.allergy_acknowledgments.some(a=>a.token===w.token))}
+                  onClick={()=>finalize.mutate()}
                 >
                   {finalize.isPending
                     ? 'Finalizing…'
@@ -1200,6 +1248,8 @@ export function ReservationWizard() {
               </>
             )}
             {save.error && <ErrorState error={save.error} />}{' '}
+            {persistDraft.error&&<ErrorState error={persistDraft.error}/>}
+            {errors.root?.message&&<p className="field-error" role="alert">{errors.root.message}</p>}
             {Object.keys(errors).length > 0 && (
               <p className="field-error" role="alert">
                 Please complete the required event details with valid
@@ -1207,13 +1257,14 @@ export function ReservationWizard() {
               </p>
             )}
             <div className="wizard-actions">
+              {(!id||detail.data?.reservation.status==='draft')&&<button type="button" className="button secondary" disabled={persistDraft.isPending||finalize.isPending} onClick={()=>persistDraft.mutate({data:form.getValues(),target:step})}>{persistDraft.isPending?'Saving draft…':'Save draft'}</button>}
               {step > 0 && (
                 <button
                   type="button"
                   className="text-button"
                   onClick={() =>
                     navigate(
-                      `/customer/reservations/${id}/${['edit', 'menu', 'event-setup'][step - 1]}`,
+                      wizardPath(step-1),
                     )
                   }
                 >
@@ -1225,10 +1276,10 @@ export function ReservationWizard() {
                 <button
                   className="button"
                   disabled={
-                    save.isPending || (step === 2 && estimated === null)
+                    save.isPending || persistDraft.isPending || (step === 2 && estimated === null)
                   }
                 >
-                  {save.isPending ? 'Saving…' : 'Save & continue'}
+                  {save.isPending||persistDraft.isPending ? 'Saving…' : 'Save & continue'}
                   <ArrowRight size={17} />
                 </button>
               )}
@@ -1269,12 +1320,7 @@ export function ReservationWizard() {
                     <strong>{money(v)}</strong>
                   </div>
                 ))}
-              <div className="price-total">
-                <span>
-                  {step === 3 ? 'Server-calculated total' : 'Current estimate'}
-                </span>
-                <strong>{money(displayedQuote.total)}</strong>
-              </div>
+              <FinancialBreakdown snapshot={financialSnapshot} total={displayedQuote.total}/>
               <small>
                 {step === 3
                   ? 'Finalization recalculates this quote using the current catalog.'

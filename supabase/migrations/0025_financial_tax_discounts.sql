@@ -1,0 +1,95 @@
+-- Existing prices were described by the user as VAT-inclusive. Registration is
+-- not verified: keep gross totals unchanged and label the component provisional.
+insert into public.app_settings(key,value) values('tax_policy','{"mode":"vat_inclusive","rate_bps":1200,"business_confirmed":false,"rounding":"nearest centavo; VAT rounded once after discount"}');
+alter table public.reservations add column financial_snapshot jsonb;
+create table public.discount_offers(id uuid primary key default gen_random_uuid(),name text not null check(length(name) between 3 and 120),kind text not null check(kind in ('fixed','percentage')),value bigint not null check(value>0),min_guests int not null default 1 check(min_guests>0),min_total bigint not null default 0 check(min_total>=0),menu_set_id uuid references public.menu_sets,starts_on date,ends_on date,usage_cap int check(usage_cap>0),active boolean not null default true,created_by uuid references public.profiles,created_at timestamptz not null default now(),check(kind<>'percentage' or value<=10000),check(ends_on is null or starts_on is null or ends_on>=starts_on));
+create table public.reservation_discounts(reservation_id uuid primary key references public.reservations,promo_id uuid not null references public.discount_offers,name text not null,reason text not null check(length(reason) between 3 and 500),kind text not null,value bigint not null,min_guests int not null,min_total bigint not null,menu_set_id uuid references public.menu_sets,starts_on date,ends_on date,applied_by uuid references public.profiles,applied_at timestamptz not null default now());
+alter table public.discount_offers enable row level security;alter table public.reservation_discounts enable row level security;
+revoke all on public.discount_offers,public.reservation_discounts from anon,authenticated;
+grant select on public.discount_offers,public.reservation_discounts to authenticated;
+grant all on public.discount_offers,public.reservation_discounts to service_role;
+create policy discount_offers_staff on public.discount_offers for select to authenticated using(public.is_staff());
+create policy reservation_discount_read on public.reservation_discounts for select to authenticated using(public.can_read_reservation(reservation_id));
+create function public.tax_configuration() returns jsonb language sql stable security definer set search_path='' as $$select value from public.app_settings where key='tax_policy'$$;
+create function public.configure_tax_policy(mode text,rate_bps int,business_confirmed boolean) returns void language plpgsql security definer set search_path='' as $$begin
+ if public.current_app_role() is distinct from 'super_admin' then raise exception 'Super admin required';end if;
+ if mode is null or mode not in ('non_vat','vat_inclusive','vat_exclusive') or rate_bps is null or rate_bps not between 0 and 10000 or business_confirmed is null or (mode='vat_exclusive' and not business_confirmed) then raise exception 'Choose a reviewed tax mode/rate; VAT-exclusive treatment requires business confirmation';end if;
+ update public.app_settings set value=jsonb_build_object('mode',mode,'rate_bps',case when mode='non_vat' then 0 else rate_bps end,'business_confirmed',business_confirmed,'rounding','nearest centavo; VAT rounded once after discount'),updated_at=now() where key='tax_policy';
+ perform private.audit('tax.policy_configured','tax_policy',jsonb_build_object('mode',mode,'rate_bps',rate_bps,'business_confirmed',business_confirmed));
+end $$;
+create function private.financial_quote(gross bigint,kind text,value bigint,tax jsonb) returns jsonb language plpgsql immutable set search_path='' as $$
+declare discount bigint=0;net bigint;vat bigint=0;basis bigint;total bigint;rate int;mode text;
+begin
+ if gross is null or gross<0 then raise exception 'Invalid gross amount';end if;
+ mode=tax->>'mode';rate=(tax->>'rate_bps')::int;
+ if mode is null or mode not in ('non_vat','vat_inclusive','vat_exclusive') or rate is null or rate not between 0 and 10000 then raise exception 'Invalid tax configuration';end if;
+ if kind is not null then
+  if value is null or value<=0 or (kind='percentage' and value>10000) or kind not in ('fixed','percentage') then raise exception 'Invalid discount';end if;
+  discount=case when kind='fixed' then value else round(gross::numeric*value/10000)::bigint end;
+  if discount>gross then raise exception 'Discount exceeds the eligible subtotal';end if;
+ end if;
+ net=gross-discount;total=net;basis=net;
+ if mode='vat_inclusive' then vat=round(net::numeric*rate/(10000+rate))::bigint;basis=net-vat;
+ elsif mode='vat_exclusive' then vat=round(net::numeric*rate/10000)::bigint;total=net+vat;end if;
+ return jsonb_build_object('gross_subtotal',gross,'discount_amount',discount,'discounted_subtotal',net,'taxable_basis',basis,'vat_amount',vat,'total',total,'tax_mode',mode,'rate_bps',case when mode='non_vat' then 0 else rate end,'business_confirmed',coalesce((tax->>'business_confirmed')::boolean,false),'rounding','nearest centavo; VAT rounded once after discount');
+end $$;
+create function private.discount_for_quote(rid uuid,gross bigint) returns public.reservation_discounts language plpgsql stable set search_path='' as $$
+declare d public.reservation_discounts;r public.reservations;today date=(now() at time zone 'Asia/Manila')::date;
+begin
+ select * into d from public.reservation_discounts where reservation_id=rid;if not found then return d;end if;
+ select * into strict r from public.reservations where id=rid;
+ if r.guests<d.min_guests or gross<d.min_total or (d.menu_set_id is not null and r.menu_set_id<>d.menu_set_id) or (d.starts_on is not null and today<d.starts_on) or (d.ends_on is not null and today>d.ends_on) then raise exception 'The assigned discount no longer meets its saved eligibility rules. Ask the manager to review it';end if;
+ return d;
+end $$;
+alter function private.calculate_price(uuid) rename to calculate_price_before_tax;
+create function private.calculate_price(rid uuid) returns jsonb language plpgsql security definer set search_path='' as $$
+declare quote jsonb;f jsonb;d public.reservation_discounts;
+begin
+ quote=private.calculate_price_before_tax(rid);d=private.discount_for_quote(rid,(quote->>'total')::bigint);
+ f=private.financial_quote((quote->>'total')::bigint,d.kind,d.value,public.tax_configuration());
+ return quote||jsonb_build_object('total',(f->>'total')::bigint);
+end $$;
+create function private.capture_financial_snapshot(rid uuid) returns void language plpgsql security definer set search_path='' as $$
+declare q jsonb;f jsonb;d public.reservation_discounts;
+begin
+ q=private.calculate_price_before_tax(rid);d=private.discount_for_quote(rid,(q->>'total')::bigint);f=private.financial_quote((q->>'total')::bigint,d.kind,d.value,public.tax_configuration());
+ update public.reservations set financial_snapshot=f||jsonb_build_object('discount_name',d.name,'discount_reason',d.reason,'captured_at',now()) where id=rid;
+end $$;
+alter function public.save_reservation(jsonb) set schema private;alter function private.save_reservation(jsonb) rename to save_reservation_before_financial;
+create function public.save_reservation(data jsonb) returns uuid language plpgsql security definer set search_path='' as $$declare rid uuid;begin rid=private.save_reservation_before_financial(data);perform private.capture_financial_snapshot(rid);return rid;end $$;
+alter function public.finalize_reservation(uuid) set schema private;alter function private.finalize_reservation(uuid) rename to finalize_reservation_before_financial;
+create function public.finalize_reservation(rid uuid) returns jsonb language plpgsql security definer set search_path='' as $$declare result jsonb;begin result=private.finalize_reservation_before_financial(rid);perform private.capture_financial_snapshot(rid);return result;end $$;
+create function public.save_discount_offer(offer jsonb,pid uuid default null) returns uuid language plpgsql security definer set search_path='' as $$declare result uuid;begin
+ perform private.require_staff();
+ if pid is null then
+  insert into public.discount_offers(name,kind,value,min_guests,min_total,menu_set_id,starts_on,ends_on,usage_cap,active,created_by) values(btrim(offer->>'name'),offer->>'kind',(offer->>'value')::bigint,coalesce((offer->>'min_guests')::int,1),coalesce((offer->>'min_total')::bigint,0),nullif(offer->>'menu_set_id','')::uuid,nullif(offer->>'starts_on','')::date,nullif(offer->>'ends_on','')::date,nullif(offer->>'usage_cap','')::int,coalesce((offer->>'active')::boolean,true),auth.uid()) returning id into result;
+ else
+  update public.discount_offers set name=btrim(offer->>'name'),kind=offer->>'kind',value=(offer->>'value')::bigint,min_guests=coalesce((offer->>'min_guests')::int,1),min_total=coalesce((offer->>'min_total')::bigint,0),menu_set_id=nullif(offer->>'menu_set_id','')::uuid,starts_on=nullif(offer->>'starts_on','')::date,ends_on=nullif(offer->>'ends_on','')::date,usage_cap=nullif(offer->>'usage_cap','')::int,active=coalesce((offer->>'active')::boolean,true) where id=pid returning id into result;
+  if result is null then raise exception 'Discount offer not found';end if;
+ end if;
+ perform private.audit('discount.offer_saved',result::text,jsonb_build_object('kind',offer->>'kind','value',offer->'value'));return result;
+end $$;
+create function public.apply_reservation_discount(rid uuid,pid uuid,reason text) returns void language plpgsql security definer set search_path='' as $$
+declare r public.reservations;p public.discount_offers;d public.reservation_discounts;gross bigint;f jsonb;tax jsonb;today date=(now() at time zone 'Asia/Manila')::date;
+begin
+ perform private.require_staff();select * into strict r from public.reservations where id=rid for update;perform private.no_checkout(rid);
+ if r.paid<>0 or r.refunded<>0 or r.status not in ('draft','pending','for_approval','approved') then raise exception 'Discount changes require an eligible unpaid booking with no open checkout; paid bookings need a reviewed adjustment';end if;
+ if length(btrim(coalesce(reason,''))) not between 3 and 500 then raise exception 'Enter a discount reason (3-500 characters)';end if;
+ gross=coalesce((r.financial_snapshot->>'gross_subtotal')::bigint,r.total);tax=case when r.financial_snapshot is null then public.tax_configuration() else jsonb_build_object('mode',r.financial_snapshot->>'tax_mode','rate_bps',(r.financial_snapshot->>'rate_bps')::int,'business_confirmed',(r.financial_snapshot->>'business_confirmed')::boolean) end;
+ if pid is null then delete from public.reservation_discounts where reservation_id=rid;
+ else
+  if exists(select 1 from public.reservation_discounts where reservation_id=rid) then raise exception 'Discounts do not stack; remove the assigned discount before applying another';end if;
+  select * into strict p from public.discount_offers where id=pid for update;
+  if not p.active or (p.starts_on is not null and today<p.starts_on) or (p.ends_on is not null and today>p.ends_on) then raise exception 'Offer is inactive or outside its application dates';end if;
+  if p.usage_cap is not null and (select count(*) from public.reservation_discounts x join public.reservations b on b.id=x.reservation_id where x.promo_id=pid and b.status not in ('cancelled','rejected','refunded'))>=p.usage_cap then raise exception 'Offer usage cap reached';end if;
+  insert into public.reservation_discounts(reservation_id,promo_id,name,reason,kind,value,min_guests,min_total,menu_set_id,starts_on,ends_on,applied_by) values(rid,pid,p.name,btrim(reason),p.kind,p.value,p.min_guests,p.min_total,p.menu_set_id,p.starts_on,p.ends_on,auth.uid());
+ end if;
+ d=private.discount_for_quote(rid,gross);f=private.financial_quote(gross,d.kind,d.value,tax)||jsonb_build_object('discount_name',d.name,'discount_reason',d.reason,'captured_at',now());
+ update public.reservations set total=(f->>'total')::bigint,pricing=pricing||jsonb_build_object('total',(f->>'total')::bigint),financial_snapshot=f where id=rid;
+ insert into public.balances values(rid,(f->>'total')::bigint,now()) on conflict(reservation_id) do update set amount=excluded.amount,updated_at=excluded.updated_at;
+ perform private.audit(case when pid is null then 'discount.removed' else 'discount.applied' end,rid::text,jsonb_build_object('promo_id',pid,'amount',f->'discount_amount','reference',r.reservation_reference));
+ perform private.notify(rid,'Booking discount updated','Your unpaid booking quote has been updated. Open the reservation to review the discount and current total.');
+end $$;
+revoke execute on function public.tax_configuration(),public.configure_tax_policy(text,int,boolean),public.save_reservation(jsonb),public.finalize_reservation(uuid),public.save_discount_offer(jsonb,uuid),public.apply_reservation_discount(uuid,uuid,text),private.financial_quote(bigint,text,bigint,jsonb),private.discount_for_quote(uuid,bigint),private.calculate_price(uuid),private.calculate_price_before_tax(uuid),private.capture_financial_snapshot(uuid),private.save_reservation_before_financial(jsonb),private.finalize_reservation_before_financial(uuid) from public,anon,authenticated;
+grant execute on function public.tax_configuration() to anon,authenticated;
+grant execute on function public.configure_tax_policy(text,int,boolean),public.save_reservation(jsonb),public.finalize_reservation(uuid),public.save_discount_offer(jsonb,uuid),public.apply_reservation_discount(uuid,uuid,text) to authenticated;

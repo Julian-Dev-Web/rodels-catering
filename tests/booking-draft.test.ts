@@ -5,9 +5,14 @@ import {
   writeBookingDraft,
   clearBookingDraft,
   clearBookingDrafts,
+  restorePersistedDraft,
 } from '../src/lib/booking-draft'
 
 describe('temporary booking draft restoration', () => {
+  it('restores bounded structured allergy acknowledgments without accepting arbitrary stored objects',()=>{
+    const template={allergy_acknowledgments:[] as {dish_id:string;allergen_id:string;token:string}[]}
+    expect(restorePersistedDraft(template,{allergy_acknowledgments:[{dish_id:'dish',allergen_id:'seafood',token:'version-token',unexpected:'discard'},{token:42}]})).toEqual({allergy_acknowledgments:[{dish_id:'dish',allergen_id:'seafood',token:'version-token'}]})
+  })
   const defaults = {
     event_name: '',
     guests: 100,

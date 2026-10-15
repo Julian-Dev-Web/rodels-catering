@@ -34,6 +34,7 @@ import { Form } from '../components/Form'
 import type { Field } from '../components/Form'
 import { FoodPhoto } from '../components/FoodPhoto'
 import { CatalogPhotoEditor } from '../components/CatalogPhotoEditor'
+import { DishAllergenEditor } from '../components/AllergyFields'
 import { isFoodKind } from '../lib/menu-photos'
 import type { CatalogItem } from '../types'
 import { Stat } from './Customer'
@@ -638,6 +639,7 @@ export function CatalogManager({
   const [table, setTable] = useState<CatalogTable>(tabs[0]),
     [editing, setEditing] = useState<RecordRow | null | undefined>(undefined),
     [photoEditing, setPhotoEditing] = useState<RecordRow | null>(null)
+  const [allergenEditing,setAllergenEditing]=useState<RecordRow|null>(null)
   const query = useQuery({
     queryKey: ['manage-catalog', table],
     queryFn: () => records<RecordRow>(table, 'name', true),
@@ -816,6 +818,7 @@ export function CatalogManager({
                 Edit
               </button>}
               {isFoodKind(table)&&<button className="text-button" onClick={()=>setPhotoEditing(r)}>Photo</button>}
+              {table==='dishes'&&area==='menu'&&<button className="text-button" onClick={()=>setAllergenEditing(r)}>Allergens</button>}
               {area !== 'food-photos' && <Action
                 kind="small secondary"
                 label={r.active ? 'Archive' : 'Activate'}
@@ -837,6 +840,7 @@ export function CatalogManager({
         />
       )}{' '}
       {photoEditing&&isFoodKind(table)&&<Modal title={'Photo for '+String(photoEditing.name)} close={()=>setPhotoEditing(null)}><CatalogPhotoEditor table={table} item={photoEditing as unknown as CatalogItem} close={()=>setPhotoEditing(null)}/></Modal>}
+      {allergenEditing&&<Modal title={'Allergens for '+String(allergenEditing.name)} close={()=>setAllergenEditing(null)}><DishAllergenEditor dish={allergenEditing as unknown as CatalogItem} close={()=>setAllergenEditing(null)}/></Modal>}
       {editing !== undefined && (
         <Modal
           title={(editing ? 'Edit ' : 'Add ') + human(table).replace(/s$/, '')}

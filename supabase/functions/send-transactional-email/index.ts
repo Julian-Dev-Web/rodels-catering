@@ -39,6 +39,7 @@ endpoint(async (req) => {
   })
   if (!res.ok) throw new Error('Email provider failed')
   const result = await res.json()
+  if(typeof result.id!=='string'||!result.id)throw new Error('Email provider acceptance was not confirmed')
   const { error: saveError } = await db
     .from('email_deliveries')
     .upsert({ notification_id, provider_id: result.id }, { onConflict: 'notification_id' })

@@ -1,0 +1,91 @@
+alter table public.profiles add column reminder_inapp_opt_in boolean not null default true,add column reminder_email_opt_in boolean not null default false;
+insert into public.app_settings(key,value) values('reminder_policy','{"enabled":true,"send_at":"07:00","timezone":"Asia/Manila","days_before":[7,6,5,4,3,2,1],"email_configured":false}');
+create table public.reminder_deliveries(id uuid primary key default gen_random_uuid(),reservation_id uuid not null references public.reservations,event_date date not null,reminder_date date not null,channel text not null check(channel in ('in_app','email')),status text not null default 'queued' check(status in ('queued','sending','sent','failed','cancelled','uncertain','blocked')),notification_id uuid references public.notifications,title text not null,body text not null,href text not null,attempts int not null default 0,claimed_at timestamptz,next_attempt_at timestamptz,sent_at timestamptz,provider_id text,provider_payload jsonb,error_code text,created_at timestamptz not null default now(),unique(reservation_id,reminder_date,channel));
+alter table public.reminder_deliveries enable row level security;revoke all on public.reminder_deliveries from anon,authenticated;grant select on public.reminder_deliveries to authenticated;grant all on public.reminder_deliveries to service_role;
+create policy reminders_read on public.reminder_deliveries for select to authenticated using(public.can_read_reservation(reservation_id));
+create function public.reminder_configuration() returns jsonb language sql stable security definer set search_path='' as $$ select value from public.app_settings where key='reminder_policy' $$;
+create function public.configure_reminders(enabled boolean,send_at time) returns void language plpgsql security definer set search_path='' as $$begin
+ if public.current_app_role() is distinct from 'super_admin' then raise exception 'Super admin required';end if;
+ if enabled is null or send_at is null or send_at>='24:00'::time then raise exception 'Choose a valid Manila send time';end if;
+ update public.app_settings set value=value||jsonb_build_object('enabled',enabled,'send_at',to_char(send_at,'HH24:MI')),updated_at=now() where key='reminder_policy';
+ perform private.audit('reminders.configured','reminder_policy',jsonb_build_object('enabled',enabled,'send_at',send_at));
+end $$;
+create function public.update_reminder_preferences(in_app boolean,email boolean) returns void language plpgsql security definer set search_path='' as $$begin
+ if not public.customer_access() or auth.uid() is null then raise exception 'Sign in to update preferences';end if;
+ if in_app is null or email is null then raise exception 'Choose notification preferences';end if;
+ update public.profiles set reminder_inapp_opt_in=in_app,reminder_email_opt_in=email where id=auth.uid();
+ update public.reminder_deliveries d set status='cancelled',error_code='opted_out' from public.reservations r where r.id=d.reservation_id and r.customer_id=auth.uid() and d.status<>'sent' and ((d.channel='email' and not email) or (d.channel='in_app' and not in_app));
+ perform private.audit('reminders.preferences_changed',auth.uid()::text,jsonb_build_object('in_app',in_app,'email',email));
+end $$;
+create function private.reminder_title(r public.reservations,day date) returns text language sql immutable set search_path='' as $$select 'Upcoming event: '||r.reservation_reference||' ('||(r.event_date-day)||' day'||case when r.event_date-day=1 then '' else 's' end||' away)'$$;
+create function private.reminder_body(r public.reservations) returns text language sql immutable set search_path='' as $$select r.event_name||' is scheduled for '||to_char(r.event_date,'FMMonth DD, YYYY')||' at '||to_char(r.event_time,'HH12:MI AM')||' Asia/Manila. Venue: '||concat_ws(', ',nullif(r.address->>'street',''),nullif(r.address->>'barangay',''),nullif(r.address->>'city',''),nullif(r.address->>'province',''))||'. Please review your event details and contact the catering team about any changes.'$$;
+create function public.enqueue_event_reminders(at_time timestamptz default now()) returns int language plpgsql security definer set search_path='' as $$
+declare local_now timestamp=at_time at time zone 'Asia/Manila';day date=local_now::date;policy jsonb;r public.reservations;p public.profiles;ch text;did uuid;nid uuid;created int=0;
+begin
+ select value into policy from public.app_settings where key='reminder_policy';
+ if not coalesce((policy->>'enabled')::boolean,false) or local_now::time<(policy->>'send_at')::time then return 0;end if;
+ update public.reminder_deliveries set status='cancelled',error_code='reminder_day_expired' where reminder_date<day and status<>'sent';
+ for r in select b.* from public.reservations b where b.status='approved' and b.event_date between day+1 and day+7 order by b.id for update skip locked loop
+  select * into p from public.profiles where id=r.customer_id;if p.account_status<>'active' then continue;end if;
+  foreach ch in array array['in_app','email'] loop
+   if (ch='in_app' and not p.reminder_inapp_opt_in) or (ch='email' and not p.reminder_email_opt_in) then continue;end if;
+   did=null;
+   insert into public.reminder_deliveries(reservation_id,event_date,reminder_date,channel,title,body,href) values(r.id,r.event_date,day,ch,private.reminder_title(r,day),private.reminder_body(r),'/customer/reservations/'||r.id) on conflict(reservation_id,reminder_date,channel) do update set event_date=excluded.event_date,title=excluded.title,body=excluded.body,href=excluded.href,status='queued',error_code=null where reminder_deliveries.status='cancelled' and reminder_deliveries.attempts=0 and reminder_deliveries.sent_at is null and reminder_deliveries.provider_payload is null returning id into did;
+   if did is null then continue;end if;created=created+1;
+   if ch='in_app' then
+    insert into public.notifications(user_id,title,body,href) values(r.customer_id,private.reminder_title(r,day),private.reminder_body(r),'/customer/reservations/'||r.id) returning id into nid;
+    update public.reminder_deliveries set status='sent',notification_id=nid,sent_at=at_time where id=did;
+   end if;
+  end loop;
+ end loop;return created;
+end $$;
+create function private.invalidate_event_reminders() returns trigger language plpgsql security definer set search_path='' as $$begin
+ if new.event_date is distinct from old.event_date or new.status<>'approved' then
+  update public.reminder_deliveries set status='cancelled',error_code='event_changed' where reservation_id=new.id and status<>'sent';
+ end if;return null;
+end $$;
+create trigger event_reminders_changed after update of event_date,status on public.reservations for each row execute function private.invalidate_event_reminders();
+create function public.claim_event_reminder_emails(at_time timestamptz default now(),batch_size int default 10) returns setof public.reminder_deliveries language plpgsql security definer set search_path='' as $$
+declare d public.reminder_deliveries;day date=(at_time at time zone 'Asia/Manila')::date;
+begin
+ for d in select q.* from public.reminder_deliveries q join public.reservations r on r.id=q.reservation_id join public.profiles p on p.id=r.customer_id where coalesce((select (value->>'enabled')::boolean from public.app_settings where key='reminder_policy'),false) and q.channel='email' and q.reminder_date=day and q.event_date=r.event_date and r.status='approved' and r.event_date between day+1 and day+7 and p.account_status='active' and p.reminder_email_opt_in and q.attempts<12 and ((q.status in ('queued','failed','uncertain','blocked') and coalesce(q.next_attempt_at,at_time)<=at_time) or (q.status='sending' and q.claimed_at<at_time-interval '5 minutes')) order by q.created_at limit greatest(1,least(batch_size,20)) for update of q skip locked loop
+  update public.reminder_deliveries set status='sending',claimed_at=at_time,attempts=attempts+1,error_code=null where id=d.id returning * into d;return next d;
+ end loop;
+end $$;
+create function public.prepare_reminder_email(delivery_id uuid,payload jsonb default null) returns public.reminder_deliveries language plpgsql security definer set search_path='' as $$
+declare d public.reminder_deliveries;
+begin
+ select * into strict d from public.reminder_deliveries where id=delivery_id for update;
+ if not coalesce((select (value->>'enabled')::boolean from public.app_settings where key='reminder_policy'),false) or d.channel<>'email' or d.status<>'sending' or d.reminder_date<>(now() at time zone 'Asia/Manila')::date or not exists(select 1 from public.reservations r join public.profiles p on p.id=r.customer_id where r.id=d.reservation_id and r.status='approved' and r.event_date=d.event_date and p.account_status='active' and p.reminder_email_opt_in) then raise exception 'Reminder is no longer eligible';end if;
+ if d.provider_payload is null and payload is not null then update public.reminder_deliveries set provider_payload=payload where id=d.id returning * into d;end if;
+ return d;
+end $$;
+create function public.finish_reminder_email(delivery_id uuid,result text,provider text default null) returns void language plpgsql security definer set search_path='' as $$begin
+ if result not in ('sent','failed','uncertain','blocked') or (result='sent' and coalesce(provider,'')='') then raise exception 'A provider acceptance ID is required before success';end if;
+ update public.reminder_deliveries set status=case when result='sent' then 'sent' when status='cancelled' then 'cancelled' else result end,provider_id=case when result='sent' then provider else provider_id end,sent_at=case when result='sent' then now() else sent_at end,error_code=case when status='cancelled' then 'event_changed_inflight_'||result when result='sent' then null when result='blocked' then 'email_configuration_missing' else 'provider_'||result end,next_attempt_at=case when result='sent' then null else now()+interval '5 minutes' end where id=delivery_id and channel='email' and status in ('sending','cancelled');
+end $$;
+revoke execute on function public.reminder_configuration(),public.configure_reminders(boolean,time),public.update_reminder_preferences(boolean,boolean),public.enqueue_event_reminders(timestamptz),public.claim_event_reminder_emails(timestamptz,int),public.prepare_reminder_email(uuid,jsonb),public.finish_reminder_email(uuid,text,text),private.reminder_title(public.reservations,date),private.reminder_body(public.reservations),private.invalidate_event_reminders() from public,anon,authenticated;
+grant execute on function public.reminder_configuration(),public.configure_reminders(boolean,time),public.update_reminder_preferences(boolean,boolean) to authenticated;
+grant execute on function public.enqueue_event_reminders(timestamptz),public.claim_event_reminder_emails(timestamptz,int),public.prepare_reminder_email(uuid,jsonb),public.finish_reminder_email(uuid,text,text) to service_role;
+
+-- Extend the existing security-invoker summary with new operational snapshots.
+create or replace view public.reservation_summary with(security_invoker=true) as select r.id,r.customer_id,r.event_name,r.event_date,r.event_time,r.address,r.guests,r.menu_set_id,r.drink_id,r.dessert_id,r.status,r.holds_capacity,r.payment_status,r.total,r.paid,r.refunded,r.pricing,r.finalized_at,r.created_at,r.updated_at,m.name as package_name,p.full_name as customer_name,r.booking_version,r.event_preferences,r.consent_version,r.consent_at,r.reservation_reference,r.selection_snapshot,r.allergy_allergen_ids,r.allergy_notes,r.allergy_acknowledgments,r.financial_snapshot from public.reservations r join public.menu_sets m on m.id=r.menu_set_id join public.profiles p on p.id=r.customer_id;
+alter function public.export_application_snapshot() set schema private;alter function private.export_application_snapshot() rename to export_application_snapshot_0022;
+create function public.export_application_snapshot() returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare result jsonb;t text;rows jsonb;n bigint;tables jsonb;counts jsonb;
+begin
+ result=private.export_application_snapshot_0022();tables=result->'tables';counts=result->'counts';
+ foreach t in array array['equipment_inventory','equipment_allocations','allergens','dish_allergens','reservation_drafts','discount_offers','reservation_discounts','reminder_deliveries'] loop
+  execute format('select coalesce(jsonb_agg(to_jsonb(x)),''[]''::jsonb),count(*) from (select * from public.%I limit 50001)x',t) into rows,n;
+  if n>50000 then raise exception 'Dataset too large for application export';end if;tables=tables||jsonb_build_object(t,rows);counts=counts||jsonb_build_object(t,n);
+ end loop;
+ if octet_length(tables::text)>10485760 then raise exception 'Dataset too large for application export';end if;
+ return result||jsonb_build_object('tables',tables,'counts',counts,'schema_version','0026_upcoming_event_reminders.sql');
+end $$;
+revoke execute on function public.export_application_snapshot(),private.export_application_snapshot_0022() from public,anon,authenticated;
+grant execute on function public.export_application_snapshot() to service_role;
+create function public.set_reminder_email_status(ready boolean) returns void language sql security definer set search_path='' as $$
+ update public.app_settings set value=value||jsonb_build_object('email_configured',coalesce(ready,false),'worker_last_checked',now()) where key='reminder_policy'
+$$;
+revoke execute on function public.set_reminder_email_status(boolean) from public,anon,authenticated;
+grant execute on function public.set_reminder_email_status(boolean) to service_role;

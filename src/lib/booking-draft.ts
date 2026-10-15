@@ -9,12 +9,14 @@ export function bookingDraftKey(
 
 // Only restore fields with the form's expected shape. Incomplete/invalid user
 // input still belongs in a draft; normal form and server validation run on save.
-function restoreShape(template: unknown, stored: unknown): unknown {
+function restoreShape(template: unknown, stored: unknown, field?: string): unknown {
   if (template === null)
     return stored === null ||
       (typeof stored === 'number' && Number.isFinite(stored))
       ? stored
       : template
+  if (Array.isArray(template) && field==='allergy_acknowledgments')
+    return Array.isArray(stored) ? stored.filter(v=>v&&typeof v==='object'&&['dish_id','allergen_id','token'].every(k=>typeof v[k]==='string'&&v[k].length<=200)).map(v=>({dish_id:v.dish_id,allergen_id:v.allergen_id,token:v.token})) : template
   if (Array.isArray(template))
     return Array.isArray(stored) && stored.every((v) => typeof v === 'string')
       ? stored
@@ -32,7 +34,7 @@ function restoreShape(template: unknown, stored: unknown): unknown {
     return Object.fromEntries(
       fields.map(([key, value]) => [
         key,
-        restoreShape(value, (stored as Record<string, unknown>)[key]),
+        restoreShape(value, (stored as Record<string, unknown>)[key],key),
       ]),
     )
   }
@@ -69,6 +71,9 @@ export function readBookingDraft<T>(
   } catch {
     return defaults
   }
+}
+export function restorePersistedDraft<T>(defaults:T,data:unknown):T {
+  return restoreShape(defaults,data) as T
 }
 
 export function writeBookingDraft(

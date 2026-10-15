@@ -23,6 +23,8 @@ export interface Profile {
   account_status: 'active' | 'suspended'
   status_changed_at: string | null
   created_at: string
+  reminder_inapp_opt_in?: boolean
+  reminder_email_opt_in?: boolean
 }
 export interface CatalogItem {
   id: string
@@ -42,6 +44,9 @@ export interface CatalogItem {
   image_credit?: string
   image_source_url?: string | null
   active: boolean
+  equipment_id?: string | null
+  allergen_info_reviewed?: boolean
+  allergen_revision?: number
 }
 export type CatalogTable =
   | 'menu_sets'
@@ -77,6 +82,10 @@ export interface Reservation {
   pricing: Record<string, number>
   created_at: string
   finalized_at: string | null
+  financial_snapshot?: import('./lib/financial').FinancialSnapshot | null
+  allergy_allergen_ids?: string[]
+  allergy_notes?: string
+  allergy_acknowledgments?: {dish_id:string;allergen_id:string;token:string}[]
   booking_version?: number
   event_preferences?: import('./lib/booking').EventPreferences
   consent_version?: string | null

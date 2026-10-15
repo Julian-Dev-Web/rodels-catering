@@ -1,5 +1,7 @@
 # RodelConnect evidence audit
 
+Current panel revisions: [implementation, verification and business setup status](PANEL_REVISIONS_2026-10-15.md). Hosted schema 0026 includes shared equipment, persistent incomplete drafts, allergy acknowledgments, tax/discount snapshots and scheduled upcoming reminders. Actual chair stock and tax registration still need business confirmation. Reminder email needs a verified sender; see [email setup](REMINDER_EMAIL_SETUP.md). Earlier implementation counts and unresolved-item lists below are historical where superseded by this handoff.
+
 Current consolidated source/deployment evidence is recorded in [the 0019 handoff](CONSOLIDATED_UPDATES_2026-10-15.md) and [continuation checkpoint](CONSOLIDATED_IMPLEMENTATION_PROGRESS.md). Earlier rows retain their original historical baseline.
 
 Submission date: October 14, 2026. Repository baseline: `a5f38b2` on `main`.

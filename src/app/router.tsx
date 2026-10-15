@@ -17,6 +17,10 @@ import { About, Gallery, Home, Packages, Policies } from '../pages/Public'
 import { AuthPage } from '../pages/Auth'
 import { Empty, Loading } from '../components/ui'
 const FoodPhotoCredits = lazy(() => import('../pages/FoodPhotoCredits').then(module => ({ default: module.FoodPhotoCredits })))
+const EquipmentManagement = lazy(()=>import('../pages/PanelOperations').then(m=>({default:m.EquipmentManagement})))
+const DiscountOffers = lazy(()=>import('../pages/PanelOperations').then(m=>({default:m.DiscountOffers})))
+const PanelSystemConfiguration = lazy(()=>import('../pages/PanelOperations').then(m=>({default:m.PanelSystemConfiguration})))
+const ManagerUpcoming = lazy(()=>import('../pages/PanelOperations').then(m=>({default:m.ManagerUpcoming})))
 const AvailableDates = lazy(() =>
   import('../pages/Customer').then((m) => ({ default: m.AvailableDates })),
 )
@@ -193,6 +197,8 @@ export function Router() {
                 <Route path="available-dates" element={<AvailableDates />} />
                 <Route path="packages" element={<Packages />} />
                 <Route path="reservations" element={<Reservations />} />
+                <Route path="drafts/:draftId" element={<ReservationWizard />} />
+                <Route path="drafts/:draftId/:step" element={<ReservationWizard />} />
                 <Route
                   path="reservations/new"
                   element={<ReservationWizard />}
@@ -233,6 +239,9 @@ export function Router() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="calendar" element={<ManagerCalendar />} />
+                <Route path="equipment" element={<EquipmentManagement/>}/>
+                <Route path="discounts" element={<DiscountOffers/>}/>
+                <Route path="upcoming" element={<ManagerUpcoming/>}/>
                 <Route path="operating-hours" element={<OperatingHours />} />
                 <Route path="catalog" element={<ManagerCatalog />} />
                 <Route
@@ -268,6 +277,9 @@ export function Router() {
                 <Route path="backups" element={<Backups />} />
                 <Route path="roles" element={<RolePermissions />} />
                 <Route path="system-settings" element={<SystemSettings />} />
+                <Route path="equipment" element={<EquipmentManagement/>}/>
+                <Route path="discounts" element={<DiscountOffers/>}/>
+                <Route path="tax-reminders" element={<PanelSystemConfiguration/>}/>
                 <Route path="operating-hours" element={<OperatingHours />} />
                 <Route path="security" element={<SecurityMonitoring />} />
                 <Route path="reports" element={<SystemReports />} />

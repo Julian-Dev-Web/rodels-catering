@@ -156,6 +156,7 @@ export function Reports({ paymentsOnly = false }: { paymentsOnly?: boolean }) {
           { key: 'received', label: 'Received (PHP)' },
           { key: 'refunded', label: 'Refund (PHP)' },
           { key: 'balance', label: 'Current balance (PHP)' },
+          { key: 'tax_discount', label: 'Saved VAT / discount' },
         ]
       : [
           { key: 'reservation', label: 'Reservation reference' },
@@ -175,6 +176,7 @@ export function Reports({ paymentsOnly = false }: { paymentsOnly?: boolean }) {
           { key: 'theme', label: 'Theme' },
           { key: 'colors', label: 'Colors' },
           { key: 'extras', label: 'Saved seating / extras (PHP)' },
+          { key: 'tax_discount', label: 'Saved VAT / discount' },
         ]
   const report: ReportDocument = {
     title:

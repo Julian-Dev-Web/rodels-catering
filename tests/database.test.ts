@@ -121,6 +121,8 @@ beforeAll(async () => {
       '-- pgcrypto installation belongs to the real Supabase platform.',
     ),
   )
+  // Isolated test fixture only; production stock remains unconfigured.
+  await db.exec('update public.equipment_inventory set usable_quantity=1000000')
   ownerCatalog = (
     await db.query<{
       name: string
@@ -242,7 +244,7 @@ describe('system administration and private application export', () => {
       exclusions: string[]
     }>('select export_application_snapshot() as value')
     expect(snapshot.format).toBe('rodelconnect-application-export')
-    expect(Object.keys(snapshot.tables)).toHaveLength(38)
+    expect(Object.keys(snapshot.tables)).toHaveLength(46)
     expect(snapshot.tables.profiles).toHaveLength(5)
     expect(snapshot.tables).not.toHaveProperty('users')
     expect(snapshot.tables).not.toHaveProperty('storage.objects')
@@ -1636,7 +1638,7 @@ describe('catalog food photographs',()=>{
  })
  it('exports the matching photo schema without granting customer access to the operator snapshot',async()=>{
   await identity('customer');await expect(db.query('select export_application_snapshot()')).rejects.toThrow(/permission denied/)
-  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0022_buffet_extras_wedding_rates.sql')
+  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0026_upcoming_event_reminders.sql')
  })
 })
 
@@ -1655,5 +1657,85 @@ describe('confirmed buffet extras and Wedding rates',()=>{
  it('deducts exactly PHP5,000 for each unchecked Wedding inclusion including an all-unchecked quote',async()=>{
   const all=['stage_backdrop','elegant_chair','entrance','presidential_table','buffet_setup','diamond_dance_floor']
   for(const n of [6,5,1,0]){const id=await ownerDraft('2091-10-'+String(n+1).padStart(2,'0'),100,'Monoblock','Wedding setup',undefined,'Round table',{event_preferences:{setup_inclusions:all.slice(0,n)}});expect(await scalar('select total as value from reservations where id=$1',[id])).toBe(3200000+n*500000)}
+ })
+})
+
+describe('shared whole-day Elegant Chair inventory',()=>{
+ it('requires configured stock, prevents over-allocation, releases cancellations and moves approved reschedules',async()=>{
+  await identity('operator');await db.exec('update equipment_inventory set usable_quantity=null');
+  await expect(ownerDraft('2090-11-20',600,'Elegant chair')).rejects.toThrow(/not configured/)
+  await identity('manager');const eid=await scalar<string>("select id as value from equipment_inventory where code='elegant_chair'");await db.query('select configure_equipment($1,1000)',[eid]);
+  const a=await ownerDraft('2090-11-20',600,'Elegant chair');await db.query('select finalize_reservation($1)',[a]);await identity('manager');await db.query("select manager_reservation_status($1,'approved')",[a]);
+  const b=await ownerDraft('2090-11-21',500,'Elegant chair');await db.query('select finalize_reservation($1)',[b]);await identity('operator');await db.query('update reservations set customer_id=$1,event_date=$2 where id=$3',[users.other_customer,'2090-11-20',b]);await identity('manager');await expect(db.query("select manager_reservation_status($1,'approved')",[b])).rejects.toThrow(/shortage.*500 requested, 400 available/);
+  expect(await scalar<number>('select sum(quantity)::int as value from equipment_allocations where event_date=$1',['2090-11-20'])).toBe(600);
+  await db.query('select configure_equipment($1,400)',[eid]);expect((await scalar<{overcommitted:boolean;available:number}[]>("select equipment_availability('2090-11-20') as value"))[0]).toMatchObject({overcommitted:true,available:0});expect(await scalar('select status::text as value from reservations where id=$1',[a])).toBe('approved');
+  await identity('operator');await db.query("update reservations set status='cancelled' where id=$1",[a]);await identity('manager');await db.query('select configure_equipment($1,1000)',[eid]);await db.query("select manager_reservation_status($1,'approved')",[b]);
+  await identity('other_customer');const request=await scalar<string>("select request_reschedule($1,'2090-11-22','Inventory date move') as value",[b]);await identity('manager');await db.query('select review_reschedule($1,true)',[request]);expect(await scalar("select event_date::text as value from equipment_allocations where reservation_id=$1",[b])).toBe('2090-11-22');expect((await scalar<{available:number}[]>("select equipment_availability('2090-11-20') as value"))[0].available).toBe(1000);
+  await identity('customer');await expect(db.query('select configure_equipment($1,1000000)',[eid])).rejects.toThrow(/Staff/);await expect(db.query('update equipment_inventory set usable_quantity=1000000')).rejects.toThrow(/permission/);
+  await identity('operator');await db.exec('update equipment_inventory set usable_quantity=1000000');
+ })
+})
+async function draftPayloadFrom(rid:string,day:string){
+ return scalar<Record<string,unknown>>(`select to_jsonb(r)||jsonb_build_object('id',null,'event_date',$2::text,'consent_accepted',true,'setup_id',(select event_setup_id from reservation_event_setups where reservation_id=r.id),'dish_ids',array(select dish_id from reservation_items where reservation_id=r.id),'table_type_id',(select table_type_id from reservation_tables_chairs where reservation_id=r.id limit 1),'chairs',(select jsonb_agg(jsonb_build_object('id',chair_type_id,'quantity',chair_quantity)) from reservation_tables_chairs where reservation_id=r.id),'feature_ids','[]'::jsonb,'add_ons','[]'::jsonb) as value from reservations r where id=$1`,[rid,day])
+}
+describe('persistent incomplete drafts and allergy acknowledgments',()=>{
+ it('saves missing required fields without a reservation/hold, protects ownership/version and submits exactly once',async()=>{
+  const template=await ownerDraft('2088-01-01',100),complete=await draftPayloadFrom(template,'2088-01-02');
+  const before=await scalar<number>('select count(*)::int as value from reservations');
+  let d=await scalar<{id:string;version:number;submitted_at:string|null}>("select to_jsonb(save_booking_draft('{\"event_name\":\"Unfinished\",\"event_date\":\"\"}')) as value");
+  expect(await scalar('select count(*)::int as value from reservations')).toBe(before);await expect(db.query('select submit_booking_draft($1,$2)',[d.id,d.version])).rejects.toThrow();
+  expect(await scalar('select submitted_at as value from reservation_drafts where id=$1',[d.id])).toBeNull();
+  await identity('other_customer');expect(await scalar('select count(*)::int as value from reservation_drafts where id=$1',[d.id])).toBe(0);await expect(db.query('select submit_booking_draft($1,$2)',[d.id,d.version])).rejects.toThrow(/Access denied/);
+  await identity('customer');d=await scalar('select to_jsonb(save_booking_draft($1,$2,3,$3)) as value',[JSON.stringify(complete),d.id,d.version]);
+  await expect(db.query('select save_booking_draft($1,$2,0,1)',[JSON.stringify(complete),d.id])).rejects.toThrow(/another tab/);
+  const rid=await scalar<string>('select submit_booking_draft($1,$2) as value',[d.id,d.version]);expect(await scalar('select submit_booking_draft($1,$2) as value',[d.id,d.version])).toBe(rid);expect(await scalar('select status::text as value from reservations where id=$1',[rid])).toBe('for_approval');expect(await scalar('select count(*)::int as value from reservations')).toBe(before+1);
+  expect(await scalar('select count(*)::int as value from equipment_allocations where reservation_id=$1',[rid])).toBe(0);
+ })
+ it('requires an explicit matching allergy acknowledgment, allows the dish after acknowledgment and invalidates ingredient changes',async()=>{
+  await identity('customer');const shrimp=await scalar<string>("select id as value from dishes where name='Shrimp Tempura'"),chicken=await scalar<string>("select id as value from dishes where name='Fried Chicken'"),beef=await scalar<string>("select id as value from dishes where name='Korean Beef'");const dishes=[shrimp,chicken,beef];
+  const payload={allergy_allergen_ids:['seafood'],allergy_notes:'Please discuss cross-contact with us',dish_ids:dishes};let rid=await ownerDraft('2088-02-01',100,'Monoblock','Simple buffet setup',undefined,'Round table',payload);
+  await expect(db.query('select finalize_reservation($1)',[rid])).rejects.toThrow(/Allergy acknowledgment required/);
+  const warnings=await scalar<{token:string;dish_id:string;allergen_id:string}[]>('select allergy_warnings($1,$2,$3) as value',[['seafood'],payload.allergy_notes,dishes]);expect(warnings).toHaveLength(1);
+  rid=await ownerDraft('2088-02-01',100,'Monoblock','Simple buffet setup',undefined,'Round table',{...payload,id:rid,allergy_acknowledgments:warnings});await db.query('select finalize_reservation($1)',[rid]);
+  await identity('manager');await db.query('select configure_dish_allergens($1,$2,true)',[shrimp,['seafood','milk']]);const changed=await scalar<{token:string}[]>('select allergy_warnings($1,$2,$3) as value',[['seafood'],payload.allergy_notes,dishes]);expect(changed[0].token).not.toBe(warnings[0].token);
+  await identity('customer');await expect(db.query('select configure_dish_allergens($1,$2,true)',[shrimp,[]])).rejects.toThrow(/Staff/);
+  expect(await scalar('select allergen_info_reviewed as value from dishes where id=$1',[chicken])).toBe(false);
+ })
+})
+describe('tax snapshots and staff-assigned discounts',()=>{
+ it('computes inclusive, exclusive, non-VAT and centavo rounding without changing inclusive gross totals',async()=>{
+  await identity('operator');const calc=(gross:number,mode:string,kind:string|null=null,value:number|null=null)=>scalar<Record<string,number>>('select private.financial_quote($1,$2,$3,$4) as value',[gross,kind,value,JSON.stringify({mode,rate_bps:1200,business_confirmed:false})]);
+  expect(await calc(11200,'vat_inclusive')).toMatchObject({total:11200,taxable_basis:10000,vat_amount:1200});expect(await calc(10000,'vat_exclusive')).toMatchObject({total:11200,taxable_basis:10000,vat_amount:1200});expect(await calc(11200,'non_vat')).toMatchObject({total:11200,vat_amount:0});expect(await calc(1,'vat_inclusive')).toMatchObject({total:1,vat_amount:0});expect(await calc(11200,'vat_inclusive','percentage',1000)).toMatchObject({total:10080,discount_amount:1120,vat_amount:1080});await expect(calc(100,'non_vat','fixed',101)).rejects.toThrow(/exceeds/);
+ })
+ it('rejects customer discount forgery and paid/open-checkout changes; enforces one offer, eligibility, usage caps and audit',async()=>{
+  const a=await ownerDraft('2088-03-01',100),b=await ownerDraft('2088-03-02',100);await identity('manager');const offer=await scalar<string>('select save_discount_offer($1) as value',[JSON.stringify({name:'Isolated approved discount',kind:'percentage',value:1000,min_guests:100,usage_cap:1})]);
+  await identity('customer');await expect(db.query('select apply_reservation_discount($1,$2,$3)',[a,offer,'Forged user promo'])).rejects.toThrow(/Staff/);await expect(db.query('insert into reservation_discounts(reservation_id,promo_id) values($1,$2)',[a,offer])).rejects.toThrow(/permission/);
+  await identity('manager');await db.query('select apply_reservation_discount($1,$2,$3)',[a,offer,'Confirmed test adjustment']);expect(await scalar('select total as value from reservations where id=$1',[a])).toBe(2880000);expect(await scalar('select paid as value from reservations where id=$1',[a])).toBe(0);await expect(db.query('select apply_reservation_discount($1,$2,$3)',[a,offer,'No stacking'])).rejects.toThrow(/do not stack/);await expect(db.query('select apply_reservation_discount($1,$2,$3)',[b,offer,'Usage test'])).rejects.toThrow(/cap reached/);
+  await db.query('select apply_reservation_discount($1,null,$2)',[a,'Remove test discount']);expect(await scalar('select total as value from reservations where id=$1',[a])).toBe(3200000);
+  await identity('operator');await db.query("update reservations set paid=100,payment_status='partially_paid' where id=$1",[a]);await identity('manager');await expect(db.query('select apply_reservation_discount($1,$2,$3)',[a,offer,'No paid adjustment'])).rejects.toThrow(/unpaid/);
+  expect(await scalar<number>("select count(*)::int as value from audit_logs where action='discount.applied' and entity_id=$1",[a])).toBe(0);await identity('super');expect(await scalar<number>("select count(*)::int as value from audit_logs where action='discount.applied' and entity_id=$1",[a])).toBe(1);
+ })
+})
+describe('D-7 through D-1 reminder idempotency and lifecycle',()=>{
+ it('queues one in-app and one email per booking/day after the Manila send hour, stops cancelled events and protects worker RPCs',async()=>{
+  const rid=await ownerDraft('2088-04-08',100);await db.query('select finalize_reservation($1)',[rid]);await identity('manager');await db.query("select manager_reservation_status($1,'approved')",[rid]);await identity('customer');await db.query('select update_reminder_preferences(true,true)');await expect(db.query('select enqueue_event_reminders()')).rejects.toThrow(/permission/);
+  await identity('operator');expect(await scalar("select enqueue_event_reminders('2088-04-01T06:59:00+08:00') as value")).toBe(0);await db.query("select enqueue_event_reminders('2088-04-01T07:00:00+08:00')");await db.query("select enqueue_event_reminders('2088-04-01T07:05:00+08:00')");expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1 and reminder_date=$2',[rid,'2088-04-01'])).toBe(2);
+  for(let day=2;day<=7;day++)await db.query('select enqueue_event_reminders($1)',[`2088-04-0${day}T07:00:00+08:00`]);expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1',[rid])).toBe(14);await db.query("select enqueue_event_reminders('2088-04-08T07:00:00+08:00')");expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1',[rid])).toBe(14);
+  await db.query("update reservations set status='cancelled' where id=$1",[rid]);expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1 and channel=$2 and status<>$3',[rid,'email','cancelled'])).toBe(0);
+  await identity('customer');await db.query('select update_reminder_preferences(true,false)');
+ })
+})
+
+describe('panel edge cases',()=>{
+ it('allows a corrected guest/chair reduction in a draft without leaving an oversized allocation',async()=>{
+  const id=await ownerDraft('2087-01-01',200,'Elegant chair');await ownerDraft('2087-01-01',100,'Elegant chair','Simple buffet setup',undefined,'Round table',{id});expect(await scalar('select guests as value from reservations where id=$1',[id])).toBe(100);expect(await scalar('select sum(chair_quantity)::int as value from reservation_tables_chairs where reservation_id=$1',[id])).toBe(100);
+ })
+ it('normalizes form-shaped draft seating/add-ons and reuses an existing reservation instead of creating another',async()=>{
+  const id=await ownerDraft('2087-02-01',100),payload=await draftPayloadFrom(id,'2087-02-01');const normal=await scalar<string>("select id as value from chair_types where name='Monoblock'");payload.chair_quantities={};payload.chair_type_id=normal;payload.elegant_chair_quantity=0;payload.addon_quantities={};delete payload.chairs;delete payload.add_ons;
+  const d=await scalar<{id:string;version:number}>('select to_jsonb(save_booking_draft($1,null,3,null,$2)) as value',[JSON.stringify(payload),id]);const before=await scalar('select count(*)::int as value from reservations');expect(await scalar('select submit_booking_draft($1,$2) as value',[d.id,d.version])).toBe(id);expect(await scalar('select count(*)::int as value from reservations')).toBe(before);
+ })
+ it('cancels stale queued emails after rescheduling and prevents an unaccepted email from being marked sent',async()=>{
+  const id=await ownerDraft('2087-03-08',100);await db.query('select finalize_reservation($1)',[id]);await identity('manager');await db.query("select manager_reservation_status($1,'approved')",[id]);await identity('customer');await db.query('select update_reminder_preferences(true,true)');await identity('operator');await db.query("select enqueue_event_reminders('2087-03-01T07:00:00+08:00')");const email=await scalar<string>("select id as value from reminder_deliveries where reservation_id=$1 and channel='email'",[id]);await expect(db.query("select finish_reminder_email($1,'sent',null)",[email])).rejects.toThrow(/acceptance/);
+  await db.query("update reservations set event_date='2087-03-12' where id=$1",[id]);expect(await scalar('select status as value from reminder_deliveries where id=$1',[email])).toBe('cancelled');await db.query("select enqueue_event_reminders('2087-03-05T07:00:00+08:00')");expect(await scalar("select count(*)::int as value from reminder_deliveries where reservation_id=$1 and event_date='2087-03-12' and reminder_date='2087-03-05'",[id])).toBe(2);await identity('customer');await db.query('select update_reminder_preferences(true,false)');
  })
 })

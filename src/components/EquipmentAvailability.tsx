@@ -1,0 +1,10 @@
+import { useQuery } from '@tanstack/react-query'
+import { rpc } from '../lib/supabase'
+import { ErrorState } from './ui'
+export interface EquipmentAvailabilityRow {equipment_id:string;code:string;name:string;total:number|null;allocated:number;available:number|null;overcommitted:boolean;active:boolean}
+export function EquipmentAvailability({day,rid,requested}:{day:string;rid?:string;requested:number}) {
+  const query=useQuery({queryKey:['equipment-availability',day,rid],enabled:/^\d{4}-\d{2}-\d{2}$/.test(day),queryFn:()=>rpc<EquipmentAvailabilityRow[]>('equipment_availability',{day,rid:rid||null}),refetchInterval:15000})
+  const item=query.data?.find(i=>i.code==='elegant_chair')
+  const overcommitment=item?.overcommitted ? <p className="field-error" role="alert">Existing allocations exceed confirmed usable stock. Approved bookings remain saved; contact the manager to resolve the shortage before accepting more chairs.</p> : null
+  return <section className="equipment-availability" aria-label="Shared Elegant Chair availability"><h3>Elegant Chair stock for this event date</h3><p>Chairs are shared for the entire day. Drafts and pending requests do not reserve stock; approval checks availability again.</p>{query.error&&<ErrorState error={query.error}/>}<dl className="detail-list"><dt>Total usable chairs</dt><dd>{item?.total??'Manager confirmation needed'}</dd><dt>Allocated to other bookings</dt><dd>{item?.allocated??'Checking…'}</dd><dt>Available for this booking</dt><dd>{item?.available??'Not yet confirmed'}</dd><dt>Requested chairs</dt><dd>{requested}</dd></dl>{overcommitment}{item&&(item.total===null||!item.active||requested>(item.available??0))&&<p className="field-error" role="alert">{item.total===null?'The manager must confirm actual usable stock before Elegant Chairs can be secured.':!item.active?'Elegant Chairs are currently unavailable for new allocations. Contact the manager.':`Not enough Elegant Chairs: ${requested} requested, ${item.available??0} available. Reduce the quantity, choose Monoblock seating, or contact the manager.`}</p>}</section>
+}

@@ -1,0 +1,74 @@
+-- Whole-day equipment inventory: no trusted event turnaround rule exists.
+create table public.equipment_inventory(id uuid primary key default gen_random_uuid(),code text not null unique,name text not null,usable_quantity int check(usable_quantity between 0 and 1000000),active boolean not null default true,updated_at timestamptz not null default now());
+insert into public.equipment_inventory(code,name) values('elegant_chair','Elegant Chair');
+alter table public.chair_types add column equipment_id uuid references public.equipment_inventory;
+update public.chair_types set equipment_id=(select id from public.equipment_inventory where code='elegant_chair') where lower(name)='elegant chair';
+create table public.equipment_allocations(reservation_id uuid not null references public.reservations,equipment_id uuid not null references public.equipment_inventory,event_date date not null,quantity int not null check(quantity>0),updated_at timestamptz not null default now(),primary key(reservation_id,equipment_id));
+create index equipment_allocated_date on public.equipment_allocations(equipment_id,event_date);
+alter table public.equipment_inventory enable row level security;
+alter table public.equipment_allocations enable row level security;
+revoke all on public.equipment_inventory,public.equipment_allocations from anon,authenticated;
+grant select on public.equipment_inventory to authenticated;
+grant select on public.equipment_allocations to authenticated;
+grant all on public.equipment_inventory,public.equipment_allocations to service_role;
+create policy equipment_read on public.equipment_inventory for select to authenticated using(public.customer_access() or public.is_staff());
+create policy allocations_read on public.equipment_allocations for select to authenticated using(public.can_read_reservation(reservation_id));
+-- Backfill allocation evidence only. Do not update reservation/price/history rows.
+insert into public.equipment_allocations(reservation_id,equipment_id,event_date,quantity)
+ select r.id,c.equipment_id,r.event_date,sum(s.chair_quantity)::int from public.reservations r join public.reservation_tables_chairs s on s.reservation_id=r.id join public.chair_types c on c.id=s.chair_type_id where r.holds_capacity and c.equipment_id is not null and s.chair_quantity>0 group by r.id,c.equipment_id,r.event_date;
+
+create function public.equipment_availability(day date,rid uuid default null) returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare result jsonb;
+begin
+ if not public.customer_access() and not public.is_staff() then raise exception 'Sign in to check equipment';end if;
+ if rid is not null and not public.can_read_reservation(rid) then raise exception 'Access denied';end if;
+ select coalesce(jsonb_agg(jsonb_build_object('equipment_id',i.id,'code',i.code,'name',i.name,'total',i.usable_quantity,'allocated',coalesce(a.quantity,0),'available',case when i.usable_quantity is null then null else greatest(i.usable_quantity-coalesce(a.quantity,0),0) end,'overcommitted',i.usable_quantity is not null and coalesce(a.quantity,0)>i.usable_quantity,'active',i.active)),'[]'::jsonb) into result from public.equipment_inventory i left join lateral(select sum(quantity)::int quantity from public.equipment_allocations where equipment_id=i.id and event_date=day and (rid is null or reservation_id<>rid))a on true;
+ return result;
+end $$;
+create function public.configure_equipment(eid uuid,quantity int,is_active boolean default true) returns void language plpgsql security definer set search_path='' as $$
+begin
+ perform private.require_staff();if quantity is null or quantity not between 0 and 1000000 or is_active is null then raise exception 'Enter the confirmed usable stock as a whole number';end if;
+ perform 1 from public.equipment_inventory where id=eid for update;if not found then raise exception 'Equipment not found';end if;
+ update public.equipment_inventory set usable_quantity=quantity,active=is_active,updated_at=now() where id=eid;
+ perform private.audit('equipment.stock_changed',eid::text,jsonb_build_object('quantity',quantity,'active',is_active,'existing_bookings_preserved',true));
+end $$;
+create function private.sync_equipment(rid uuid,check_request boolean default false) returns void language plpgsql security definer set search_path='' as $$
+declare r public.reservations;i public.equipment_inventory;requested int;allocated int;old_allocation public.equipment_allocations;
+begin
+ select * into r from public.reservations where id=rid for update;if not found then return;end if;
+ for i in select * from public.equipment_inventory order by id for update loop
+  select coalesce(sum(s.chair_quantity),0)::int into requested from public.reservation_tables_chairs s join public.chair_types c on c.id=s.chair_type_id where s.reservation_id=rid and c.equipment_id=i.id;
+  select * into old_allocation from public.equipment_allocations where reservation_id=rid and equipment_id=i.id;
+  if requested>r.guests and (r.holds_capacity or check_request) then raise exception 'Requested % quantity exceeds the guest count',i.name;end if;
+  if (r.holds_capacity or check_request) and requested>0 and not coalesce((not check_request and old_allocation.event_date=r.event_date and requested<=old_allocation.quantity),false) then
+   if i.usable_quantity is null then raise exception 'Confirmed % stock is not configured. Ask the manager to set usable inventory',i.name;end if;
+   if not i.active then raise exception '% is unavailable for new allocations',i.name;end if;
+   select coalesce(sum(quantity),0)::int into allocated from public.equipment_allocations where equipment_id=i.id and event_date=r.event_date and reservation_id<>rid;
+   if requested>greatest(i.usable_quantity-allocated,0) then raise exception '% shortage on %: % requested, % available (% allocated of % usable)',i.name,r.event_date,requested,greatest(i.usable_quantity-allocated,0),allocated,i.usable_quantity;end if;
+  end if;
+  if r.holds_capacity and requested>0 then
+   insert into public.equipment_allocations values(rid,i.id,r.event_date,requested,now()) on conflict(reservation_id,equipment_id) do update set event_date=excluded.event_date,quantity=excluded.quantity,updated_at=excluded.updated_at;
+   if old_allocation.quantity is distinct from requested or old_allocation.event_date is distinct from r.event_date then perform private.audit('equipment.allocated',rid::text,jsonb_build_object('equipment',i.code,'date',r.event_date,'quantity',requested));end if;
+  else
+   delete from public.equipment_allocations where reservation_id=rid and equipment_id=i.id;
+   if found then perform private.audit('equipment.released',rid::text,jsonb_build_object('equipment',i.code));end if;
+  end if;
+ end loop;
+end $$;
+create function private.reservation_equipment_changed() returns trigger language plpgsql security definer set search_path='' as $$
+begin
+ if TG_TABLE_NAME='reservations' then perform private.sync_equipment(coalesce(new.id,old.id));else perform private.sync_equipment(coalesce(new.reservation_id,old.reservation_id));end if;
+ return null;
+end $$;
+create trigger reservation_equipment_guard after insert or update of event_date,status,holds_capacity,guests on public.reservations for each row execute function private.reservation_equipment_changed();
+create trigger seating_equipment_guard after insert or update or delete on public.reservation_tables_chairs for each row execute function private.reservation_equipment_changed();
+-- No customer writes to stock or allocations. Recheck draft selections on Next
+-- and finalization; only confirmed holds consume stock via the triggers above.
+alter function public.save_reservation(jsonb) set schema private;
+alter function private.save_reservation(jsonb) rename to save_reservation_before_inventory;
+create function public.save_reservation(data jsonb) returns uuid language plpgsql security definer set search_path='' as $$declare rid uuid;begin rid=private.save_reservation_before_inventory(data);perform private.sync_equipment(rid,true);return rid;end $$;
+alter function public.finalize_reservation(uuid) set schema private;
+alter function private.finalize_reservation(uuid) rename to finalize_reservation_before_inventory;
+create function public.finalize_reservation(rid uuid) returns jsonb language plpgsql security definer set search_path='' as $$begin perform private.require_customer();if not exists(select 1 from public.reservations where id=rid and customer_id=auth.uid()) then raise exception 'Access denied';end if;perform private.sync_equipment(rid,true);return private.finalize_reservation_before_inventory(rid);end $$;
+revoke execute on function public.equipment_availability(date,uuid),public.configure_equipment(uuid,int,boolean),public.save_reservation(jsonb),public.finalize_reservation(uuid),private.sync_equipment(uuid,boolean),private.reservation_equipment_changed(),private.save_reservation_before_inventory(jsonb),private.finalize_reservation_before_inventory(uuid) from public,anon,authenticated;
+grant execute on function public.equipment_availability(date,uuid),public.configure_equipment(uuid,int,boolean),public.save_reservation(jsonb),public.finalize_reservation(uuid) to authenticated;

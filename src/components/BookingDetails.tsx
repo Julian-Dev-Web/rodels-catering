@@ -11,6 +11,10 @@ import { timeLabel } from './EventTimeSelect'
 import { birthdayKeys, weddingKeys } from '../lib/booking'
 import { downloadReportPdf, type ReportDocument } from '../lib/reports'
 import { useState } from 'react'
+import { FinancialBreakdown } from './FinancialBreakdown'
+import { financialRows } from '../lib/financial'
+import { useAllergyWarnings } from './AllergyFields'
+import { DiscountAssignment } from '../pages/PanelOperations'
 type Children = Record<
   | 'reservation_items'
   | 'reservation_event_setups'
@@ -34,6 +38,7 @@ export function BookingSelections({
   catalog: Catalog
 }) {
   const prefs = r.event_preferences
+  const allergyWarnings=useAllergyWarnings(r.allergy_allergen_ids||[],r.allergy_notes||'',children.reservation_items.map(i=>String(i.dish_id)))
   const selectedSetup=catalog.event_setups.find(item=>children.reservation_event_setups.some(row=>row.event_setup_id===item.id))
   return (
     <dl className="detail-list booking-preferences">
@@ -112,6 +117,8 @@ export function BookingSelections({
           )
           .join(', ') || 'Not selected'}
       </dd>
+      <dt>Allergy declarations and acknowledgment</dt>
+      <dd className="allergy-panel"><strong>Food allergy / preparation caution</strong><p>Declared: {(r.allergy_allergen_ids||[]).join(', ')||'None declared'}. {r.allergy_notes}</p>{allergyWarnings.data?.map(w=><p className="allergy-warning" key={w.token}>{w.dish}: may contain {w.allergen}. {(r.allergy_acknowledgments||[]).some(a=>a.token===w.token)?'Customer acknowledged this ingredient warning.':'Acknowledgment is missing or needs review after an ingredient/selection change.'}</p>)}<p>Unknown ingredient information is not a safety guarantee. Confirm ingredients and cross-contact risks with the catering team.</p></dd>
       <dt>Terms/privacy consent</dt>
       <dd>
         {r.consent_at
@@ -265,6 +272,7 @@ export function StaffBookingDetails({ id }: { id: string }) {
         human(key),
         'PHP ' + (value / 100).toFixed(2),
       ]),
+      ...financialRows(r.financial_snapshot,r.total,r.paid,Number(balance.data?.[0]?.amount??Math.max(r.total-r.paid,0))).map(([label,value])=>[label,typeof value==='number'?money(value):value]),
       ...(r.selection_snapshot || []).map((s) => [
         s.name,
         s.quantity +
@@ -367,6 +375,8 @@ export function StaffBookingDetails({ id }: { id: string }) {
       </section>
       <section>
         <h3>Styling, seating and optional extras</h3>
+        <FinancialBreakdown snapshot={r.financial_snapshot} total={r.total} paid={r.paid} balance={Number(balance.data?.[0]?.amount??Math.max(r.total-r.paid,0))}/>
+        <DiscountAssignment reservation={r}/>
         <BookingSelections
           reservation={r}
           children={query.data.children}

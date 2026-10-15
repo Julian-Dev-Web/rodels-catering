@@ -15,3 +15,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.export-application-data]
 verify_jwt = false
+[functions.dispatch-event-reminders]
+verify_jwt = false

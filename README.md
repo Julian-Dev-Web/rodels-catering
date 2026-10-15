@@ -1,5 +1,7 @@
 # Rodel’s Catering — hosted setup
 
+Current panel revisions: [implementation, verification and business setup status](docs/PANEL_REVISIONS_2026-10-15.md). Hosted schema 0026 includes shared equipment, persistent incomplete drafts, allergy acknowledgments, tax/discount snapshots and scheduled upcoming reminders. Actual chair stock and tax registration still need business confirmation. Reminder email needs a verified sender; see [email setup](docs/REMINDER_EMAIL_SETUP.md). Earlier implementation counts and unresolved-item lists below are historical where superseded by this handoff.
+
 **Frontend: Vercel. Database, Auth, Storage and Edge Functions: Supabase.com.** Once deployed, your friend opens the website URL in a browser. Their laptop does not need Node, Docker, XAMPP, source files or a database installation.
 
 For this project's registration/name update, password recovery, requested test accounts and PayMongo test-mode setup, follow [HOSTED_AUTH_PAYMENTS.md](HOSTED_AUTH_PAYMENTS.md). The existing hosted database needs `supabase/updates/0013_profile_names.sql`; never rerun the full fresh-project installer to apply this update.

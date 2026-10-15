@@ -2976,4 +2976,392 @@ revoke execute on function public.export_application_snapshot() from public,anon
 grant execute on function public.export_application_snapshot() to service_role;
 notify pgrst,'reload schema';
 
+-- ==================== 0023_shared_equipment_inventory.sql ====================
+
+-- Whole-day equipment inventory: no trusted event turnaround rule exists.
+create table public.equipment_inventory(id uuid primary key default gen_random_uuid(),code text not null unique,name text not null,usable_quantity int check(usable_quantity between 0 and 1000000),active boolean not null default true,updated_at timestamptz not null default now());
+insert into public.equipment_inventory(code,name) values('elegant_chair','Elegant Chair');
+alter table public.chair_types add column equipment_id uuid references public.equipment_inventory;
+update public.chair_types set equipment_id=(select id from public.equipment_inventory where code='elegant_chair') where lower(name)='elegant chair';
+create table public.equipment_allocations(reservation_id uuid not null references public.reservations,equipment_id uuid not null references public.equipment_inventory,event_date date not null,quantity int not null check(quantity>0),updated_at timestamptz not null default now(),primary key(reservation_id,equipment_id));
+create index equipment_allocated_date on public.equipment_allocations(equipment_id,event_date);
+alter table public.equipment_inventory enable row level security;
+alter table public.equipment_allocations enable row level security;
+revoke all on public.equipment_inventory,public.equipment_allocations from anon,authenticated;
+grant select on public.equipment_inventory to authenticated;
+grant select on public.equipment_allocations to authenticated;
+grant all on public.equipment_inventory,public.equipment_allocations to service_role;
+create policy equipment_read on public.equipment_inventory for select to authenticated using(public.customer_access() or public.is_staff());
+create policy allocations_read on public.equipment_allocations for select to authenticated using(public.can_read_reservation(reservation_id));
+-- Backfill allocation evidence only. Do not update reservation/price/history rows.
+insert into public.equipment_allocations(reservation_id,equipment_id,event_date,quantity)
+ select r.id,c.equipment_id,r.event_date,sum(s.chair_quantity)::int from public.reservations r join public.reservation_tables_chairs s on s.reservation_id=r.id join public.chair_types c on c.id=s.chair_type_id where r.holds_capacity and c.equipment_id is not null and s.chair_quantity>0 group by r.id,c.equipment_id,r.event_date;
+
+create function public.equipment_availability(day date,rid uuid default null) returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare result jsonb;
+begin
+ if not public.customer_access() and not public.is_staff() then raise exception 'Sign in to check equipment';end if;
+ if rid is not null and not public.can_read_reservation(rid) then raise exception 'Access denied';end if;
+ select coalesce(jsonb_agg(jsonb_build_object('equipment_id',i.id,'code',i.code,'name',i.name,'total',i.usable_quantity,'allocated',coalesce(a.quantity,0),'available',case when i.usable_quantity is null then null else greatest(i.usable_quantity-coalesce(a.quantity,0),0) end,'overcommitted',i.usable_quantity is not null and coalesce(a.quantity,0)>i.usable_quantity,'active',i.active)),'[]'::jsonb) into result from public.equipment_inventory i left join lateral(select sum(quantity)::int quantity from public.equipment_allocations where equipment_id=i.id and event_date=day and (rid is null or reservation_id<>rid))a on true;
+ return result;
+end $$;
+create function public.configure_equipment(eid uuid,quantity int,is_active boolean default true) returns void language plpgsql security definer set search_path='' as $$
+begin
+ perform private.require_staff();if quantity is null or quantity not between 0 and 1000000 or is_active is null then raise exception 'Enter the confirmed usable stock as a whole number';end if;
+ perform 1 from public.equipment_inventory where id=eid for update;if not found then raise exception 'Equipment not found';end if;
+ update public.equipment_inventory set usable_quantity=quantity,active=is_active,updated_at=now() where id=eid;
+ perform private.audit('equipment.stock_changed',eid::text,jsonb_build_object('quantity',quantity,'active',is_active,'existing_bookings_preserved',true));
+end $$;
+create function private.sync_equipment(rid uuid,check_request boolean default false) returns void language plpgsql security definer set search_path='' as $$
+declare r public.reservations;i public.equipment_inventory;requested int;allocated int;old_allocation public.equipment_allocations;
+begin
+ select * into r from public.reservations where id=rid for update;if not found then return;end if;
+ for i in select * from public.equipment_inventory order by id for update loop
+  select coalesce(sum(s.chair_quantity),0)::int into requested from public.reservation_tables_chairs s join public.chair_types c on c.id=s.chair_type_id where s.reservation_id=rid and c.equipment_id=i.id;
+  select * into old_allocation from public.equipment_allocations where reservation_id=rid and equipment_id=i.id;
+  if requested>r.guests and (r.holds_capacity or check_request) then raise exception 'Requested % quantity exceeds the guest count',i.name;end if;
+  if (r.holds_capacity or check_request) and requested>0 and not coalesce((not check_request and old_allocation.event_date=r.event_date and requested<=old_allocation.quantity),false) then
+   if i.usable_quantity is null then raise exception 'Confirmed % stock is not configured. Ask the manager to set usable inventory',i.name;end if;
+   if not i.active then raise exception '% is unavailable for new allocations',i.name;end if;
+   select coalesce(sum(quantity),0)::int into allocated from public.equipment_allocations where equipment_id=i.id and event_date=r.event_date and reservation_id<>rid;
+   if requested>greatest(i.usable_quantity-allocated,0) then raise exception '% shortage on %: % requested, % available (% allocated of % usable)',i.name,r.event_date,requested,greatest(i.usable_quantity-allocated,0),allocated,i.usable_quantity;end if;
+  end if;
+  if r.holds_capacity and requested>0 then
+   insert into public.equipment_allocations values(rid,i.id,r.event_date,requested,now()) on conflict(reservation_id,equipment_id) do update set event_date=excluded.event_date,quantity=excluded.quantity,updated_at=excluded.updated_at;
+   if old_allocation.quantity is distinct from requested or old_allocation.event_date is distinct from r.event_date then perform private.audit('equipment.allocated',rid::text,jsonb_build_object('equipment',i.code,'date',r.event_date,'quantity',requested));end if;
+  else
+   delete from public.equipment_allocations where reservation_id=rid and equipment_id=i.id;
+   if found then perform private.audit('equipment.released',rid::text,jsonb_build_object('equipment',i.code));end if;
+  end if;
+ end loop;
+end $$;
+create function private.reservation_equipment_changed() returns trigger language plpgsql security definer set search_path='' as $$
+begin
+ if TG_TABLE_NAME='reservations' then perform private.sync_equipment(coalesce(new.id,old.id));else perform private.sync_equipment(coalesce(new.reservation_id,old.reservation_id));end if;
+ return null;
+end $$;
+create trigger reservation_equipment_guard after insert or update of event_date,status,holds_capacity,guests on public.reservations for each row execute function private.reservation_equipment_changed();
+create trigger seating_equipment_guard after insert or update or delete on public.reservation_tables_chairs for each row execute function private.reservation_equipment_changed();
+-- No customer writes to stock or allocations. Recheck draft selections on Next
+-- and finalization; only confirmed holds consume stock via the triggers above.
+alter function public.save_reservation(jsonb) set schema private;
+alter function private.save_reservation(jsonb) rename to save_reservation_before_inventory;
+create function public.save_reservation(data jsonb) returns uuid language plpgsql security definer set search_path='' as $$declare rid uuid;begin rid=private.save_reservation_before_inventory(data);perform private.sync_equipment(rid,true);return rid;end $$;
+alter function public.finalize_reservation(uuid) set schema private;
+alter function private.finalize_reservation(uuid) rename to finalize_reservation_before_inventory;
+create function public.finalize_reservation(rid uuid) returns jsonb language plpgsql security definer set search_path='' as $$begin perform private.require_customer();if not exists(select 1 from public.reservations where id=rid and customer_id=auth.uid()) then raise exception 'Access denied';end if;perform private.sync_equipment(rid,true);return private.finalize_reservation_before_inventory(rid);end $$;
+revoke execute on function public.equipment_availability(date,uuid),public.configure_equipment(uuid,int,boolean),public.save_reservation(jsonb),public.finalize_reservation(uuid),private.sync_equipment(uuid,boolean),private.reservation_equipment_changed(),private.save_reservation_before_inventory(jsonb),private.finalize_reservation_before_inventory(uuid) from public,anon,authenticated;
+grant execute on function public.equipment_availability(date,uuid),public.configure_equipment(uuid,int,boolean),public.save_reservation(jsonb),public.finalize_reservation(uuid) to authenticated;
+
+-- ==================== 0024_persistent_drafts_allergy_warnings.sql ====================
+
+create table public.allergens(id text primary key check(id ~ '^[a-z_]+$'),name text not null);
+insert into public.allergens values('seafood','Seafood'),('milk','Milk / dairy'),('egg','Egg'),('peanut','Peanut'),('tree_nuts','Tree nuts'),('soy','Soy'),('wheat','Wheat / gluten'),('sesame','Sesame');
+alter table public.dishes add column allergen_info_reviewed boolean not null default false,add column allergen_revision bigint not null default 0;
+create table public.dish_allergens(dish_id uuid references public.dishes on delete cascade,allergen_id text references public.allergens,primary key(dish_id,allergen_id));
+-- Owner-provided Seafood menu category identifies possible seafood. It does not
+-- establish a complete ingredient review or absence of any other allergen.
+insert into public.dish_allergens select d.id,'seafood' from public.dishes d join public.menu_categories c on c.id=d.category_id where lower(c.name) in ('seafood','seafoods');
+alter table public.reservations add column allergy_allergen_ids text[] not null default '{}',add column allergy_notes text not null default '' check(length(allergy_notes)<=2000),add column allergy_acknowledgments jsonb not null default '[]';
+alter table public.allergens enable row level security;alter table public.dish_allergens enable row level security;
+revoke all on public.allergens,public.dish_allergens from anon,authenticated;
+grant select on public.allergens,public.dish_allergens to anon,authenticated;
+grant all on public.allergens,public.dish_allergens to service_role;
+create policy allergens_read on public.allergens for select using(true);
+create policy dish_allergens_read on public.dish_allergens for select using(true);
+create function public.configure_dish_allergens(did uuid,allergen_ids text[],reviewed boolean) returns void language plpgsql security definer set search_path='' as $$begin
+ perform private.require_staff();perform 1 from public.dishes where id=did for update;if not found then raise exception 'Dish not found';end if;
+ if reviewed is null or allergen_ids is null or exists(select 1 from unnest(allergen_ids)a where not exists(select 1 from public.allergens where id=a)) then raise exception 'Choose known allergens';end if;
+ delete from public.dish_allergens where dish_id=did;insert into public.dish_allergens select did,a from (select distinct unnest(allergen_ids)a)x;
+ update public.dishes set allergen_info_reviewed=reviewed,allergen_revision=allergen_revision+1 where id=did;
+ perform private.audit('dish.allergens_changed',did::text,jsonb_build_object('allergens',allergen_ids,'reviewed',reviewed));
+end $$;
+-- Allergen revisions/review state are changed through the audited RPC only.
+revoke update on public.dishes from authenticated;
+grant update(name,category_id,description,active,image_url,image_credit,image_source_url) on public.dishes to authenticated;
+create function public.allergy_warnings(declared text[],notes text,dish_ids uuid[]) returns jsonb language sql stable security definer set search_path='' as $$
+ select coalesce(jsonb_agg(jsonb_build_object('dish_id',d.id,'dish',d.name,'allergen_id',a.id,'allergen',a.name,'token',md5(coalesce((select string_agg(x,',' order by x) from unnest(declared)x),'')||coalesce(notes,'')||coalesce((select string_agg(x::text,',' order by x::text) from unnest(dish_ids)x),'')||d.id::text||a.id||d.allergen_revision::text)) order by d.name,a.name),'[]'::jsonb)
+ from public.dishes d join public.dish_allergens da on da.dish_id=d.id join public.allergens a on a.id=da.allergen_id where d.id=any(dish_ids) and a.id=any(declared)
+$$;
+create function private.validate_allergy_ack(rid uuid,require_ack boolean) returns void language plpgsql security definer set search_path='' as $$
+declare r public.reservations;warnings jsonb;w jsonb;
+begin
+ select * into strict r from public.reservations where id=rid;
+ warnings=public.allergy_warnings(r.allergy_allergen_ids,r.allergy_notes,array(select dish_id from public.reservation_items where reservation_id=rid));
+ if require_ack then for w in select value from jsonb_array_elements(warnings) loop
+  if not exists(select 1 from jsonb_array_elements(r.allergy_acknowledgments)a where a->>'token'=w->>'token' and a->>'dish_id'=w->>'dish_id' and a->>'allergen_id'=w->>'allergen_id') then raise exception 'Allergy acknowledgment required for % (%). You may keep the dish after acknowledging the warning',w->>'dish',w->>'allergen';end if;
+ end loop;end if;
+end $$;
+alter function public.save_reservation(jsonb) set schema private;
+alter function private.save_reservation(jsonb) rename to save_reservation_before_allergy;
+create function public.save_reservation(data jsonb) returns uuid language plpgsql security definer set search_path='' as $$
+declare rid uuid;declared text[];acks jsonb;note text;prior public.reservations;
+begin
+ perform private.require_customer();
+ if nullif(data->>'id','') is not null then select * into prior from public.reservations where id=(data->>'id')::uuid and customer_id=auth.uid();data=jsonb_build_object('allergy_allergen_ids',coalesce(to_jsonb(prior.allergy_allergen_ids),'[]'::jsonb),'allergy_notes',coalesce(prior.allergy_notes,''),'allergy_acknowledgments',coalesce(prior.allergy_acknowledgments,'[]'::jsonb))||data;end if;
+ if coalesce(jsonb_typeof(data->'allergy_allergen_ids'),'array')<>'array' or coalesce(jsonb_typeof(data->'allergy_acknowledgments'),'array')<>'array' then raise exception 'Invalid allergy declaration';end if;
+ select coalesce(array_agg(distinct value),'{}') into declared from jsonb_array_elements_text(coalesce(data->'allergy_allergen_ids','[]'::jsonb));
+ if exists(select 1 from unnest(declared)a where not exists(select 1 from public.allergens where id=a)) then raise exception 'Choose known allergens';end if;
+ note=coalesce(data->>'allergy_notes','');acks=coalesce(data->'allergy_acknowledgments','[]'::jsonb);
+ if length(note)>2000 or jsonb_array_length(acks)>200 then raise exception 'Allergy notes or acknowledgments too long';end if;
+ rid=private.save_reservation_before_allergy(data);
+ update public.reservations set allergy_allergen_ids=declared,allergy_notes=note,allergy_acknowledgments=acks where id=rid;
+ perform private.validate_allergy_ack(rid,false);return rid;
+end $$;
+alter function public.finalize_reservation(uuid) set schema private;
+alter function private.finalize_reservation(uuid) rename to finalize_reservation_before_allergy;
+create function public.finalize_reservation(rid uuid) returns jsonb language plpgsql security definer set search_path='' as $$begin
+ perform private.require_customer();if not exists(select 1 from public.reservations where id=rid and customer_id=auth.uid()) then raise exception 'Access denied';end if;
+ perform private.validate_allergy_ack(rid,true);return private.finalize_reservation_before_allergy(rid);
+end $$;
+
+create table public.reservation_drafts(id uuid primary key default gen_random_uuid(),customer_id uuid not null references public.profiles,data jsonb not null check(jsonb_typeof(data)='object' and octet_length(data::text)<=65536),wizard_step int not null default 0 check(wizard_step between 0 and 3),version int not null default 1,reservation_id uuid unique references public.reservations,submitted_at timestamptz,created_at timestamptz not null default now(),updated_at timestamptz not null default now());
+alter table public.reservation_drafts enable row level security;revoke all on public.reservation_drafts from anon,authenticated;grant select on public.reservation_drafts to authenticated;grant all on public.reservation_drafts to service_role;
+create policy drafts_read on public.reservation_drafts for select to authenticated using((customer_id=auth.uid() and public.customer_access()) or public.is_staff());
+create function public.save_booking_draft(payload jsonb,did uuid default null,step int default 0,expected_version int default null,existing_reservation uuid default null) returns public.reservation_drafts language plpgsql security definer set search_path='' as $$
+declare d public.reservation_drafts;r public.reservations;
+begin
+ perform private.require_customer();
+ if payload is null or jsonb_typeof(payload)<>'object' or octet_length(payload::text)>65536 or step not between 0 and 3 then raise exception 'Invalid draft size or step';end if;
+ if did is null and existing_reservation is not null then
+  select * into strict r from public.reservations where id=existing_reservation for update;
+  if r.customer_id<>auth.uid() or r.status<>'draft' or r.paid<>0 then raise exception 'Only your unpaid Draft can be continued';end if;
+  perform private.no_checkout(r.id);select id into did from public.reservation_drafts where reservation_id=existing_reservation;
+ end if;
+ if did is not null then
+  select * into strict d from public.reservation_drafts where id=did for update;
+  if d.customer_id<>auth.uid() or d.submitted_at is not null then raise exception 'Draft unavailable or already submitted';end if;
+  if expected_version is not null and expected_version<>d.version then raise exception 'This draft was updated in another tab. Reload to review the latest saved draft before replacing it';end if;
+  update public.reservation_drafts set data=payload,wizard_step=step,version=version+1,updated_at=now() where id=did returning * into d;
+ else
+  if (select count(*) from public.reservation_drafts where customer_id=auth.uid() and submitted_at is null)>=30 then raise exception 'Finish an existing draft before starting another';end if;
+  insert into public.reservation_drafts(customer_id,data,wizard_step,reservation_id) values(auth.uid(),payload,step,existing_reservation) returning * into d;
+ end if;
+ perform private.audit('draft.saved',d.id::text,jsonb_build_object('step',step,'version',d.version));return d;
+end $$;
+create function private.draft_submission_data(data jsonb) returns jsonb language plpgsql stable set search_path='' as $$
+declare result jsonb=data;chairs jsonb='[]';addons jsonb='[]';version int;guests int;chosen public.chair_types;quantity int;normal uuid;
+begin
+ if data ? 'chair_quantities' then
+  select pricing_version into version from public.menu_sets where id=nullif(data->>'menu_set_id','')::uuid;guests=(data->>'guests')::int;
+  if version=2 then
+   select * into chosen from public.chair_types where id=nullif(data->>'chair_type_id','')::uuid and active;
+   if chosen.id is not null then
+    quantity=case when chosen.price=0 then guests else (data->>'elegant_chair_quantity')::int end;
+    chairs=jsonb_build_array(jsonb_build_object('id',chosen.id,'quantity',quantity));
+    if chosen.price>0 and quantity<guests then select id into normal from public.chair_types where name='Monoblock' and price=0 and active;chairs=chairs||jsonb_build_array(jsonb_build_object('id',normal,'quantity',guests-quantity));end if;
+   end if;
+  else select coalesce(jsonb_agg(jsonb_build_object('id',key,'quantity',value)),'[]'::jsonb) into chairs from jsonb_each(data->'chair_quantities') where (value::text)::numeric>0;end if;
+  result=result||jsonb_build_object('chairs',chairs);
+ end if;
+ if data ? 'addon_quantities' then select coalesce(jsonb_agg(jsonb_build_object('id',key,'quantity',value)),'[]'::jsonb) into addons from jsonb_each(data->'addon_quantities') where (value::text)::numeric>0;result=result||jsonb_build_object('add_ons',addons);end if;
+ return result;
+end $$;
+create function public.submit_booking_draft(did uuid,expected_version int) returns uuid language plpgsql security definer set search_path='' as $$
+declare d public.reservation_drafts;rid uuid;
+begin
+ perform private.require_customer();select * into strict d from public.reservation_drafts where id=did for update;
+ if d.customer_id<>auth.uid() then raise exception 'Access denied';end if;
+ if d.submitted_at is not null then return d.reservation_id;end if;
+ if expected_version<>d.version then raise exception 'Draft changed; reload the saved version before finalizing';end if;
+ rid=public.save_reservation(private.draft_submission_data(d.data)||jsonb_build_object('id',d.reservation_id));perform public.finalize_reservation(rid);
+ update public.reservation_drafts set reservation_id=rid,submitted_at=now(),updated_at=now(),version=version+1 where id=did;
+ perform private.audit('draft.finalized',rid::text,jsonb_build_object('draft_id',did,'reference',(select reservation_reference from public.reservations where id=rid)));return rid;
+end $$;
+revoke execute on function public.configure_dish_allergens(uuid,text[],boolean),public.allergy_warnings(text[],text,uuid[]),public.save_reservation(jsonb),public.finalize_reservation(uuid),public.save_booking_draft(jsonb,uuid,int,int,uuid),public.submit_booking_draft(uuid,int),private.validate_allergy_ack(uuid,boolean),private.save_reservation_before_allergy(jsonb),private.finalize_reservation_before_allergy(uuid) from public,anon,authenticated;
+grant execute on function public.configure_dish_allergens(uuid,text[],boolean),public.allergy_warnings(text[],text,uuid[]),public.save_reservation(jsonb),public.finalize_reservation(uuid),public.save_booking_draft(jsonb,uuid,int,int,uuid),public.submit_booking_draft(uuid,int) to authenticated;
+revoke execute on function private.draft_submission_data(jsonb) from public,anon,authenticated;
+
+-- ==================== 0025_financial_tax_discounts.sql ====================
+
+-- Existing prices were described by the user as VAT-inclusive. Registration is
+-- not verified: keep gross totals unchanged and label the component provisional.
+insert into public.app_settings(key,value) values('tax_policy','{"mode":"vat_inclusive","rate_bps":1200,"business_confirmed":false,"rounding":"nearest centavo; VAT rounded once after discount"}');
+alter table public.reservations add column financial_snapshot jsonb;
+create table public.discount_offers(id uuid primary key default gen_random_uuid(),name text not null check(length(name) between 3 and 120),kind text not null check(kind in ('fixed','percentage')),value bigint not null check(value>0),min_guests int not null default 1 check(min_guests>0),min_total bigint not null default 0 check(min_total>=0),menu_set_id uuid references public.menu_sets,starts_on date,ends_on date,usage_cap int check(usage_cap>0),active boolean not null default true,created_by uuid references public.profiles,created_at timestamptz not null default now(),check(kind<>'percentage' or value<=10000),check(ends_on is null or starts_on is null or ends_on>=starts_on));
+create table public.reservation_discounts(reservation_id uuid primary key references public.reservations,promo_id uuid not null references public.discount_offers,name text not null,reason text not null check(length(reason) between 3 and 500),kind text not null,value bigint not null,min_guests int not null,min_total bigint not null,menu_set_id uuid references public.menu_sets,starts_on date,ends_on date,applied_by uuid references public.profiles,applied_at timestamptz not null default now());
+alter table public.discount_offers enable row level security;alter table public.reservation_discounts enable row level security;
+revoke all on public.discount_offers,public.reservation_discounts from anon,authenticated;
+grant select on public.discount_offers,public.reservation_discounts to authenticated;
+grant all on public.discount_offers,public.reservation_discounts to service_role;
+create policy discount_offers_staff on public.discount_offers for select to authenticated using(public.is_staff());
+create policy reservation_discount_read on public.reservation_discounts for select to authenticated using(public.can_read_reservation(reservation_id));
+create function public.tax_configuration() returns jsonb language sql stable security definer set search_path='' as $$select value from public.app_settings where key='tax_policy'$$;
+create function public.configure_tax_policy(mode text,rate_bps int,business_confirmed boolean) returns void language plpgsql security definer set search_path='' as $$begin
+ if public.current_app_role() is distinct from 'super_admin' then raise exception 'Super admin required';end if;
+ if mode is null or mode not in ('non_vat','vat_inclusive','vat_exclusive') or rate_bps is null or rate_bps not between 0 and 10000 or business_confirmed is null or (mode='vat_exclusive' and not business_confirmed) then raise exception 'Choose a reviewed tax mode/rate; VAT-exclusive treatment requires business confirmation';end if;
+ update public.app_settings set value=jsonb_build_object('mode',mode,'rate_bps',case when mode='non_vat' then 0 else rate_bps end,'business_confirmed',business_confirmed,'rounding','nearest centavo; VAT rounded once after discount'),updated_at=now() where key='tax_policy';
+ perform private.audit('tax.policy_configured','tax_policy',jsonb_build_object('mode',mode,'rate_bps',rate_bps,'business_confirmed',business_confirmed));
+end $$;
+create function private.financial_quote(gross bigint,kind text,value bigint,tax jsonb) returns jsonb language plpgsql immutable set search_path='' as $$
+declare discount bigint=0;net bigint;vat bigint=0;basis bigint;total bigint;rate int;mode text;
+begin
+ if gross is null or gross<0 then raise exception 'Invalid gross amount';end if;
+ mode=tax->>'mode';rate=(tax->>'rate_bps')::int;
+ if mode is null or mode not in ('non_vat','vat_inclusive','vat_exclusive') or rate is null or rate not between 0 and 10000 then raise exception 'Invalid tax configuration';end if;
+ if kind is not null then
+  if value is null or value<=0 or (kind='percentage' and value>10000) or kind not in ('fixed','percentage') then raise exception 'Invalid discount';end if;
+  discount=case when kind='fixed' then value else round(gross::numeric*value/10000)::bigint end;
+  if discount>gross then raise exception 'Discount exceeds the eligible subtotal';end if;
+ end if;
+ net=gross-discount;total=net;basis=net;
+ if mode='vat_inclusive' then vat=round(net::numeric*rate/(10000+rate))::bigint;basis=net-vat;
+ elsif mode='vat_exclusive' then vat=round(net::numeric*rate/10000)::bigint;total=net+vat;end if;
+ return jsonb_build_object('gross_subtotal',gross,'discount_amount',discount,'discounted_subtotal',net,'taxable_basis',basis,'vat_amount',vat,'total',total,'tax_mode',mode,'rate_bps',case when mode='non_vat' then 0 else rate end,'business_confirmed',coalesce((tax->>'business_confirmed')::boolean,false),'rounding','nearest centavo; VAT rounded once after discount');
+end $$;
+create function private.discount_for_quote(rid uuid,gross bigint) returns public.reservation_discounts language plpgsql stable set search_path='' as $$
+declare d public.reservation_discounts;r public.reservations;today date=(now() at time zone 'Asia/Manila')::date;
+begin
+ select * into d from public.reservation_discounts where reservation_id=rid;if not found then return d;end if;
+ select * into strict r from public.reservations where id=rid;
+ if r.guests<d.min_guests or gross<d.min_total or (d.menu_set_id is not null and r.menu_set_id<>d.menu_set_id) or (d.starts_on is not null and today<d.starts_on) or (d.ends_on is not null and today>d.ends_on) then raise exception 'The assigned discount no longer meets its saved eligibility rules. Ask the manager to review it';end if;
+ return d;
+end $$;
+alter function private.calculate_price(uuid) rename to calculate_price_before_tax;
+create function private.calculate_price(rid uuid) returns jsonb language plpgsql security definer set search_path='' as $$
+declare quote jsonb;f jsonb;d public.reservation_discounts;
+begin
+ quote=private.calculate_price_before_tax(rid);d=private.discount_for_quote(rid,(quote->>'total')::bigint);
+ f=private.financial_quote((quote->>'total')::bigint,d.kind,d.value,public.tax_configuration());
+ return quote||jsonb_build_object('total',(f->>'total')::bigint);
+end $$;
+create function private.capture_financial_snapshot(rid uuid) returns void language plpgsql security definer set search_path='' as $$
+declare q jsonb;f jsonb;d public.reservation_discounts;
+begin
+ q=private.calculate_price_before_tax(rid);d=private.discount_for_quote(rid,(q->>'total')::bigint);f=private.financial_quote((q->>'total')::bigint,d.kind,d.value,public.tax_configuration());
+ update public.reservations set financial_snapshot=f||jsonb_build_object('discount_name',d.name,'discount_reason',d.reason,'captured_at',now()) where id=rid;
+end $$;
+alter function public.save_reservation(jsonb) set schema private;alter function private.save_reservation(jsonb) rename to save_reservation_before_financial;
+create function public.save_reservation(data jsonb) returns uuid language plpgsql security definer set search_path='' as $$declare rid uuid;begin rid=private.save_reservation_before_financial(data);perform private.capture_financial_snapshot(rid);return rid;end $$;
+alter function public.finalize_reservation(uuid) set schema private;alter function private.finalize_reservation(uuid) rename to finalize_reservation_before_financial;
+create function public.finalize_reservation(rid uuid) returns jsonb language plpgsql security definer set search_path='' as $$declare result jsonb;begin result=private.finalize_reservation_before_financial(rid);perform private.capture_financial_snapshot(rid);return result;end $$;
+create function public.save_discount_offer(offer jsonb,pid uuid default null) returns uuid language plpgsql security definer set search_path='' as $$declare result uuid;begin
+ perform private.require_staff();
+ if pid is null then
+  insert into public.discount_offers(name,kind,value,min_guests,min_total,menu_set_id,starts_on,ends_on,usage_cap,active,created_by) values(btrim(offer->>'name'),offer->>'kind',(offer->>'value')::bigint,coalesce((offer->>'min_guests')::int,1),coalesce((offer->>'min_total')::bigint,0),nullif(offer->>'menu_set_id','')::uuid,nullif(offer->>'starts_on','')::date,nullif(offer->>'ends_on','')::date,nullif(offer->>'usage_cap','')::int,coalesce((offer->>'active')::boolean,true),auth.uid()) returning id into result;
+ else
+  update public.discount_offers set name=btrim(offer->>'name'),kind=offer->>'kind',value=(offer->>'value')::bigint,min_guests=coalesce((offer->>'min_guests')::int,1),min_total=coalesce((offer->>'min_total')::bigint,0),menu_set_id=nullif(offer->>'menu_set_id','')::uuid,starts_on=nullif(offer->>'starts_on','')::date,ends_on=nullif(offer->>'ends_on','')::date,usage_cap=nullif(offer->>'usage_cap','')::int,active=coalesce((offer->>'active')::boolean,true) where id=pid returning id into result;
+  if result is null then raise exception 'Discount offer not found';end if;
+ end if;
+ perform private.audit('discount.offer_saved',result::text,jsonb_build_object('kind',offer->>'kind','value',offer->'value'));return result;
+end $$;
+create function public.apply_reservation_discount(rid uuid,pid uuid,reason text) returns void language plpgsql security definer set search_path='' as $$
+declare r public.reservations;p public.discount_offers;d public.reservation_discounts;gross bigint;f jsonb;tax jsonb;today date=(now() at time zone 'Asia/Manila')::date;
+begin
+ perform private.require_staff();select * into strict r from public.reservations where id=rid for update;perform private.no_checkout(rid);
+ if r.paid<>0 or r.refunded<>0 or r.status not in ('draft','pending','for_approval','approved') then raise exception 'Discount changes require an eligible unpaid booking with no open checkout; paid bookings need a reviewed adjustment';end if;
+ if length(btrim(coalesce(reason,''))) not between 3 and 500 then raise exception 'Enter a discount reason (3-500 characters)';end if;
+ gross=coalesce((r.financial_snapshot->>'gross_subtotal')::bigint,r.total);tax=case when r.financial_snapshot is null then public.tax_configuration() else jsonb_build_object('mode',r.financial_snapshot->>'tax_mode','rate_bps',(r.financial_snapshot->>'rate_bps')::int,'business_confirmed',(r.financial_snapshot->>'business_confirmed')::boolean) end;
+ if pid is null then delete from public.reservation_discounts where reservation_id=rid;
+ else
+  if exists(select 1 from public.reservation_discounts where reservation_id=rid) then raise exception 'Discounts do not stack; remove the assigned discount before applying another';end if;
+  select * into strict p from public.discount_offers where id=pid for update;
+  if not p.active or (p.starts_on is not null and today<p.starts_on) or (p.ends_on is not null and today>p.ends_on) then raise exception 'Offer is inactive or outside its application dates';end if;
+  if p.usage_cap is not null and (select count(*) from public.reservation_discounts x join public.reservations b on b.id=x.reservation_id where x.promo_id=pid and b.status not in ('cancelled','rejected','refunded'))>=p.usage_cap then raise exception 'Offer usage cap reached';end if;
+  insert into public.reservation_discounts(reservation_id,promo_id,name,reason,kind,value,min_guests,min_total,menu_set_id,starts_on,ends_on,applied_by) values(rid,pid,p.name,btrim(reason),p.kind,p.value,p.min_guests,p.min_total,p.menu_set_id,p.starts_on,p.ends_on,auth.uid());
+ end if;
+ d=private.discount_for_quote(rid,gross);f=private.financial_quote(gross,d.kind,d.value,tax)||jsonb_build_object('discount_name',d.name,'discount_reason',d.reason,'captured_at',now());
+ update public.reservations set total=(f->>'total')::bigint,pricing=pricing||jsonb_build_object('total',(f->>'total')::bigint),financial_snapshot=f where id=rid;
+ insert into public.balances values(rid,(f->>'total')::bigint,now()) on conflict(reservation_id) do update set amount=excluded.amount,updated_at=excluded.updated_at;
+ perform private.audit(case when pid is null then 'discount.removed' else 'discount.applied' end,rid::text,jsonb_build_object('promo_id',pid,'amount',f->'discount_amount','reference',r.reservation_reference));
+ perform private.notify(rid,'Booking discount updated','Your unpaid booking quote has been updated. Open the reservation to review the discount and current total.');
+end $$;
+revoke execute on function public.tax_configuration(),public.configure_tax_policy(text,int,boolean),public.save_reservation(jsonb),public.finalize_reservation(uuid),public.save_discount_offer(jsonb,uuid),public.apply_reservation_discount(uuid,uuid,text),private.financial_quote(bigint,text,bigint,jsonb),private.discount_for_quote(uuid,bigint),private.calculate_price(uuid),private.calculate_price_before_tax(uuid),private.capture_financial_snapshot(uuid),private.save_reservation_before_financial(jsonb),private.finalize_reservation_before_financial(uuid) from public,anon,authenticated;
+grant execute on function public.tax_configuration() to anon,authenticated;
+grant execute on function public.configure_tax_policy(text,int,boolean),public.save_reservation(jsonb),public.finalize_reservation(uuid),public.save_discount_offer(jsonb,uuid),public.apply_reservation_discount(uuid,uuid,text) to authenticated;
+
+-- ==================== 0026_upcoming_event_reminders.sql ====================
+
+alter table public.profiles add column reminder_inapp_opt_in boolean not null default true,add column reminder_email_opt_in boolean not null default false;
+insert into public.app_settings(key,value) values('reminder_policy','{"enabled":true,"send_at":"07:00","timezone":"Asia/Manila","days_before":[7,6,5,4,3,2,1],"email_configured":false}');
+create table public.reminder_deliveries(id uuid primary key default gen_random_uuid(),reservation_id uuid not null references public.reservations,event_date date not null,reminder_date date not null,channel text not null check(channel in ('in_app','email')),status text not null default 'queued' check(status in ('queued','sending','sent','failed','cancelled','uncertain','blocked')),notification_id uuid references public.notifications,title text not null,body text not null,href text not null,attempts int not null default 0,claimed_at timestamptz,next_attempt_at timestamptz,sent_at timestamptz,provider_id text,provider_payload jsonb,error_code text,created_at timestamptz not null default now(),unique(reservation_id,reminder_date,channel));
+alter table public.reminder_deliveries enable row level security;revoke all on public.reminder_deliveries from anon,authenticated;grant select on public.reminder_deliveries to authenticated;grant all on public.reminder_deliveries to service_role;
+create policy reminders_read on public.reminder_deliveries for select to authenticated using(public.can_read_reservation(reservation_id));
+create function public.reminder_configuration() returns jsonb language sql stable security definer set search_path='' as $$ select value from public.app_settings where key='reminder_policy' $$;
+create function public.configure_reminders(enabled boolean,send_at time) returns void language plpgsql security definer set search_path='' as $$begin
+ if public.current_app_role() is distinct from 'super_admin' then raise exception 'Super admin required';end if;
+ if enabled is null or send_at is null or send_at>='24:00'::time then raise exception 'Choose a valid Manila send time';end if;
+ update public.app_settings set value=value||jsonb_build_object('enabled',enabled,'send_at',to_char(send_at,'HH24:MI')),updated_at=now() where key='reminder_policy';
+ perform private.audit('reminders.configured','reminder_policy',jsonb_build_object('enabled',enabled,'send_at',send_at));
+end $$;
+create function public.update_reminder_preferences(in_app boolean,email boolean) returns void language plpgsql security definer set search_path='' as $$begin
+ if not public.customer_access() or auth.uid() is null then raise exception 'Sign in to update preferences';end if;
+ if in_app is null or email is null then raise exception 'Choose notification preferences';end if;
+ update public.profiles set reminder_inapp_opt_in=in_app,reminder_email_opt_in=email where id=auth.uid();
+ update public.reminder_deliveries d set status='cancelled',error_code='opted_out' from public.reservations r where r.id=d.reservation_id and r.customer_id=auth.uid() and d.status<>'sent' and ((d.channel='email' and not email) or (d.channel='in_app' and not in_app));
+ perform private.audit('reminders.preferences_changed',auth.uid()::text,jsonb_build_object('in_app',in_app,'email',email));
+end $$;
+create function private.reminder_title(r public.reservations,day date) returns text language sql immutable set search_path='' as $$select 'Upcoming event: '||r.reservation_reference||' ('||(r.event_date-day)||' day'||case when r.event_date-day=1 then '' else 's' end||' away)'$$;
+create function private.reminder_body(r public.reservations) returns text language sql immutable set search_path='' as $$select r.event_name||' is scheduled for '||to_char(r.event_date,'FMMonth DD, YYYY')||' at '||to_char(r.event_time,'HH12:MI AM')||' Asia/Manila. Venue: '||concat_ws(', ',nullif(r.address->>'street',''),nullif(r.address->>'barangay',''),nullif(r.address->>'city',''),nullif(r.address->>'province',''))||'. Please review your event details and contact the catering team about any changes.'$$;
+create function public.enqueue_event_reminders(at_time timestamptz default now()) returns int language plpgsql security definer set search_path='' as $$
+declare local_now timestamp=at_time at time zone 'Asia/Manila';day date=local_now::date;policy jsonb;r public.reservations;p public.profiles;ch text;did uuid;nid uuid;created int=0;
+begin
+ select value into policy from public.app_settings where key='reminder_policy';
+ if not coalesce((policy->>'enabled')::boolean,false) or local_now::time<(policy->>'send_at')::time then return 0;end if;
+ update public.reminder_deliveries set status='cancelled',error_code='reminder_day_expired' where reminder_date<day and status<>'sent';
+ for r in select b.* from public.reservations b where b.status='approved' and b.event_date between day+1 and day+7 order by b.id for update skip locked loop
+  select * into p from public.profiles where id=r.customer_id;if p.account_status<>'active' then continue;end if;
+  foreach ch in array array['in_app','email'] loop
+   if (ch='in_app' and not p.reminder_inapp_opt_in) or (ch='email' and not p.reminder_email_opt_in) then continue;end if;
+   did=null;
+   insert into public.reminder_deliveries(reservation_id,event_date,reminder_date,channel,title,body,href) values(r.id,r.event_date,day,ch,private.reminder_title(r,day),private.reminder_body(r),'/customer/reservations/'||r.id) on conflict(reservation_id,reminder_date,channel) do update set event_date=excluded.event_date,title=excluded.title,body=excluded.body,href=excluded.href,status='queued',error_code=null where reminder_deliveries.status='cancelled' and reminder_deliveries.attempts=0 and reminder_deliveries.sent_at is null and reminder_deliveries.provider_payload is null returning id into did;
+   if did is null then continue;end if;created=created+1;
+   if ch='in_app' then
+    insert into public.notifications(user_id,title,body,href) values(r.customer_id,private.reminder_title(r,day),private.reminder_body(r),'/customer/reservations/'||r.id) returning id into nid;
+    update public.reminder_deliveries set status='sent',notification_id=nid,sent_at=at_time where id=did;
+   end if;
+  end loop;
+ end loop;return created;
+end $$;
+create function private.invalidate_event_reminders() returns trigger language plpgsql security definer set search_path='' as $$begin
+ if new.event_date is distinct from old.event_date or new.status<>'approved' then
+  update public.reminder_deliveries set status='cancelled',error_code='event_changed' where reservation_id=new.id and status<>'sent';
+ end if;return null;
+end $$;
+create trigger event_reminders_changed after update of event_date,status on public.reservations for each row execute function private.invalidate_event_reminders();
+create function public.claim_event_reminder_emails(at_time timestamptz default now(),batch_size int default 10) returns setof public.reminder_deliveries language plpgsql security definer set search_path='' as $$
+declare d public.reminder_deliveries;day date=(at_time at time zone 'Asia/Manila')::date;
+begin
+ for d in select q.* from public.reminder_deliveries q join public.reservations r on r.id=q.reservation_id join public.profiles p on p.id=r.customer_id where coalesce((select (value->>'enabled')::boolean from public.app_settings where key='reminder_policy'),false) and q.channel='email' and q.reminder_date=day and q.event_date=r.event_date and r.status='approved' and r.event_date between day+1 and day+7 and p.account_status='active' and p.reminder_email_opt_in and q.attempts<12 and ((q.status in ('queued','failed','uncertain','blocked') and coalesce(q.next_attempt_at,at_time)<=at_time) or (q.status='sending' and q.claimed_at<at_time-interval '5 minutes')) order by q.created_at limit greatest(1,least(batch_size,20)) for update of q skip locked loop
+  update public.reminder_deliveries set status='sending',claimed_at=at_time,attempts=attempts+1,error_code=null where id=d.id returning * into d;return next d;
+ end loop;
+end $$;
+create function public.prepare_reminder_email(delivery_id uuid,payload jsonb default null) returns public.reminder_deliveries language plpgsql security definer set search_path='' as $$
+declare d public.reminder_deliveries;
+begin
+ select * into strict d from public.reminder_deliveries where id=delivery_id for update;
+ if not coalesce((select (value->>'enabled')::boolean from public.app_settings where key='reminder_policy'),false) or d.channel<>'email' or d.status<>'sending' or d.reminder_date<>(now() at time zone 'Asia/Manila')::date or not exists(select 1 from public.reservations r join public.profiles p on p.id=r.customer_id where r.id=d.reservation_id and r.status='approved' and r.event_date=d.event_date and p.account_status='active' and p.reminder_email_opt_in) then raise exception 'Reminder is no longer eligible';end if;
+ if d.provider_payload is null and payload is not null then update public.reminder_deliveries set provider_payload=payload where id=d.id returning * into d;end if;
+ return d;
+end $$;
+create function public.finish_reminder_email(delivery_id uuid,result text,provider text default null) returns void language plpgsql security definer set search_path='' as $$begin
+ if result not in ('sent','failed','uncertain','blocked') or (result='sent' and coalesce(provider,'')='') then raise exception 'A provider acceptance ID is required before success';end if;
+ update public.reminder_deliveries set status=case when result='sent' then 'sent' when status='cancelled' then 'cancelled' else result end,provider_id=case when result='sent' then provider else provider_id end,sent_at=case when result='sent' then now() else sent_at end,error_code=case when status='cancelled' then 'event_changed_inflight_'||result when result='sent' then null when result='blocked' then 'email_configuration_missing' else 'provider_'||result end,next_attempt_at=case when result='sent' then null else now()+interval '5 minutes' end where id=delivery_id and channel='email' and status in ('sending','cancelled');
+end $$;
+revoke execute on function public.reminder_configuration(),public.configure_reminders(boolean,time),public.update_reminder_preferences(boolean,boolean),public.enqueue_event_reminders(timestamptz),public.claim_event_reminder_emails(timestamptz,int),public.prepare_reminder_email(uuid,jsonb),public.finish_reminder_email(uuid,text,text),private.reminder_title(public.reservations,date),private.reminder_body(public.reservations),private.invalidate_event_reminders() from public,anon,authenticated;
+grant execute on function public.reminder_configuration(),public.configure_reminders(boolean,time),public.update_reminder_preferences(boolean,boolean) to authenticated;
+grant execute on function public.enqueue_event_reminders(timestamptz),public.claim_event_reminder_emails(timestamptz,int),public.prepare_reminder_email(uuid,jsonb),public.finish_reminder_email(uuid,text,text) to service_role;
+
+-- Extend the existing security-invoker summary with new operational snapshots.
+create or replace view public.reservation_summary with(security_invoker=true) as select r.id,r.customer_id,r.event_name,r.event_date,r.event_time,r.address,r.guests,r.menu_set_id,r.drink_id,r.dessert_id,r.status,r.holds_capacity,r.payment_status,r.total,r.paid,r.refunded,r.pricing,r.finalized_at,r.created_at,r.updated_at,m.name as package_name,p.full_name as customer_name,r.booking_version,r.event_preferences,r.consent_version,r.consent_at,r.reservation_reference,r.selection_snapshot,r.allergy_allergen_ids,r.allergy_notes,r.allergy_acknowledgments,r.financial_snapshot from public.reservations r join public.menu_sets m on m.id=r.menu_set_id join public.profiles p on p.id=r.customer_id;
+alter function public.export_application_snapshot() set schema private;alter function private.export_application_snapshot() rename to export_application_snapshot_0022;
+create function public.export_application_snapshot() returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare result jsonb;t text;rows jsonb;n bigint;tables jsonb;counts jsonb;
+begin
+ result=private.export_application_snapshot_0022();tables=result->'tables';counts=result->'counts';
+ foreach t in array array['equipment_inventory','equipment_allocations','allergens','dish_allergens','reservation_drafts','discount_offers','reservation_discounts','reminder_deliveries'] loop
+  execute format('select coalesce(jsonb_agg(to_jsonb(x)),''[]''::jsonb),count(*) from (select * from public.%I limit 50001)x',t) into rows,n;
+  if n>50000 then raise exception 'Dataset too large for application export';end if;tables=tables||jsonb_build_object(t,rows);counts=counts||jsonb_build_object(t,n);
+ end loop;
+ if octet_length(tables::text)>10485760 then raise exception 'Dataset too large for application export';end if;
+ return result||jsonb_build_object('tables',tables,'counts',counts,'schema_version','0026_upcoming_event_reminders.sql');
+end $$;
+revoke execute on function public.export_application_snapshot(),private.export_application_snapshot_0022() from public,anon,authenticated;
+grant execute on function public.export_application_snapshot() to service_role;
+create function public.set_reminder_email_status(ready boolean) returns void language sql security definer set search_path='' as $$
+ update public.app_settings set value=value||jsonb_build_object('email_configured',coalesce(ready,false),'worker_last_checked',now()) where key='reminder_policy'
+$$;
+revoke execute on function public.set_reminder_email_status(boolean) from public,anon,authenticated;
+grant execute on function public.set_reminder_email_status(boolean) to service_role;
+
 commit;

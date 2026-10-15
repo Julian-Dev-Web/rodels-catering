@@ -1,0 +1,13 @@
+# Panel revisions checkpoint - release verification
+
+Baseline main 0cf196c, previous hosted schema 0022. Updates 0023-0026 are now installed live. Archive/export and reminder workers are deployed. Cron is active every five minutes and its last run succeeded; Vault and internal worker secret are privately configured. Worker returned email not_configured / zero emails; unauthenticated request was denied. User has no domain yet and requested setup steps.
+
+Unknown real Elegant Chair stock remains NULL. Initial 12% inclusive VAT is provisional pending accounting/registration confirmation, with unchanged gross price. Reminder window D-7 through D-1 at 07:00 Asia/Manila, configurable. Email opt-in defaults false. No genuine paid totals were changed.
+
+121 automated tests passed; current TypeScript and lint passed. Hosted real simultaneous approvals on isolated equipment accepted exactly one of two overstocking bookings. Customer stock mutation/other-customer access denied. All concurrency fixtures and temporary identity verified removed, audit retained.
+
+Actual browser checks passed: incomplete draft saved without a reservation/hold, My Drafts Continue Editing, refresh/relogin/deep link, correct stored step, seafood acknowledgment retaining dishes, unknown ingredient caution, unknown stock warning, mobile review layout, atomic finalize with unchanged inclusive gross, no duplicate submit, Manager equipment/discount/upcoming pages, Super Admin tax/reminder settings at 07:00. Manager offer creation/application, customer forgery denial and customer financial PDF download also passed. The one-page PDF was rendered and checked for tax/discount/deposit/balance fields and page bounds. Browser fixtures and exact-transaction QA staff notices were cleaned; audit history retained. Existing preservation baseline is .private/panel-release-baseline.json; the six-table original booking/financial comparison passed. Never overwrite that baseline.
+
+Final handoff and verified vendor email setup steps are in PANEL_REVISIONS_2026-10-15.md and REMINDER_EMAIL_SETUP.md. The prior release's direct-review/no-incomplete-save behavior is source-confirmed; the exact reported Home redirect remains unverified. Final 121 tests/typecheck/lint passed after the latest report/warning refinements; final build is completing, all eight Edge checks passed. Next: explicit safe stage/scan/commit/push and matching Vercel production read-only acceptance, then append actual release verification.
+
+Do not expose .env/operator/test credentials/private archives; leave unrelated root file with trailing special character untouched. Do not rerun installed updates 0023-0026 or setup.sql. Any additional backend fix needs a new incremental update. No subagents authorized.
