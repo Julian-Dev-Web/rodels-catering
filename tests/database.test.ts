@@ -1646,6 +1646,7 @@ describe('confirmed buffet extras and Wedding rates',()=>{
   for(let n=0;n<=5;n++){
    const id=await ownerDraft('2091-09-0'+(n+1),100,'Monoblock','Simple buffet setup',undefined,'Round table',{total:1,event_preferences:{setup_inclusions:keys.slice(0,n),component_prices:{stage_backdrop:1}}})
    const r=await scalar<{pricing:Record<string,number>;selection_snapshot:{basis:string;subtotal:number}[]}>('select to_jsonb(r) as value from reservations r where id=$1',[id]);expect(r.pricing.setup).toBe(n*500000);expect(r.pricing.total).toBe(3200000+n*500000);expect(r.pricing.chair_upgrade).toBe(0);expect(r.selection_snapshot.filter(s=>s.basis==='Optional Simple Buffet setup extra').reduce((sum,s)=>sum+s.subtotal,0)).toBe(n*500000)
+   if(n===2){const final=await scalar<Record<string,number>>('select finalize_reservation($1) as value',[id]);expect(final.setup).toBe(1000000);const saved=await scalar<{basis:string}[]>('select selection_snapshot as value from reservations where id=$1',[id]);expect(saved.filter(s=>s.basis==='Optional Simple Buffet setup extra')).toHaveLength(2)}
   }
  })
  it('rejects unknown, duplicate or Elegant Chair setup extras for Simple Buffet',async()=>{
