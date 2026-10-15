@@ -129,6 +129,9 @@ export function Privacy() {
         The chatbot currently sends entered questions and short conversation
         context to Groq for intent interpretation, then answers using public
         catalog/date facts. It has no access to private reservation records.
+        Guest chat limits use keyed network identifiers and counters,
+        without saving raw network addresses or question text in the usage
+        table. Expired counters are cleaned when new questions are processed.
         Avoid entering passwords, card details, private booking information or
         unnecessary personal data in the chatbot or support messages. Published
         gallery/avatar images can be publicly accessible; uploaded event photos

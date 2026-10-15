@@ -157,6 +157,50 @@ beforeAll(async () => {
 }, 60000)
 afterAll(() => db.close())
 
+describe('persistent assistant usage limits', () => {
+  const guestHash = 'a'.repeat(64), memberHash = 'b'.repeat(64)
+  it('allows ten guest questions, persists exhaustion across calls and does not charge status checks', async () => {
+    await identity('operator')
+    await db.exec('set role service_role')
+    const status = () => scalar<{remaining:number;allowed:boolean;limit:number;audience:string}>('select assistant_access_quota($1,null,false) as value', [guestHash])
+    expect(await status()).toMatchObject({ remaining: 10, allowed: true, limit: 10, audience: 'guest' })
+    for(let i=1;i<=10;i++) expect(await scalar('select assistant_access_quota($1,null,true) as value', [guestHash])).toMatchObject({ remaining: 10-i, allowed: true })
+    expect(await scalar('select assistant_access_quota($1,null,true) as value', [guestHash])).toMatchObject({ remaining: 0, allowed: false })
+    expect(await status()).toMatchObject({ remaining: 0, allowed: false })
+    await identity('operator')
+    expect(await scalar('select questions as value from private.assistant_usage where subject_hash=$1', [guestHash])).toBe(10)
+  })
+  it('does not limit signed-in questions and rejects suspended/nonexistent identities', async () => {
+    await identity('operator')
+    await db.exec('set role service_role')
+    const status = () => scalar('select assistant_access_quota($1,$2,false) as value', [memberHash, users.customer])
+    expect(await status()).toMatchObject({ remaining: null, limit: null, audience: 'member', allowed: true })
+    for(let i=1;i<=35;i++) expect(await scalar('select assistant_access_quota($1,$2,true) as value', [memberHash,users.customer])).toMatchObject({ remaining: null, allowed: true })
+    await expect(scalar('select assistant_access_quota($1,$2,false) as value', [memberHash,'99000000-0000-0000-0000-000000000099'])).rejects.toThrow('Active account required')
+    await identity('operator')
+    expect(await scalar('select count(*)::int as value from private.assistant_usage where subject_hash=$1', [memberHash])).toBe(0)
+    await db.query("update profiles set account_status='suspended' where id=$1", [users.customer])
+    await db.exec('set role service_role')
+    await expect(status()).rejects.toThrow('Active account required')
+    await identity('operator')
+    await db.query("update profiles set account_status='active' where id=$1", [users.customer])
+  })
+  it('does not expose quota writes or identifiers to anonymous/customer roles and permits a fresh day/window', async () => {
+    await identity('customer')
+    await expect(scalar('select assistant_access_quota($1,null,true) as value', [guestHash])).rejects.toThrow()
+    await expect(db.query('select * from private.assistant_usage')).rejects.toThrow()
+    await identity('operator')
+    await db.exec('set role anon')
+    await expect(scalar('select assistant_access_quota($1,null,true) as value', [guestHash])).rejects.toThrow()
+    await identity('operator')
+    await db.query("update private.assistant_usage set window_start=window_start-interval '3 days' where subject_hash=$1", [guestHash])
+    await db.exec('set role service_role')
+    expect(await scalar('select assistant_access_quota($1,null,true) as value', [guestHash])).toMatchObject({ remaining: 9, allowed: true })
+    await identity('operator')
+    expect(await scalar('select count(*)::int as value from private.assistant_usage where subject_hash=$1', [guestHash])).toBe(1)
+  })
+})
+
 describe('system administration and private application export', () => {
   it('restricts system metrics to super admins and reports actual role counts', async () => {
     for (const role of ['customer', 'manager'] as const) {

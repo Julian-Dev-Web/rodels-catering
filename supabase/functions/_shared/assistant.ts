@@ -39,6 +39,7 @@ export interface PublicDate {
   remaining: number
 }
 export interface AssistantAnswer {
+  quota?: import('./assistant-quota.ts').AssistantQuota
   reply: string
   engine: 'openai' | 'groq' | 'quick_answers'
   packages: PublicPackage[]

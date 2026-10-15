@@ -4,6 +4,9 @@
   padding: 14px;
   background: #fffcf7;
 }
+.assistant-access {display:flex;flex-wrap:wrap;gap:5px 12px;padding:10px 16px;border-bottom:1px solid #ded4cb;background:#fffaf4;color:#44352b;font-size:.75rem;line-height:1.5;flex-shrink:0}
+.assistant-access a {color:#74233b;font-weight:700;text-decoration:underline}
+.portal:has(.sidebar.open) .public-assistant {visibility:hidden}
 .hero-carousel-controls {position:absolute;right:18px;bottom:18px;display:flex;gap:6px;z-index:3;align-items:center}
 .hero-carousel-controls button {width:28px;height:28px;background:#fff;color:#612237;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 5px #0004;display:grid;place-items:center}
 .hero-carousel-controls button.selected {background:#612237;outline:2px solid #fff}

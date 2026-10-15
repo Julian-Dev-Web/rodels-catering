@@ -10,13 +10,15 @@ The consolidated October 15 update adds operating hours/date exceptions, selecte
 
 ## 1. Set up the database on Supabase.com
 
+Latest gallery/chat update: [placement and guest-only assistant limits](docs/GALLERY_ASSISTANT_UPDATE_2026-10-15.md). It builds on 0019 with incremental 0020: ten guest questions/day, no signed-in question-count cap, and a floating customer assistant. Already-installed migrations must not be rerun.
+
 Use a fresh Supabase project with an empty `public` schema. If your existing project already contains tables/data, keep them and review an incremental migration before applying this setup.
 
 1. Open your project on Supabase.com → **SQL Editor** → new query.
 2. Copy the entire contents of [`supabase/setup.sql`](supabase/setup.sql), then Run once.
 3. Confirm the tables were created under `public`.
 
-`setup.sql` contains all 19 migrations in one transaction: tables, enums, business rules, RLS, Storage policies, analytics, structured profile names, the owner-confirmed catalog, system/gallery updates and the current booking/access/reporting policies. Its initial check rejects existing public tables; it contains no DROP TABLE/TRUNCATE cleanup. An error rolls back setup rather than leaving a partially installed app. If the preflight stops, do not delete existing data to bypass it.
+`setup.sql` contains all 20 migrations in one transaction: tables, enums, business rules, RLS, Storage policies, analytics, structured profile names, the owner-confirmed catalog, system/gallery updates and the current booking/access/reporting and guest-assistant policies. Its initial check rejects existing public tables; it contains no DROP TABLE/TRUNCATE cleanup. An error rolls back setup rather than leaving a partially installed app. If the preflight stops, do not delete existing data to bypass it.
 
 The original files in `supabase/migrations/` remain the source of truth. After changing one, regenerate the SQL Editor file with:
 

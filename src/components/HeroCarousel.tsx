@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Flower2, Pause, Play } from 'lucide-react'
-import { configured, records } from '../lib/supabase'
-import type { GalleryImage } from '../lib/gallery'
+import { configured } from '../lib/supabase'
+import { galleryPlacement } from '../lib/gallery'
+import { usePublicGallery } from '../features/gallery'
 const approved = [
   {
     image_url: '/images/facebook-showcase.jpg',
@@ -16,14 +16,7 @@ const approved = [
   { image_url: '/images/food.jpg', name: 'School recognition ceremony setup' },
 ]
 export function HeroCarousel() {
-  const gallery = useQuery({
-    queryKey: ['gallery'],
-    enabled: configured,
-    queryFn: () =>
-      records<GalleryImage>('gallery_images', 'created_at', false, {
-        active: true,
-      }),
-  })
+  const gallery = usePublicGallery()
   const [index, setIndex] = useState(0),
     [paused, setPaused] = useState(false),
     [hover, setHover] = useState(false),
@@ -32,13 +25,13 @@ export function HeroCarousel() {
       () => matchMedia('(prefers-reduced-motion: reduce)').matches,
     ),
     [broken, setBroken] = useState<string[]>([])
-  const photos = [...approved, ...(gallery.data || [])]
-    .filter(
-      (p, i, all) =>
-        !broken.includes(p.image_url) &&
-        all.findIndex((q) => q.image_url === p.image_url) === i,
-    )
-    .slice(0, 5)
+  const photos = (
+    configured ? galleryPlacement(gallery.data || [], 'featured') : approved
+  ).filter(
+    (p, i, all) =>
+      !broken.includes(p.image_url) &&
+      all.findIndex((q) => q.image_url === p.image_url) === i,
+  )
   const current = photos[index % Math.max(photos.length, 1)]
   useEffect(() => {
     const media = matchMedia('(prefers-reduced-motion: reduce)'),
@@ -81,7 +74,9 @@ export function HeroCarousel() {
         />
       ) : (
         <div className="hero-photo-unavailable">
-          Event photos are currently unavailable.
+          {gallery.isPending && configured
+            ? 'Loading event photos…'
+            : 'Featured event photos are currently unavailable.'}
         </div>
       )}
       <div className="hero-image-shade" />

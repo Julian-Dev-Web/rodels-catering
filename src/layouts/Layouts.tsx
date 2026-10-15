@@ -371,6 +371,7 @@ export function PortalLayout() {
           <Link to="/policies">Policies</Link>
         </footer>
       </div>
+      {profile.role === 'customer' && <PublicAssistant />}
     </div>
   )
 }
