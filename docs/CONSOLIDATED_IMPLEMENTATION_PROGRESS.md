@@ -1,5 +1,7 @@
 # Consolidated implementation checkpoint — October 15, 2026
 
+Latest follow-up: [calendar navigation and booking form retention](NAVIGATION_FIXES_2026-10-15.md), implementation commit `3b0ed21`. The clickable month/year chooser and Terms/Privacy/Back/reload draft fixes are published and production-browser verified. The current suite has 93 passing tests. The consolidated release notes below retain their original verification record.
+
 Request source: user attachment `13502722-6b68-4b84-9d66-c067031a83e4/Pasted text.txt`. Continue in the existing repository; do not rebuild or reset working modules. Prior shipped release is `2b9c374`, with verification report `d739c26`; migrations 0017/0018 already installed on hosted Supabase. Do not rerun existing updates or the fresh installer.
 
 ## Requested scope and initial audit (historical)
