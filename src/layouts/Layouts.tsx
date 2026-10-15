@@ -154,6 +154,7 @@ export function PublicLayout() {
             <Link to="/about">About & contact</Link>
             <Link to="/terms">Terms and Conditions</Link>
             <Link to="/privacy">Privacy Notice</Link>
+            <Link to="/food-photo-credits">Food photo credits</Link>
             <Link to="/policies">Reservation & refund policies</Link>
           </div>
         </div>

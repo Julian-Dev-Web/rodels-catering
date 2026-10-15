@@ -22,6 +22,8 @@ import {
 import { Stat } from './Customer'
 import type { RecordRow } from '../types'
 import { timeLabel } from '../components/EventTimeSelect'
+import { FoodPhoto } from '../components/FoodPhoto'
+import { isFoodKind } from '../lib/menu-photos'
 interface Operations {
   active: number
   pending: number
@@ -277,6 +279,7 @@ export function ManagerCatalog({ setups = false }: { setups?: boolean }) {
               <DataTable
                 rows={rows as unknown as RecordRow[]}
                 columns={[
+                ...(isFoodKind(table) ? [{ key:'image_url',label:'Photo',render:(row:RecordRow)=><div className="food-table-photo"><FoodPhoto item={{name:String(row.name),image_url:row.image_url?String(row.image_url):undefined}} kind={table as 'dishes'|'drinks'|'desserts'}/></div> }] : []),
                   { key: 'name', label: 'Name' },
                   {
                     key: 'price',

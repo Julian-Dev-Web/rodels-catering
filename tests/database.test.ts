@@ -1628,3 +1628,23 @@ describe('consolidated hours, decisions, readable references and mixed guest cha
   await identity('operator');await db.query('update add_ons set active=false where id=$1',[addon])
  })
 })
+
+describe('catalog food photographs',()=>{
+ it('allows staff photo edits, rejects customer/anonymous edits, and retains catalog identity and price',async()=>{
+  for(const table of ['dishes','drinks','desserts']){
+   await identity('operator');const row=(await db.query<{id:string;name:string}>(`select id,name from ${table} limit 1`)).rows[0]
+   await identity('customer');await expect(db.query(`update ${table} set image_url='https://example.com/test.jpg' where id=$1`,[row.id])).resolves.toMatchObject({affectedRows:0})
+   await db.exec('reset role;set role anon');await expect(db.query(`update ${table} set image_url='https://example.com/test.jpg' where id=$1`,[row.id])).rejects.toThrow(/permission denied/)
+   await identity('manager');await db.query(`update ${table} set image_url='https://example.com/menu.jpg',image_credit='QA photographer',image_source_url='https://example.com/source' where id=$1`,[row.id]);expect(await scalar(`select name as value from ${table} where id=$1`,[row.id])).toBe(row.name)
+   expect(await scalar(`select image_credit as value from ${table} where id=$1`,[row.id])).toBe('QA photographer')
+   for(const url of ['javascript:alert(1)','http://example.com/p.jpg','/images/../private'])await expect(db.query(`update ${table} set image_url=$1 where id=$2`,[url,row.id])).rejects.toThrow(/check constraint/)
+   await expect(db.query(`update ${table} set image_source_url='javascript:alert(1)' where id=$1`,[row.id])).rejects.toThrow(/check constraint/)
+   await expect(db.query(`update ${table} set image_credit=$1 where id=$2`,['x'.repeat(501),row.id])).rejects.toThrow(/check constraint/)
+   await identity('super');await db.query(`update ${table} set image_url=null,image_credit='',image_source_url=null where id=$1`,[row.id])
+  }
+ })
+ it('exports the matching photo schema without granting customer access to the operator snapshot',async()=>{
+  await identity('customer');await expect(db.query('select export_application_snapshot()')).rejects.toThrow(/permission denied/)
+  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0021_catalog_food_images.sql')
+ })
+})

@@ -32,6 +32,10 @@ import {
 } from '../components/ui'
 import { Form } from '../components/Form'
 import type { Field } from '../components/Form'
+import { FoodPhoto } from '../components/FoodPhoto'
+import { CatalogPhotoEditor } from '../components/CatalogPhotoEditor'
+import { isFoodKind } from '../lib/menu-photos'
+import type { CatalogItem } from '../types'
 import { Stat } from './Customer'
 import { StaffBookingDetails } from '../components/BookingDetails'
 import { OperationalSummary } from './ManagerOperations'
@@ -623,16 +627,17 @@ export function ManagePayments() {
 export function CatalogManager({
   area,
 }: {
-  area: 'menu' | 'packages' | 'extras'
+  area: 'menu' | 'packages' | 'extras' | 'food-photos'
 }) {
   const tabs: CatalogTable[] =
-    area === 'menu'
+    area === 'food-photos' ? ['dishes', 'drinks', 'desserts'] : area === 'menu'
       ? ['dishes', 'menu_categories', 'drinks', 'desserts']
       : area === 'packages'
         ? ['menu_sets', 'event_setups', 'chair_types', 'table_types']
         : ['add_ons', 'event_features']
   const [table, setTable] = useState<CatalogTable>(tabs[0]),
-    [editing, setEditing] = useState<RecordRow | null | undefined>(undefined)
+    [editing, setEditing] = useState<RecordRow | null | undefined>(undefined),
+    [photoEditing, setPhotoEditing] = useState<RecordRow | null>(null)
   const query = useQuery({
     queryKey: ['manage-catalog', table],
     queryFn: () => records<RecordRow>(table, 'name', true),
@@ -747,21 +752,20 @@ export function CatalogManager({
     <>
       <PageHeading
         title={
-          area === 'menu'
+          area === 'food-photos' ? 'Menu photography.' : area === 'menu'
             ? 'Flavors for every table.'
             : area === 'packages'
               ? 'Give every occasion a starting point.'
               : 'The little extras that make it yours.'
         }
-        action={
+        action={area === 'food-photos' ? undefined :
           <button className="button" onClick={() => setEditing(null)}>
             <Plus size={16} />
             Add {human(table).replace(/s$/, '').toLowerCase()}
           </button>
         }
       >
-        Maintain your live catalog. Archive items to keep historical
-        reservations intact.
+        {area === 'food-photos' ? 'Replace representative menu photos with your own serving photos. Food images are separate from the event gallery.' : 'Maintain your live catalog. Archive items to keep historical reservations intact.'}
       </PageHeading>
       <div className="tabs">
         {tabs.map((t) => (
@@ -782,6 +786,7 @@ export function CatalogManager({
         <DataTable
           rows={query.data}
           columns={[
+            ...(isFoodKind(table) ? [{ key:'image_url',label:'Photo',render:(row:RecordRow)=><div className="food-table-photo"><FoodPhoto item={{name:String(row.name),image_url:row.image_url?String(row.image_url):undefined}} kind={table as 'dishes'|'drinks'|'desserts'}/></div> }] : []),
             { key: 'name', label: 'Name' },
             ...(priced
               ? [
@@ -807,10 +812,11 @@ export function CatalogManager({
           ]}
           actions={(r) => (
             <>
-              <button className="text-button" onClick={() => setEditing(r)}>
+              {area !== 'food-photos' && <button className="text-button" onClick={() => setEditing(r)}>
                 Edit
-              </button>
-              <Action
+              </button>}
+              {isFoodKind(table)&&<button className="text-button" onClick={()=>setPhotoEditing(r)}>Photo</button>}
+              {area !== 'food-photos' && <Action
                 kind="small secondary"
                 label={r.active ? 'Archive' : 'Activate'}
                 confirm={
@@ -825,11 +831,12 @@ export function CatalogManager({
                     .eq('id', r.id)
                   if (error) throw error
                 }}
-              />
+              />}
             </>
           )}
         />
       )}{' '}
+      {photoEditing&&isFoodKind(table)&&<Modal title={'Photo for '+String(photoEditing.name)} close={()=>setPhotoEditing(null)}><CatalogPhotoEditor table={table} item={photoEditing as unknown as CatalogItem} close={()=>setPhotoEditing(null)}/></Modal>}
       {editing !== undefined && (
         <Modal
           title={(editing ? 'Edit ' : 'Add ') + human(table).replace(/s$/, '')}

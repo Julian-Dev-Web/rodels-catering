@@ -16,6 +16,7 @@ import { roleHome } from '../lib/permissions'
 import { About, Gallery, Home, Packages, Policies } from '../pages/Public'
 import { AuthPage } from '../pages/Auth'
 import { Empty, Loading } from '../components/ui'
+const FoodPhotoCredits = lazy(() => import('../pages/FoodPhotoCredits').then(module => ({ default: module.FoodPhotoCredits })))
 const AvailableDates = lazy(() =>
   import('../pages/Customer').then((m) => ({ default: m.AvailableDates })),
 )
@@ -158,6 +159,7 @@ export function Router() {
               <Route index element={<Home />} />
               <Route path="packages" element={<Packages />} />
               <Route path="gallery" element={<Gallery />} />
+              <Route path="food-photo-credits" element={<FoodPhotoCredits />} />
               <Route path="about" element={<About />} />
               <Route path="policies" element={<Policies />} />
               <Route path="terms" element={<Terms />} />
@@ -279,6 +281,7 @@ export function Router() {
                 />
                 <Route path="users" element={<UserManagement />} />
                 <Route path="gallery" element={<GalleryManagement />} />
+                <Route path="menu-photos" element={<CatalogManager area="food-photos" />} />
                 <Route path="maintenance" element={<Maintenance />} />
                 <Route path="audit-logs" element={<AuditLogs />} />
                 <Route path="settings" element={<Settings />} />

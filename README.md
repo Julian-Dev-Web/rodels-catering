@@ -8,6 +8,8 @@ This developer workspace is connected to the hosted Supabase project `azjzapendj
 
 The consolidated October 15 update adds operating hours/date exceptions, selected-chair quantities, immutable human references, optional rejection reasons/history, structured staff details, complete filtered CSV/PDF/print reports, strict contact validation and an accessible hero carousel. See [the current handoff](docs/CONSOLIDATED_UPDATES_2026-10-15.md) and [continuation checkpoint](docs/CONSOLIDATED_IMPLEMENTATION_PROGRESS.md). The application archive covers 38 public tables, matching schema and reference sequence state; Auth credentials and actual Storage files require separate recovery. Existing projects already on 0018 apply only incremental 0019, never the fresh installer. Prior 0017/0018 behavior and verification remain in [the historical feature handoff](docs/FEATURE_UPDATES_2026-10-15.md).
 
+Latest menu-photo update: [representative photography and photo administration](docs/MENU_PHOTOS_2026-10-15.md). Existing projects already on 0020 apply only incremental `0021_catalog_food_images.sql`; the archive function must use the matching generated schema. The deployed project is on 0021. Do not rerun installed migrations or the fresh installer.
+
 ## 1. Set up the database on Supabase.com
 
 Latest gallery/chat update: [placement and guest-only assistant limits](docs/GALLERY_ASSISTANT_UPDATE_2026-10-15.md). It builds on 0019 with incremental 0020: ten guest questions/day, no signed-in question-count cap, and a floating customer assistant. Already-installed migrations must not be rerun.

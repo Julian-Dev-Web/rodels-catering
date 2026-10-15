@@ -39,6 +39,8 @@ export interface CatalogItem {
   setup_kind?: 'birthday' | 'wedding' | 'buffet' | null
   category_id?: string
   image_url?: string
+  image_credit?: string
+  image_source_url?: string | null
   active: boolean
 }
 export type CatalogTable =

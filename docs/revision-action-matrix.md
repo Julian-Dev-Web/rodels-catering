@@ -35,3 +35,5 @@ verbatim transcript of the previous panel. For each row, show the issue, actual
 change, verification limit and exact chapter/route/code location. Replace the
 issue text with an actual panel comment only after the team confirms it. Do not
 add fictitious attendance, signatures, dates, votes, approvals or completion percentages.
+
+Photo improvement — reconstructed team issue, not an attributed panel comment: menu choices lacked food photography. Action: add representative dish/drink/dessert photos, searchable public browsing, booking photo cards, credits and staff photo replacement. Evidence: `/packages`, `/food-photo-credits`, reservation menu step, `/super-admin/menu-photos`, `src/data/menu-photo-manifest.json`, migration 0021 and `docs/MENU_PHOTOS_2026-10-15.md`. Verification: isolated coverage/permissions/metadata tests; final browser/deployment acceptance is recorded in the handoff. Limitation: these are illustrative references until the owner supplies actual serving photos. Team confirmation is required before describing this as a previous panel recommendation.

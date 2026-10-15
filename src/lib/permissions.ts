@@ -56,6 +56,7 @@ export const navigation: Record<
     ['User management', 'users', 'users'],
     ['Roles & permissions', 'roles', 'users'],
     ['Gallery', 'gallery', 'image'],
+    ['Menu photos', 'menu-photos', 'image'],
     ['Website maintenance', 'maintenance', 'settings'],
     ['System settings', 'system-settings', 'settings'],
     ['Operating hours', 'operating-hours', 'clock'],

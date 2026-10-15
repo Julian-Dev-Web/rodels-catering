@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
 import {
   ArrowDown,
   ArrowRight,
@@ -17,6 +18,7 @@ import { ErrorState, Loading } from '../components/ui'
 import { MenuIllustration } from '../components/MenuIllustration'
 import { EventShowcase } from '../components/EventShowcase'
 import { HeroCarousel } from '../components/HeroCarousel'
+const FoodMenu = lazy(() => import('../components/FoodMenu').then(module => ({ default: module.FoodMenu })))
 const photos = [
   '/images/celebration.jpg',
   '/images/table.jpg',
@@ -302,6 +304,7 @@ export function Packages() {
         </p>
       </div>
       <PackageCards />
+      <Suspense fallback={<Loading />}><FoodMenu /></Suspense>
     </section>
   )
 }

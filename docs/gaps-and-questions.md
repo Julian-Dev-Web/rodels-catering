@@ -32,3 +32,5 @@ title, author spellings, subject and October 14, 2026 submission date.
 No completion percentages, real customer data, passwords, API key values,
 transaction identifiers, invented meeting dates or defense recommendations will
 be inserted to fill these gaps. Items may remain explicitly open in the final paper.
+
+October 15 menu-photo update: all 90 owner-defined dish/drink/dessert names now have representative photo mappings. Actual Rodel’s serving photos remain an owner action; several uncommon variants use explicitly identified related-food references. Replace them through Super Admin → Menu photos when permitted business photography is available. Newly created or renamed items without a matching registry name require a custom photo. Individual photo licenses/attribution remain attached in the registry, public credits route and asset attribution file. Existing provider, legal and restore gaps remain open. The earlier final DOCX/PDF is an evidence snapshot and does not automatically incorporate these later interface changes.

@@ -32,6 +32,7 @@ import {
   validMobile,
 } from '../lib/booking'
 import { ErrorState, Loading, PageHeading } from '../components/ui'
+import { FoodPhoto } from '../components/FoodPhoto'
 import {
   EventTimeSelect,
   validWindowTime,
@@ -808,7 +809,8 @@ export function ReservationWizard() {
                     </select>
                   </label>
                 </div>
-                <div className="selection-grid">
+                <p className="food-photo-notice">Representative photos; actual servings may differ. <Link to="/food-photo-credits" target="_blank" rel="noopener noreferrer">Photo credits</Link></p>
+                <div className="selection-grid food-choice-grid">
                   {c.dishes
                     .filter(
                       (dish) =>
@@ -819,7 +821,7 @@ export function ReservationWizard() {
                           .includes(foodSearch.toLowerCase().trim()),
                     )
                     .map((d) => (
-                      <label className="selection" key={d.id}>
+                      <label className="selection food-choice" key={d.id}>
                         <input
                           type="checkbox"
                           value={d.id}
@@ -830,6 +832,7 @@ export function ReservationWizard() {
                           }
                           {...register('dish_ids')}
                         />
+                        <FoodPhoto item={d} kind="dishes" />
                         <span>
                           <strong>{d.name}</strong>
                           <small>
@@ -843,20 +846,10 @@ export function ReservationWizard() {
                       </label>
                     ))}
                 </div>
-                <div className="form-grid">
-                  <Select
-                    label="Drink"
-                    error={errors.drink_id?.message}
-                    items={c.drinks}
-                    register={register('drink_id')}
-                  />
-                  <Select
-                    label="Dessert"
-                    error={errors.dessert_id?.message}
-                    items={c.desserts}
-                    register={register('dessert_id')}
-                  />
-                </div>
+                {(['drinks','desserts'] as const).map(kind => {
+                  const name = kind === 'drinks' ? 'drink_id' : 'dessert_id'
+                  return <fieldset className="food-options" key={kind}><legend>{kind === 'drinks' ? 'Choose your drink' : 'Choose your dessert'}</legend><div className="selection-grid food-choice-grid">{c[kind].map(item=><label className="selection food-choice" key={item.id}><input type="radio" value={item.id} {...register(name)} /><FoodPhoto item={item} kind={kind}/><span><strong>{item.name}</strong><small>One selection included</small></span></label>)}</div>{errors[name]&&<p className="field-error" role="alert">{errors[name]?.message}</p>}</fieldset>
+                })}
                 <p className="date-help">
                   One drink and one dessert are included in the per-head menu
                   price.
