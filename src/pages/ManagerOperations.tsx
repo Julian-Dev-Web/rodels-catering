@@ -1,12 +1,24 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { CalendarDays, Hourglass, RotateCcw, Wallet } from 'lucide-react'
+import {
+  CalendarDays,
+  ChevronDown,
+  Hourglass,
+  RotateCcw,
+  Wallet,
+} from 'lucide-react'
 import { useReservations } from '../features/reservations'
 import { useCatalog } from '../features/catalog'
 import { rpc } from '../lib/supabase'
 import { date, human, money, todayManila } from '../lib/format'
 import { monthDays, moveMonth } from '../lib/calendar'
-import { DataTable, ErrorState, Loading, PageHeading } from '../components/ui'
+import {
+  DataTable,
+  ErrorState,
+  Loading,
+  Modal,
+  PageHeading,
+} from '../components/ui'
 import { Stat } from './Customer'
 import type { RecordRow } from '../types'
 import { timeLabel } from '../components/EventTimeSelect'
@@ -67,8 +79,15 @@ export function OperationalSummary() {
 }
 export function ManagerCalendar() {
   const [month, setMonth] = useState(todayManila().slice(0, 7)),
+    [choosingMonth, setChoosingMonth] = useState(false),
+    [chosenMonth, setChosenMonth] = useState(month.slice(5, 7)),
+    [chosenYear, setChosenYear] = useState(month.slice(0, 4)),
     reservations = useReservations(),
     calendar = monthDays(month)
+  const validYear =
+    /^\d{1,4}$/.test(chosenYear) &&
+    Number(chosenYear) >= 1 &&
+    Number(chosenYear) <= 9999
   return (
     <>
       <PageHeading
@@ -82,19 +101,35 @@ export function ManagerCalendar() {
         <div className="calendar-toolbar">
           <button
             className="button secondary small"
+            disabled={month === '0001-01'}
             onClick={() => setMonth(moveMonth(month, -1))}
           >
             Previous month
           </button>
-          <strong>
-            {new Date(month + '-01T00:00:00Z').toLocaleDateString('en-PH', {
-              month: 'long',
-              year: 'numeric',
-              timeZone: 'UTC',
-            })}
-          </strong>
+          <button
+            type="button"
+            className="calendar-month-jump"
+            aria-label="Choose calendar month and year"
+            aria-haspopup="dialog"
+            aria-expanded={choosingMonth}
+            onClick={() => {
+              setChosenMonth(month.slice(5, 7))
+              setChosenYear(month.slice(0, 4))
+              setChoosingMonth(true)
+            }}
+          >
+            <strong>
+              {new Date(month + '-01T00:00:00Z').toLocaleDateString('en-PH', {
+                month: 'long',
+                year: 'numeric',
+                timeZone: 'UTC',
+              })}
+            </strong>
+            <ChevronDown size={16} aria-hidden="true" />
+          </button>
           <button
             className="button secondary small"
+            disabled={month === '9999-12'}
             onClick={() => setMonth(moveMonth(month, 1))}
           >
             Next month
@@ -119,8 +154,9 @@ export function ManagerCalendar() {
                   <strong>{date(day)}</strong>
                   {rows.map((r) => (
                     <p key={r.id}>
-                      {r.reservation_reference} · {timeLabel(r.event_time)} Manila · {r.event_name} · {r.guests}{' '}
-                      guests · {human(r.status)}
+                      {r.reservation_reference} · {timeLabel(r.event_time)}{' '}
+                      Manila · {r.event_name} · {r.guests} guests ·{' '}
+                      {human(r.status)}
                     </p>
                   ))}
                 </div>
@@ -136,6 +172,70 @@ export function ManagerCalendar() {
           </div>
         )}
       </section>
+      {choosingMonth && (
+        <Modal
+          title="Choose month and year"
+          close={() => setChoosingMonth(false)}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (!validYear) return
+              setMonth(chosenYear.padStart(4, '0') + '-' + chosenMonth)
+              setChoosingMonth(false)
+            }}
+          >
+            <div className="form-grid">
+              <label>
+                Month
+                <select
+                  aria-label="Calendar month"
+                  value={chosenMonth}
+                  onChange={(event) => setChosenMonth(event.target.value)}
+                >
+                  {Array.from({ length: 12 }, (_, index) => (
+                    <option
+                      key={index}
+                      value={String(index + 1).padStart(2, '0')}
+                    >
+                      {new Date(Date.UTC(2000, index, 1)).toLocaleDateString(
+                        'en-PH',
+                        { month: 'long', timeZone: 'UTC' },
+                      )}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Year
+                <input
+                  aria-label="Calendar year"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={9999}
+                  step={1}
+                  required
+                  value={chosenYear}
+                  onChange={(event) => setChosenYear(event.target.value)}
+                />
+              </label>
+            </div>
+            <div className="actions">
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => setChoosingMonth(false)}
+              >
+                Cancel
+              </button>
+              <button className="button" type="submit" disabled={!validYear}>
+                Go to month
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </>
   )
 }

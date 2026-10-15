@@ -23,6 +23,20 @@
 .booking-activity time {display:block;color:#605249;font-size:.8rem;margin-top:4px}
 .booking-activity p {margin:5px 0}
 .report-summary {margin:20px 0}
+.calendar-month-jump {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #d1c3b3;
+  border-radius: 8px;
+  background: #fff;
+  color: #362719;
+  cursor: pointer;
+}
+.calendar-month-jump:hover { background: #f5f0e9; }
+.calendar-month-jump:focus-visible { outline: 2px solid #79542f; outline-offset: 3px; }
 .calendar-toolbar {
   display: flex;
   align-items: center;

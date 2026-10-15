@@ -341,11 +341,11 @@ export function ConsentField({ form }: { form: UseFormReturn<Values> }) {
       <input type="checkbox" {...form.register('consent_accepted')} required />
       <span>
         I have read and accept the current{' '}
-        <Link target="_blank" to="/terms">
+        <Link target="_blank" rel="noopener noreferrer" to="/terms">
           Terms and Conditions
         </Link>{' '}
         and{' '}
-        <Link target="_blank" to="/privacy">
+        <Link target="_blank" rel="noopener noreferrer" to="/privacy">
           Privacy Notice
         </Link>
         . This acceptance and its version are recorded with my booking.

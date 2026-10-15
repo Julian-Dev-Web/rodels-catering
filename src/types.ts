@@ -55,6 +55,7 @@ export type CatalogTable =
 export type Catalog = Record<CatalogTable, CatalogItem[]>
 export interface Reservation {
   id: string
+  updated_at: string
   reservation_reference?: string
   selection_snapshot?: {name:string;quantity:number;unit_amount:number|null;subtotal:number|null;basis:string}[] | null
   customer_id: string

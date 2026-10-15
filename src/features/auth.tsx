@@ -1,10 +1,11 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate, useLocation } from 'react-router-dom'
 import { authCallback, configured, supabase } from '../lib/supabase'
 import { canVisit, roleHome } from '../lib/permissions'
+import { clearBookingDrafts } from '../lib/booking-draft'
 import type { Profile } from '../types'
 import { ErrorState, Loading } from '../components/ui'
 type Auth = {
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [booting, setBooting] = useState(configured)
   const [recovery, setRecovery] = useState(authCallback.recovery)
   const [sessionError, setSessionError] = useState<unknown>(null)
+  const previousUser = useRef<string | null | undefined>(undefined)
   const client = useQueryClient()
   useEffect(() => {
     if (!configured) return
@@ -41,10 +43,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSessionError(null)
       if (event === 'PASSWORD_RECOVERY') setRecovery(true)
       if (event === 'SIGNED_OUT') setRecovery(false)
-      client.removeQueries({
-        predicate: (q) =>
-          q.queryKey[0] !== 'catalog' && q.queryKey[0] !== 'maintenance',
-      })
+      const userId = value?.user.id ?? null
+      // Supabase also emits SIGNED_IN on tab focus. A refresh for the same
+      // identity must not unmount protected forms or discard their input.
+      if (previousUser.current !== userId || event === 'SIGNED_OUT') {
+        if (previousUser.current !== undefined || event === 'SIGNED_OUT')
+          clearBookingDrafts()
+        client.removeQueries({
+          predicate: (q) =>
+            q.queryKey[0] !== 'catalog' && q.queryKey[0] !== 'maintenance',
+        })
+      }
+      previousUser.current = userId
     })
     supabase.auth
       .getSession()

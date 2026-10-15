@@ -8,6 +8,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, ArrowRight, Check, ShieldCheck } from 'lucide-react'
 import { useCatalog } from '../features/catalog'
 import { useReservation } from '../features/reservations'
+import { useAuth } from '../features/auth'
+import {
+  bookingDraftKey,
+  readBookingDraft,
+  writeBookingDraft,
+  clearBookingDraft,
+} from '../lib/booking-draft'
 import { rpc, supabase } from '../lib/supabase'
 import { money, date, human, earliestEventDate } from '../lib/format'
 import {
@@ -148,6 +155,8 @@ function Select({
 }
 export function ReservationWizard() {
   const { id } = useParams()
+  const { profile } = useAuth()
+  const draftKey = bookingDraftKey(profile?.id, id)
   const location = useLocation(),
     navigate = useNavigate(),
     qc = useQueryClient()
@@ -159,6 +168,7 @@ export function ReservationWizard() {
   const catalog = useCatalog(),
     detail = useReservation(id)
   const initialized = useRef<string>('')
+  const draftRevision = useRef<string | null>(null)
   const [quote, setQuote] = useState<Record<string, number> | null>(null)
   const [foodSearch, setFoodSearch] = useState('')
   const [foodCategory, setFoodCategory] = useState('all')
@@ -169,10 +179,11 @@ export function ReservationWizard() {
       : location.pathname.endsWith('/confirm')
         ? 3
         : 0
+  const params = new URLSearchParams(location.search)
   const initial = {
-    ...defaults,
-    event_date: new URLSearchParams(location.search).get('date') || '',
-    menu_set_id: new URLSearchParams(location.search).get('package') || '',
+    ...(!id ? readBookingDraft(draftKey, defaults, null) : defaults),
+    ...(params.has('date') ? { event_date: params.get('date')! } : {}),
+    ...(params.has('package') ? { menu_set_id: params.get('package')! } : {}),
   }
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -185,79 +196,113 @@ export function ReservationWizard() {
     formState: { errors },
   } = form
   useEffect(() => {
-    if (!id && initialized.current) {
-      initialized.current = ''
-      reset(defaults)
+    if (!id && initialized.current !== 'new') {
+      const switchingFromSavedBooking = !!initialized.current
+      initialized.current = 'new'
+      draftRevision.current = null
+      const restored = readBookingDraft(draftKey, defaults, null)
+      const params = new URLSearchParams(location.search)
+      if (switchingFromSavedBooking)
+        reset({
+          ...restored,
+          ...(params.has('date') ? { event_date: params.get('date')! } : {}),
+          ...(params.has('package')
+            ? { menu_set_id: params.get('package')! }
+            : {}),
+        })
       setQuote(null)
     }
     if (detail.data && catalog.data && initialized.current !== id) {
       const { reservation: r, children: c } = detail.data
       const seating = c.reservation_tables_chairs
       initialized.current = id!
+      draftRevision.current = r.updated_at
       setQuote(r.pricing)
-      reset({
-        ...defaults,
-        event_name: r.event_name,
-        event_date: r.event_date,
-        event_time: r.event_time.slice(0, 5),
-        guests: r.guests,
-        menu_set_id: r.menu_set_id,
-        drink_id: r.drink_id || '',
-        dessert_id: r.dessert_id || '',
-        setup_id: String(c.reservation_event_setups[0]?.event_setup_id || ''),
-        dish_ids: c.reservation_items.map((x) => String(x.dish_id)),
-        feature_ids: c.reservation_event_features.map((x) =>
-          String(x.event_feature_id),
+      reset(
+        readBookingDraft(
+          draftKey,
+          {
+            ...defaults,
+            event_name: r.event_name,
+            event_date: r.event_date,
+            event_time: r.event_time.slice(0, 5),
+            guests: r.guests,
+            menu_set_id: r.menu_set_id,
+            drink_id: r.drink_id || '',
+            dessert_id: r.dessert_id || '',
+            setup_id: String(
+              c.reservation_event_setups[0]?.event_setup_id || '',
+            ),
+            dish_ids: c.reservation_items.map((x) => String(x.dish_id)),
+            feature_ids: c.reservation_event_features.map((x) =>
+              String(x.event_feature_id),
+            ),
+            table_type_id: String(seating[0]?.table_type_id || ''),
+            chair_type_id: String(
+              seating.find(
+                (row) =>
+                  (catalog.data!.chair_types.find(
+                    (c) => c.id === row.chair_type_id,
+                  )?.price || 0) > 0,
+              )?.chair_type_id ||
+                seating[0]?.chair_type_id ||
+                '',
+            ),
+            elegant_chair_quantity: Number(
+              seating.find(
+                (row) =>
+                  (catalog.data!.chair_types.find(
+                    (c) => c.id === row.chair_type_id,
+                  )?.price || 0) > 0,
+              )?.chair_quantity || 0,
+            ),
+            event_preferences: {
+              ...defaultPreferences,
+              ...r.event_preferences,
+              setup_inclusions:
+                r.event_preferences?.setup_inclusions ??
+                (catalog.data.event_setups.find(
+                  (setup) =>
+                    setup.id === c.reservation_event_setups[0]?.event_setup_id,
+                )?.setup_kind === 'birthday'
+                  ? birthdayKeys
+                  : catalog.data.event_setups.find(
+                        (setup) =>
+                          setup.id ===
+                          c.reservation_event_setups[0]?.event_setup_id,
+                      )?.setup_kind === 'wedding'
+                    ? weddingKeys
+                    : []),
+            },
+            consent_accepted:
+              r.consent_version === POLICY_VERSION && !!r.consent_at,
+            consent_version: POLICY_VERSION,
+            save_contact: false,
+            chair_quantities: Object.fromEntries(
+              seating.map((x) => [x.chair_type_id, Number(x.chair_quantity)]),
+            ),
+            addon_quantities: Object.fromEntries(
+              c.reservation_add_ons.map((x) => [
+                x.add_on_id,
+                Number(x.quantity),
+              ]),
+            ),
+            address: { ...defaults.address, ...r.address },
+          },
+          r.updated_at,
         ),
-        table_type_id: String(seating[0]?.table_type_id || ''),
-        chair_type_id: String(
-          seating.find(
-            (row) =>
-              (catalog.data!.chair_types.find((c) => c.id === row.chair_type_id)
-                ?.price || 0) > 0,
-          )?.chair_type_id ||
-            seating[0]?.chair_type_id ||
-            '',
-        ),
-        elegant_chair_quantity: Number(
-          seating.find(
-            (row) =>
-              (catalog.data!.chair_types.find((c) => c.id === row.chair_type_id)
-                ?.price || 0) > 0,
-          )?.chair_quantity || 0,
-        ),
-        event_preferences: {
-          ...defaultPreferences,
-          ...r.event_preferences,
-          setup_inclusions:
-            r.event_preferences?.setup_inclusions ??
-            (catalog.data.event_setups.find(
-              (setup) =>
-                setup.id === c.reservation_event_setups[0]?.event_setup_id,
-            )?.setup_kind === 'birthday'
-              ? birthdayKeys
-              : catalog.data.event_setups.find(
-                    (setup) =>
-                      setup.id ===
-                      c.reservation_event_setups[0]?.event_setup_id,
-                  )?.setup_kind === 'wedding'
-                ? weddingKeys
-                : []),
-        },
-        consent_accepted:
-          r.consent_version === POLICY_VERSION && !!r.consent_at,
-        consent_version: POLICY_VERSION,
-        save_contact: false,
-        chair_quantities: Object.fromEntries(
-          seating.map((x) => [x.chair_type_id, Number(x.chair_quantity)]),
-        ),
-        addon_quantities: Object.fromEntries(
-          c.reservation_add_ons.map((x) => [x.add_on_id, Number(x.quantity)]),
-        ),
-        address: { ...defaults.address, ...r.address },
-      })
+      )
     }
-  }, [detail.data, catalog.data, id, reset])
+  }, [detail.data, catalog.data, id, reset, draftKey, location.search])
+  useEffect(() => {
+    return form.subscribe({
+      formState: { values: true },
+      callback: ({ values }) => {
+        if (initialized.current === (id || 'new'))
+          writeBookingDraft(draftKey, values, draftRevision.current)
+      },
+    })
+  }, [form, draftKey, id])
   const values = useWatch({ control: form.control }) as Values
   const selected = catalog.data?.menu_sets.find(
     (p) => p.id === values.menu_set_id,
@@ -380,10 +425,13 @@ export function ReservationWizard() {
       })
       const { data, error } = await supabase
         .from('reservations')
-        .select('pricing')
+        .select('pricing,updated_at')
         .eq('id', rid)
         .single()
       if (error) throw error
+      draftRevision.current = data.updated_at
+      writeBookingDraft(bookingDraftKey(profile?.id, rid), v, data.updated_at)
+      if (!id) clearBookingDraft(draftKey)
       setQuote(data.pricing)
       void qc.invalidateQueries({ queryKey: ['reservations'] })
       void qc.invalidateQueries({ queryKey: ['reservation', rid] })
@@ -398,6 +446,7 @@ export function ReservationWizard() {
   const finalize = useMutation({
     mutationFn: () => rpc('finalize_reservation', { rid: id }),
     onSuccess: () => {
+      clearBookingDraft(draftKey)
       void qc.invalidateQueries()
       navigate('/customer/reservations/' + id)
     },
@@ -1250,7 +1299,14 @@ export function ReservationWizard() {
             <div className="quote-placeholder">
               <UtensilsIcon />
               <p>
-                {(c.chair_types.find(chair=>chair.id===values.chair_type_id)?.price||0)>0&&(!Number.isInteger(values.elegant_chair_quantity)||values.elegant_chair_quantity<1||values.elegant_chair_quantity>values.guests)?'Choose a whole Elegant Chair quantity between 1 and your guest count. The quote is paused until corrected.':'Choose a current menu and setup. Partial wedding pricing remains pending until configured.'}
+                {(c.chair_types.find(
+                  (chair) => chair.id === values.chair_type_id,
+                )?.price || 0) > 0 &&
+                (!Number.isInteger(values.elegant_chair_quantity) ||
+                  values.elegant_chair_quantity < 1 ||
+                  values.elegant_chair_quantity > values.guests)
+                  ? 'Choose a whole Elegant Chair quantity between 1 and your guest count. The quote is paused until corrected.'
+                  : 'Choose a current menu and setup. Partial wedding pricing remains pending until configured.'}
               </p>
             </div>
           )}

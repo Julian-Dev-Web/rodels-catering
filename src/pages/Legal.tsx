@@ -136,6 +136,13 @@ export function Privacy() {
       </p>
       <h2>Retention and safeguards</h2>
       <p>
+        Your current browser tab temporarily keeps unfinished booking details
+        so that policy links, returning to the form or reloading do not erase
+        your work. Drafts are separated by account and booking, removed when
+        finalized or signed out, and use browser session storage rather than
+        creating a reservation before you choose to save.
+      </p>
+      <p>
         Records are retained while needed for booking/service support, payment
         reconciliation and applicable record-keeping duties. A specific
         retention schedule and deletion process still require the owner’s
