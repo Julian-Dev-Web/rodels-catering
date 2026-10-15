@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   birthdayKeys,
+  buffetKeys,
+  weddingKeys,
   coveragePlaces,
   setupSubtotal,
   validateWeddingPrices,
@@ -91,5 +93,15 @@ describe('booking and reschedule previews', () => {
       setupSubtotal('wedding', ['stage_backdrop'], 3000000, null),
     ).toBeNull()
     expect(validateWeddingPrices({ stage_backdrop: 3000000 })).toBe(false)
+  })
+  it('prices optional buffet setup extras and configured Wedding selections without a booking pricing-approval step', () => {
+    const prices = Object.fromEntries(weddingKeys.map(key=>[key,500000]))
+    expect(setupSubtotal('buffet', [], 0, null)).toBe(0)
+    expect(setupSubtotal('buffet', buffetKeys.slice(0,2), 0, null)).toBe(1000000)
+    expect(setupSubtotal('buffet', buffetKeys, 0, null)).toBe(2500000)
+    expect(()=>setupSubtotal('buffet',['elegant_chair'],0,null)).toThrow('Invalid setup')
+    expect(setupSubtotal('wedding',weddingKeys,3000000,prices)).toBe(3000000)
+    expect(setupSubtotal('wedding',weddingKeys.slice(0,5),3000000,prices)).toBe(2500000)
+    expect(setupSubtotal('wedding',[],3000000,prices)).toBe(0)
   })
 })

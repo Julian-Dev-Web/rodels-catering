@@ -1,11 +1,13 @@
 import directory from '../data/coverage.json'
 import type { Catalog } from '../types'
-import { birthdayKeys, weddingKeys } from './booking-constants'
+import { birthdayKeys, weddingKeys, buffetKeys } from './booking-constants'
 export {
   POLICY_VERSION,
   setupItems,
   birthdayKeys,
   weddingKeys,
+  buffetKeys,
+  setupItemLabel,
 } from './booking-constants'
 export interface EventPreferences {
   occasion_type: 'birthday' | 'wedding' | 'other'
@@ -43,13 +45,14 @@ export function setupSubtotal(
   weddingPrices: Record<string, number> | null,
 ) {
   const keys =
-    kind === 'birthday' ? birthdayKeys : kind === 'wedding' ? weddingKeys : []
+    kind === 'birthday' ? birthdayKeys : kind === 'wedding' ? weddingKeys : kind === 'buffet' ? buffetKeys : []
   if (
     selected.some((key) => !keys.includes(key)) ||
     new Set(selected).size !== selected.length
   )
     throw new Error('Invalid setup inclusions')
   if (kind === 'birthday') return selected.length * 500000
+  if (kind === 'buffet') return base + selected.length * 500000
   if (kind === 'wedding') {
     if (selected.length === 6) return 3000000
     if (!weddingPrices || !validateWeddingPrices(weddingPrices)) return null

@@ -145,3 +145,7 @@ Optional server type check: `npm.cmd run typecheck:edge` downloads Deno on deman
 See [QA_CHECKLIST.md](QA_CHECKLIST.md) for hosted acceptance, [MIGRATION_NOTES.md](MIGRATION_NOTES.md) for legacy decisions, and [supabase/SCHEMA.md](supabase/SCHEMA.md) for database contracts. The hosted connection, account setup and provider acceptance still require your project's configuration.
 
 The owner-confirmed menu source is `src/data/rodels-menu.ts`. Run `npm.cmd run db:catalog` after approved changes to that source to regenerate its migration and SQL bundles. Existing installations use the generated 0014/0015 files under `supabase/updates/`, not the fresh installer. Review [catalog and pricing changes](docs/catalog-pricing-update.md) before reapplying the catalog replacement; it archives choices not present in that source. Saved reservation totals and financial history remain unchanged.
+
+## Current setup-pricing update
+
+See [Simple Buffet extras and automatic Wedding pricing](docs/SETUP_EXTRAS_2026-10-15.md). The owner confirmed PHP5,000 per component/extra. Hosted schema 0022 configures all six Wedding prices and allows five optional Simple Buffet upgrades, excluding the Elegant Chair setup inclusion. Existing projects on 0021 apply only the reviewed incremental 0022 update and deploy the matching archive schema. The connected hosted project already has it; do not rerun migrations there.

@@ -1,6 +1,6 @@
 import { useReservation } from '../features/reservations'
 import { useCatalog } from '../features/catalog'
-import { setupItems } from '../lib/booking'
+import { setupItems, setupItemLabel } from '../lib/booking'
 import { dateTime } from '../lib/format'
 import { ErrorState, Loading } from './ui'
 import type { Catalog, RecordRow, Reservation } from '../types'
@@ -47,14 +47,14 @@ export function BookingSelections({
           ),
         )?.name || 'Not selected'}
       </dd>
-      <dt>Setup inclusions</dt>
+      <dt>{selectedSetup?.setup_kind==='buffet'?'Optional setup extras':'Setup inclusions'}</dt>
       <dd>
         {r.booking_version === 0
           ? 'Historical bundle; item choices were not recorded'
           : prefs?.setup_inclusions
               ?.map(
                 (key) =>
-                  setupItems.find((item) => item.key === key)?.label || key,
+                  setupItemLabel(key,selectedSetup?.setup_kind),
               )
               .join(', ') || 'None selected'}
       </dd>
@@ -258,7 +258,7 @@ export function StaffBookingDetails({ id }: { id: string }) {
       [
         'Setup inclusions',
         (r.event_preferences?.setup_inclusions || [])
-          .map((k) => setupItems.find((i) => i.key === k)?.label || k)
+          .map((k) => setupItemLabel(k,setup?.setup_kind))
           .join(', ') || 'None recorded',
       ],
       ...Object.entries(r.pricing).map(([key, value]) => [

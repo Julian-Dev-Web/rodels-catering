@@ -9,3 +9,7 @@ export const setupItems = [
 ]
 export const birthdayKeys = setupItems.slice(0, 3).map((item) => item.key)
 export const weddingKeys = setupItems.map((item) => item.key)
+export const buffetKeys = weddingKeys.filter(key => key !== 'elegant_chair')
+export function setupItemLabel(key: string, kind?: string | null) {
+  return kind === 'buffet' && key === 'buffet_setup' ? 'Buffet Styling Upgrade' : setupItems.find(item=>item.key===key)?.label || key
+}

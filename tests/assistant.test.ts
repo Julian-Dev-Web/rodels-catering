@@ -58,6 +58,9 @@ describe('public assistant and preparation dates', () => {
     const answer = answerFromFacts({ ...intent, topics:['upgrades'], guests:100 }, [], [], 'groq', now, {chair_types:[{id:'fixture',name:'Elegant chair',price:1000}],table_types:[],event_setups:[],event_features:[]})
     expect(answer.reply).toContain('1,000.00')
     expect(answer.reply).toContain('you can choose fewer')
+    expect(answer.reply).toContain('removing an inclusion automatically deducts')
+    expect(answer.reply).toContain('Buffet Styling Upgrade')
+    expect(answer.reply).not.toContain('partial pricing is pending')
     expect(answer.options?.chair_types[0].price).toBe(1000)
   })
   it('defaults to Groq and never silently switches to a paid OpenAI key', () => {

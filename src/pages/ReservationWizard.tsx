@@ -26,7 +26,7 @@ import {
   defaultPreferences,
   birthdayKeys,
   weddingKeys,
-  setupItems,
+  setupItemLabel,
   estimateBooking,
   POLICY_VERSION,
   validMobile,
@@ -936,13 +936,7 @@ export function ReservationWizard() {
                       </label>
                     ))}
                 </div>
-                <h3>Optional add-ons</h3>
-                {!c.add_ons.length && (
-                  <p className="date-help">
-                    No quantity-based add-ons are currently published. You can
-                    choose the available optional event features above.
-                  </p>
-                )}
+                {!!c.add_ons.length && <h3>Additional quantity-based add-ons</h3>}
                 {c.add_ons.map((a) => (
                   <label className="quantity-row" key={a.id}>
                     <span>
@@ -1127,8 +1121,7 @@ export function ReservationWizard() {
                     {values.event_preferences.setup_inclusions
                       .map(
                         (key) =>
-                          setupItems.find((item) => item.key === key)?.label ||
-                          key,
+                          setupItemLabel(key,c.event_setups.find(item=>item.id===values.setup_id)?.setup_kind),
                       )
                       .join(', ') || 'None selected'}
                   </p>
@@ -1299,7 +1292,7 @@ export function ReservationWizard() {
                   values.elegant_chair_quantity < 1 ||
                   values.elegant_chair_quantity > values.guests)
                   ? 'Choose a whole Elegant Chair quantity between 1 and your guest count. The quote is paused until corrected.'
-                  : 'Choose a current menu and setup. Partial wedding pricing remains pending until configured.'}
+                  : 'Choose a current menu and setup to see your estimate.'}
               </p>
             </div>
           )}

@@ -135,8 +135,7 @@ export function SystemSettings() {
                 ))}
               </div>
               <p>
-                Required total: {money(3000000)}. No automatic equal-price split
-                is applied.
+                Required total: {money(3000000)}. The owner-confirmed starting rate is ₱5,000 per inclusion. Customer quotes update automatically as inclusions are selected or removed.
               </p>
               <label className="consent-check">
                 <input

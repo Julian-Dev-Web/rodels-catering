@@ -1277,22 +1277,13 @@ describe('coverage, consent, setup configuration and saved contacts', () => {
       ),
     ).rejects.toThrow(/age/)
   })
-  it('blocks partial weddings until an explicitly approved six-price configuration totals PHP30,000', async () => {
+  it('automatically prices the confirmed wedding inclusions and restricts later pricing configuration to approved admin changes', async () => {
     const prefs = {
       setup_inclusions: ['stage_backdrop'],
       occasion_type: 'wedding',
     }
-    await expect(
-      ownerDraft(
-        '2096-03-01',
-        100,
-        'Monoblock',
-        'Wedding setup',
-        undefined,
-        'Round table',
-        { event_preferences: prefs },
-      ),
-    ).rejects.toThrow('Wedding price breakdown pending')
+    const current=await ownerDraft('2096-03-02',100,'Monoblock','Wedding setup',undefined,'Round table',{event_preferences:prefs})
+    expect(await scalar('select total as value from reservations where id=$1',[current])).toBe(3700000)
     await identity('manager')
     await expect(
       db.query('select configure_wedding_prices($1,true)', [
@@ -1336,7 +1327,7 @@ describe('coverage, consent, setup configuration and saved contacts', () => {
     ).toBe(3900000)
     await identity('operator')
     await db.exec(
-      "update app_settings set value='null'::jsonb where key='wedding_component_prices'",
+      "update app_settings set value='{\"stage_backdrop\":500000,\"elegant_chair\":500000,\"entrance\":500000,\"presidential_table\":500000,\"buffet_setup\":500000,\"diamond_dance_floor\":500000}'::jsonb where key='wedding_component_prices'",
     )
   })
 })
@@ -1645,6 +1636,23 @@ describe('catalog food photographs',()=>{
  })
  it('exports the matching photo schema without granting customer access to the operator snapshot',async()=>{
   await identity('customer');await expect(db.query('select export_application_snapshot()')).rejects.toThrow(/permission denied/)
-  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0021_catalog_food_images.sql')
+  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0022_buffet_extras_wedding_rates.sql')
+ })
+})
+
+describe('confirmed buffet extras and Wedding rates',()=>{
+ const keys=['stage_backdrop','entrance','presidential_table','buffet_setup','diamond_dance_floor']
+ it('prices every Simple Buffet subset, snapshots setup charges, and leaves basic seating free',async()=>{
+  for(let n=0;n<=5;n++){
+   const id=await ownerDraft('2091-09-0'+(n+1),100,'Monoblock','Simple buffet setup',undefined,'Round table',{total:1,event_preferences:{setup_inclusions:keys.slice(0,n),component_prices:{stage_backdrop:1}}})
+   const r=await scalar<{pricing:Record<string,number>;selection_snapshot:{basis:string;subtotal:number}[]}>('select to_jsonb(r) as value from reservations r where id=$1',[id]);expect(r.pricing.setup).toBe(n*500000);expect(r.pricing.total).toBe(3200000+n*500000);expect(r.pricing.chair_upgrade).toBe(0);expect(r.selection_snapshot.filter(s=>s.basis==='Optional Simple Buffet setup extra').reduce((sum,s)=>sum+s.subtotal,0)).toBe(n*500000)
+  }
+ })
+ it('rejects unknown, duplicate or Elegant Chair setup extras for Simple Buffet',async()=>{
+  for(const selected of [['elegant_chair'],['stage_backdrop','stage_backdrop'],['made_up']])await expect(ownerDraft('2091-09-15',100,'Monoblock','Simple buffet setup',undefined,'Round table',{event_preferences:{setup_inclusions:selected}})).rejects.toThrow(/Invalid Simple Buffet/)
+ })
+ it('deducts exactly PHP5,000 for each unchecked Wedding inclusion including an all-unchecked quote',async()=>{
+  const all=['stage_backdrop','elegant_chair','entrance','presidential_table','buffet_setup','diamond_dance_floor']
+  for(const n of [6,5,1,0]){const id=await ownerDraft('2091-10-'+String(n+1).padStart(2,'0'),100,'Monoblock','Wedding setup',undefined,'Round table',{event_preferences:{setup_inclusions:all.slice(0,n)}});expect(await scalar('select total as value from reservations where id=$1',[id])).toBe(3200000+n*500000)}
  })
 })

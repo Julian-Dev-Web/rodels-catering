@@ -11,6 +11,7 @@ import {
   setupItems,
   birthdayKeys,
   weddingKeys,
+  buffetKeys,
 } from '../lib/booking'
 import { money } from '../lib/format'
 import { ErrorState } from './ui'
@@ -254,7 +255,7 @@ export function EventPreferenceFields({
       ? birthdayKeys
       : setup?.setup_kind === 'wedding'
         ? weddingKeys
-        : []
+        : setup?.setup_kind === 'buffet' ? buffetKeys : []
   const pending = setup?.setup_kind === 'wedding' && !weddingPrices
   return (
     <>
@@ -292,12 +293,11 @@ export function EventPreferenceFields({
       </div>
       {!!keys.length && (
         <>
-          <h3>Setup inclusions</h3>
+          <h3>{setup?.setup_kind === 'buffet' ? 'Optional add-ons · setup upgrades' : 'Setup inclusions'}</h3>
+          {setup?.setup_kind === 'buffet' && <p className="date-help">Basic buffet setup, tables and Monoblock guest chairs remain included. Choose any setup extras below at ₱5,000 each; none are preselected. Guest Elegant Chairs are selected separately under seating.</p>}
           {pending && (
             <p className="alert">
-              Wedding price breakdown pending. The full six-item bundle is
-              ₱30,000. Partial selection cannot be priced or submitted until the
-              owner-approved breakdown is configured.
+              Loading current Wedding component prices. Retry if pricing remains unavailable.
             </p>
           )}
           <div className="selection-grid">
@@ -311,9 +311,9 @@ export function EventPreferenceFields({
                     {...form.register('event_preferences.setup_inclusions')}
                   />
                   <span>
-                    <strong>{item.label}</strong>
+                    <strong>{setup?.setup_kind === 'buffet' && item.key === 'buffet_setup' ? 'Buffet Styling Upgrade' : item.label}</strong>
                     <small>
-                      {setup?.setup_kind === 'birthday'
+                      {setup?.setup_kind === 'birthday' || setup?.setup_kind === 'buffet'
                         ? '₱5,000 each'
                         : weddingPrices
                           ? money(weddingPrices[item.key])
@@ -330,6 +330,7 @@ export function EventPreferenceFields({
               inclusion; guest seating upgrades are priced separately.
             </p>
           )}
+          {setup?.setup_kind === 'wedding' && weddingPrices && <p className="date-help">All six selected: ₱30,000. Unchecking an inclusion automatically removes its displayed price from your quote; no separate pricing approval is required. The setup Elegant Chair is separate from guest seating upgrades.</p>}
         </>
       )}
     </>
