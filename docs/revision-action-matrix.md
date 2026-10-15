@@ -1,6 +1,6 @@
 # Reconstructed revision and action matrix — for team confirmation
 
-Current panel revisions: [implementation, verification and business setup status](PANEL_REVISIONS_2026-10-15.md). Hosted schema 0026 includes shared equipment, persistent incomplete drafts, allergy acknowledgments, tax/discount snapshots and scheduled upcoming reminders. Actual chair stock and tax registration still need business confirmation. Reminder email needs a verified sender; see [email setup](REMINDER_EMAIL_SETUP.md). Earlier implementation counts and unresolved-item lists below are historical where superseded by this handoff.
+Current panel revisions: [implementation, verification and business setup status](PANEL_REVISIONS_2026-10-15.md). Hosted schema 0027 includes shared equipment, persistent incomplete drafts, allergy acknowledgments, tax/discount snapshots and scheduled upcoming reminders. Actual chair stock and tax registration still need business confirmation. Reminder email needs a verified sender; see [email setup](REMINDER_EMAIL_SETUP.md). Earlier implementation counts and unresolved-item lists below are historical where superseded by this handoff.
 
 This matrix is prepared from the actual source changes, earlier draft and setup
 record. **It is not an authenticated list of first-defense panel comments or

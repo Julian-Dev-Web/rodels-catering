@@ -1638,7 +1638,7 @@ describe('catalog food photographs',()=>{
  })
  it('exports the matching photo schema without granting customer access to the operator snapshot',async()=>{
   await identity('customer');await expect(db.query('select export_application_snapshot()')).rejects.toThrow(/permission denied/)
-  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0026_upcoming_event_reminders.sql')
+  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0027_payment_inventory_confirmation.sql')
  })
 })
 
@@ -1737,5 +1737,16 @@ describe('panel edge cases',()=>{
  it('cancels stale queued emails after rescheduling and prevents an unaccepted email from being marked sent',async()=>{
   const id=await ownerDraft('2087-03-08',100);await db.query('select finalize_reservation($1)',[id]);await identity('manager');await db.query("select manager_reservation_status($1,'approved')",[id]);await identity('customer');await db.query('select update_reminder_preferences(true,true)');await identity('operator');await db.query("select enqueue_event_reminders('2087-03-01T07:00:00+08:00')");const email=await scalar<string>("select id as value from reminder_deliveries where reservation_id=$1 and channel='email'",[id]);await expect(db.query("select finish_reminder_email($1,'sent',null)",[email])).rejects.toThrow(/acceptance/);
   await db.query("update reservations set event_date='2087-03-12' where id=$1",[id]);expect(await scalar('select status as value from reminder_deliveries where id=$1',[email])).toBe('cancelled');await db.query("select enqueue_event_reminders('2087-03-05T07:00:00+08:00')");expect(await scalar("select count(*)::int as value from reminder_deliveries where reservation_id=$1 and event_date='2087-03-12' and reminder_date='2087-03-05'",[id])).toBe(2);await identity('customer');await db.query('select update_reminder_preferences(true,false)');
+ })
+})
+
+describe('verified payment when shared equipment fills during checkout',()=>{
+ it('records money once, preserves pending review, and never oversells chairs',async()=>{
+  await identity('manager');const eid=await scalar<string>("select id as value from equipment_inventory where code='elegant_chair'");await db.query('select configure_equipment($1,1000)',[eid]);
+  const a=await ownerDraft('2086-12-20',600,'Elegant chair');await db.query('select finalize_reservation($1)',[a]);await identity('operator');const p=await scalar<{id:string;amount:number}>("select to_jsonb(begin_checkout($1,$2,'partial')) as value",[a,users.customer]);await db.query("update payments set external_session_id='cs_stock_filled' where id=$1",[p.id]);
+  const b=await ownerDraft('2086-12-21',500,'Elegant chair');await db.query('select finalize_reservation($1)',[b]);await identity('operator');await db.query('update reservations set customer_id=$1,event_date=$2 where id=$3',[users.other_customer,'2086-12-20',b]);await identity('manager');await db.query("select manager_reservation_status($1,'approved')",[b]);
+  await identity('operator');for(let i=0;i<2;i++)await db.query("select confirm_provider_payment('evt_stock_filled','cs_stock_filled','pay_stock_filled',$1)",[p.amount]);
+  expect(await scalar('select paid as value from reservations where id=$1',[a])).toBe(p.amount);expect(await scalar('select status::text as value from reservations where id=$1',[a])).toBe('for_approval');expect(await scalar("select count(*)::int as value from transactions where reference='pay_stock_filled'")).toBe(1);expect(await scalar('select sum(quantity)::int as value from equipment_allocations where event_date=$1',['2086-12-20'])).toBe(500);expect(await scalar('select amount as value from balances where reservation_id=$1',[a])).toBe(p.amount);
+  await identity('manager');await expect(db.query("select manager_reservation_status($1,'approved')",[a])).rejects.toThrow(/shortage/);await identity('operator');await db.exec('update equipment_inventory set usable_quantity=1000000');
  })
 })

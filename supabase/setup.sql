@@ -3364,4 +3364,52 @@ $$;
 revoke execute on function public.set_reminder_email_status(boolean) from public,anon,authenticated;
 grant execute on function public.set_reminder_email_status(boolean) to service_role;
 
+-- ==================== 0027_payment_inventory_confirmation.sql ====================
+
+-- Verified money must still be recorded when equipment fills during checkout.
+-- Keep the reservation pending for staff review instead of rolling back payment.
+create function private.equipment_ready_for_approval(rid uuid) returns boolean language plpgsql security definer set search_path='' as $$
+declare r public.reservations;i public.equipment_inventory;requested int;allocated int;
+begin
+ select * into strict r from public.reservations where id=rid;
+ for i in select * from public.equipment_inventory order by id for update loop
+  select coalesce(sum(s.chair_quantity),0)::int into requested from public.reservation_tables_chairs s join public.chair_types c on c.id=s.chair_type_id where s.reservation_id=rid and c.equipment_id=i.id;
+  select coalesce(sum(quantity),0)::int into allocated from public.equipment_allocations where equipment_id=i.id and event_date=r.event_date and reservation_id<>rid;
+  if requested>0 and (requested>r.guests or i.usable_quantity is null or not i.active or requested>greatest(i.usable_quantity-allocated,0)) then
+   perform private.audit('equipment.approval_deferred',rid::text,jsonb_build_object('equipment',i.code,'date',r.event_date,'requested',requested,'reason','Confirmed stock unavailable after payment'));
+   return false;
+  end if;
+ end loop;
+ return true;
+end $$;
+revoke execute on function private.equipment_ready_for_approval(uuid) from public,anon,authenticated;
+
+create or replace function public.confirm_provider_payment(event_id text,session_id text,provider_payment_id text,amount bigint) returns void language plpgsql security definer set search_path='' as $$
+declare p public.payments; r public.reservations; next_status public.reservation_status; total_paid bigint;
+begin
+ select * into strict p from public.payments where external_session_id=session_id for update;
+ select * into strict r from public.reservations where id=p.reservation_id for update;
+ if p.status='fully_paid' then return; end if;
+ if p.status<>'pending' or p.amount<>amount or provider_payment_id is null or r.paid+amount>r.total then raise exception 'Payment does not match the pending checkout'; end if;
+ insert into public.webhook_events(id,event_type) values(event_id,'checkout_session.payment.paid') on conflict do nothing;
+ if not found then return; end if;
+ total_paid=r.paid+amount; next_status=r.status;
+ perform pg_advisory_xact_lock(hashtextextended('capacity:'||r.event_date::text,0));
+ if r.status in ('for_approval','pending') and r.event_date>(now() at time zone 'Asia/Manila')::date and not (private.event_window(r.event_date)->>'closed')::boolean and r.event_time between (private.event_window(r.event_date)->>'opens')::time and (private.event_window(r.event_date)->>'closes')::time and (select count(*) from public.reservations where event_date=r.event_date and holds_capacity)<3 and private.equipment_ready_for_approval(r.id) then next_status='approved'; end if;
+ update public.payments set status='fully_paid',external_payment_id=provider_payment_id where id=p.id;
+ update public.reservations set paid=total_paid,payment_status=case when total_paid=total then 'fully_paid'::public.payment_status else 'partially_paid'::public.payment_status end,status=next_status where id=r.id;
+ insert into public.balances values(r.id,r.total-total_paid,now()) on conflict(reservation_id) do update set amount=excluded.amount,updated_at=now();
+ insert into public.transactions(reservation_id,payment_id,kind,amount,reference) values(r.id,p.id,'payment',amount,provider_payment_id);
+ perform private.audit('payment.confirmed',p.id::text,jsonb_build_object('provider_payment_id',provider_payment_id,'event',event_id));
+ perform private.notify(r.id,'Payment confirmed',case when next_status='approved' then 'Your payment and event date are confirmed.' else 'Payment received. Our team must confirm date capacity and equipment availability with you.' end);
+end $$;
+
+alter function public.export_application_snapshot() set schema private;
+alter function private.export_application_snapshot() rename to export_application_snapshot_0026;
+create function public.export_application_snapshot() returns jsonb language sql stable security definer set search_path='' as $$
+ select private.export_application_snapshot_0026()||jsonb_build_object('schema_version','0027_payment_inventory_confirmation.sql')
+$$;
+revoke execute on function public.confirm_provider_payment(text,text,text,bigint),public.export_application_snapshot(),private.export_application_snapshot_0026() from public,anon,authenticated;
+grant execute on function public.confirm_provider_payment(text,text,text,bigint),public.export_application_snapshot() to service_role;
+
 commit;
