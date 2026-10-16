@@ -1,5 +1,7 @@
 # Hosted Auth, test accounts and PayMongo setup
 
+October 16 domain/email update: the main website is [www.rodelscatering.online](https://www.rodelscatering.online). An authorized test email was accepted by the provider and appeared as an in-app manager notification; actual inbox receipt awaits user confirmation. See [the current setup status](docs/REMINDER_EMAIL_SETUP.md). Earlier URLs/status statements below are historical where superseded.
+
 Frontend: `https://rodels-catering.vercel.app`.
 Supabase project: `azjzapendjsfouysueiw`.
 
