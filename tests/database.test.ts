@@ -1638,7 +1638,7 @@ describe('catalog food photographs',()=>{
  })
  it('exports the matching photo schema without granting customer access to the operator snapshot',async()=>{
   await identity('customer');await expect(db.query('select export_application_snapshot()')).rejects.toThrow(/permission denied/)
-  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0027_payment_inventory_confirmation.sql')
+  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0028_manager_event_reminders.sql')
  })
 })
 
@@ -1719,9 +1719,9 @@ describe('tax snapshots and staff-assigned discounts',()=>{
 describe('D-7 through D-1 reminder idempotency and lifecycle',()=>{
  it('queues one in-app and one email per booking/day after the Manila send hour, stops cancelled events and protects worker RPCs',async()=>{
   const rid=await ownerDraft('2088-04-08',100);await db.query('select finalize_reservation($1)',[rid]);await identity('manager');await db.query("select manager_reservation_status($1,'approved')",[rid]);await identity('customer');await db.query('select update_reminder_preferences(true,true)');await expect(db.query('select enqueue_event_reminders()')).rejects.toThrow(/permission/);
-  await identity('operator');expect(await scalar("select enqueue_event_reminders('2088-04-01T06:59:00+08:00') as value")).toBe(0);await db.query("select enqueue_event_reminders('2088-04-01T07:00:00+08:00')");await db.query("select enqueue_event_reminders('2088-04-01T07:05:00+08:00')");expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1 and reminder_date=$2',[rid,'2088-04-01'])).toBe(2);
-  for(let day=2;day<=7;day++)await db.query('select enqueue_event_reminders($1)',[`2088-04-0${day}T07:00:00+08:00`]);expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1',[rid])).toBe(14);await db.query("select enqueue_event_reminders('2088-04-08T07:00:00+08:00')");expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1',[rid])).toBe(14);
-  await db.query("update reservations set status='cancelled' where id=$1",[rid]);expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1 and channel=$2 and status<>$3',[rid,'email','cancelled'])).toBe(0);
+  await identity('operator');expect(await scalar("select enqueue_event_reminders('2088-04-01T06:59:00+08:00') as value")).toBe(0);await db.query("select enqueue_event_reminders('2088-04-01T07:00:00+08:00')");await db.query("select enqueue_event_reminders('2088-04-01T07:05:00+08:00')");expect(await scalar('select count(*)::int as value from reminder_deliveries where audience=$$customer$$ and reservation_id=$1 and reminder_date=$2',[rid,'2088-04-01'])).toBe(2);
+  for(let day=2;day<=7;day++)await db.query('select enqueue_event_reminders($1)',[`2088-04-0${day}T07:00:00+08:00`]);expect(await scalar('select count(*)::int as value from reminder_deliveries where audience=$$customer$$ and reservation_id=$1',[rid])).toBe(14);await db.query("select enqueue_event_reminders('2088-04-08T07:00:00+08:00')");expect(await scalar('select count(*)::int as value from reminder_deliveries where audience=$$customer$$ and reservation_id=$1',[rid])).toBe(14);
+  await db.query("update reservations set status='cancelled' where id=$1",[rid]);expect(await scalar('select count(*)::int as value from reminder_deliveries where audience=$$customer$$ and reservation_id=$1 and channel=$2 and status<>$3',[rid,'email','cancelled'])).toBe(0);
   await identity('customer');await db.query('select update_reminder_preferences(true,false)');
  })
 })
@@ -1735,8 +1735,8 @@ describe('panel edge cases',()=>{
   const d=await scalar<{id:string;version:number}>('select to_jsonb(save_booking_draft($1,null,3,null,$2)) as value',[JSON.stringify(payload),id]);const before=await scalar('select count(*)::int as value from reservations');expect(await scalar('select submit_booking_draft($1,$2) as value',[d.id,d.version])).toBe(id);expect(await scalar('select count(*)::int as value from reservations')).toBe(before);
  })
  it('cancels stale queued emails after rescheduling and prevents an unaccepted email from being marked sent',async()=>{
-  const id=await ownerDraft('2087-03-08',100);await db.query('select finalize_reservation($1)',[id]);await identity('manager');await db.query("select manager_reservation_status($1,'approved')",[id]);await identity('customer');await db.query('select update_reminder_preferences(true,true)');await identity('operator');await db.query("select enqueue_event_reminders('2087-03-01T07:00:00+08:00')");const email=await scalar<string>("select id as value from reminder_deliveries where reservation_id=$1 and channel='email'",[id]);await expect(db.query("select finish_reminder_email($1,'sent',null)",[email])).rejects.toThrow(/acceptance/);
-  await db.query("update reservations set event_date='2087-03-12' where id=$1",[id]);expect(await scalar('select status as value from reminder_deliveries where id=$1',[email])).toBe('cancelled');await db.query("select enqueue_event_reminders('2087-03-05T07:00:00+08:00')");expect(await scalar("select count(*)::int as value from reminder_deliveries where reservation_id=$1 and event_date='2087-03-12' and reminder_date='2087-03-05'",[id])).toBe(2);await identity('customer');await db.query('select update_reminder_preferences(true,false)');
+  const id=await ownerDraft('2087-03-08',100);await db.query('select finalize_reservation($1)',[id]);await identity('manager');await db.query("select manager_reservation_status($1,'approved')",[id]);await identity('customer');await db.query('select update_reminder_preferences(true,true)');await identity('operator');await db.query("select enqueue_event_reminders('2087-03-01T07:00:00+08:00')");const email=await scalar<string>("select id as value from reminder_deliveries where audience=$$customer$$ and reservation_id=$1 and channel='email'",[id]);await expect(db.query("select finish_reminder_email($1,'sent',null)",[email])).rejects.toThrow(/acceptance/);
+  await db.query("update reservations set event_date='2087-03-12' where id=$1",[id]);expect(await scalar('select status as value from reminder_deliveries where id=$1',[email])).toBe('cancelled');await db.query("select enqueue_event_reminders('2087-03-05T07:00:00+08:00')");expect(await scalar("select count(*)::int as value from reminder_deliveries where audience=$$customer$$ and reservation_id=$1 and event_date='2087-03-12' and reminder_date='2087-03-05'",[id])).toBe(2);await identity('customer');await db.query('select update_reminder_preferences(true,false)');
  })
 })
 
@@ -1749,4 +1749,98 @@ describe('verified payment when shared equipment fills during checkout',()=>{
   expect(await scalar('select paid as value from reservations where id=$1',[a])).toBe(p.amount);expect(await scalar('select status::text as value from reservations where id=$1',[a])).toBe('for_approval');expect(await scalar("select count(*)::int as value from transactions where reference='pay_stock_filled'")).toBe(1);expect(await scalar('select sum(quantity)::int as value from equipment_allocations where event_date=$1',['2086-12-20'])).toBe(500);expect(await scalar('select amount as value from balances where reservation_id=$1',[a])).toBe(p.amount);
   await identity('manager');await expect(db.query("select manager_reservation_status($1,'approved')",[a])).rejects.toThrow(/shortage/);await identity('operator');await db.exec('update equipment_inventory set usable_quantity=1000000');
  })
+})
+
+describe('manager and customer reminder recipients', () => {
+  async function preferenceSnapshot() {
+    await identity('operator')
+    return (await db.query<{id:string;role:string;account_status:string;reminder_inapp_opt_in:boolean;reminder_email_opt_in:boolean}>(
+      'select id,role,account_status,reminder_inapp_opt_in,reminder_email_opt_in from profiles where id=any($1::uuid[])',
+      [[users.customer, users.manager, users.other]],
+    )).rows
+  }
+  async function restorePreferences(rows: Awaited<ReturnType<typeof preferenceSnapshot>>) {
+    await identity('operator')
+    for (const p of rows) await db.query('update profiles set role=$2::public.app_role,account_status=$3,reminder_inapp_opt_in=$4,reminder_email_opt_in=$5 where id=$1',
+      [p.id,p.role,p.account_status,p.reminder_inapp_opt_in,p.reminder_email_opt_in])
+  }
+  it('delivers separate customer/manager channels once per day and isolates each recipient with RLS', async () => {
+    const previous=await preferenceSnapshot()
+    try {
+      const rid=await ownerDraft('2085-06-08',100)
+      await db.query('select finalize_reservation($1)',[rid])
+      await db.query('select update_reminder_preferences(true,true)')
+      await identity('manager');await db.query('select update_reminder_preferences(true,true)')
+      await db.query("select manager_reservation_status($1,'approved')",[rid])
+      await identity('operator')
+      expect(await scalar("select enqueue_event_reminders('2085-06-01T06:59:00+08:00') as value")).toBe(0)
+      for(let i=0;i<2;i++) await db.query("select enqueue_event_reminders('2085-06-01T07:00:00+08:00')")
+      for(const recipient of [users.customer,users.manager]) expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1 and recipient_id=$2',[rid,recipient])).toBe(2)
+      expect(await scalar("select count(*)::int as value from reminder_deliveries where reservation_id=$1 and recipient_id=$2",[rid,users.super])).toBe(0)
+      expect(await scalar("select n.href as value from reminder_deliveries d join notifications n on n.id=d.notification_id where d.reservation_id=$1 and d.recipient_id=$2 and d.channel='in_app'",[rid,users.manager])).toBe('/manager/upcoming')
+      expect(await scalar("select n.user_id::text as value from reminder_deliveries d join notifications n on n.id=d.notification_id where d.reservation_id=$1 and d.recipient_id=$2 and d.channel='in_app'",[rid,users.manager])).toBe(users.manager)
+      const claimed=(await db.query<{recipient_id:string;audience:string}>("select recipient_id,audience from claim_event_reminder_emails('2085-06-01T07:00:00+08:00',20)")).rows
+      expect(claimed).toContainEqual({recipient_id:users.manager,audience:'manager'})
+      expect(claimed).toContainEqual({recipient_id:users.customer,audience:'customer'})
+      expect((await db.query("select * from claim_event_reminder_emails('2085-06-01T07:00:00+08:00',20)")).rows).toHaveLength(0)
+      await identity('customer')
+      expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1',[rid])).toBe(2)
+      expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1 and recipient_id=$2',[rid,users.manager])).toBe(0)
+      await identity('manager');expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1',[rid])).toBe(2)
+      await identity('other_customer');expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1',[rid])).toBe(0)
+      await identity('operator')
+      for(let day=2;day<=8;day++) await db.query('select enqueue_event_reminders($1)',[`2085-06-0${day}T07:00:00+08:00`])
+      for(const recipient of [users.customer,users.manager]) expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1 and recipient_id=$2',[rid,recipient])).toBe(14)
+    } finally { await restorePreferences(previous) }
+  })
+  it('supports two managers without stacking duplicate deliveries or broadcasting to super admins', async () => {
+    const previous=await preferenceSnapshot()
+    try {
+      const rid=await ownerDraft('2085-07-08',100);await db.query('select finalize_reservation($1)',[rid]);await db.query('select update_reminder_preferences(false,false)')
+      await identity('manager');await db.query('select update_reminder_preferences(true,true)');await db.query("select manager_reservation_status($1,'approved')",[rid])
+      await identity('operator');await db.query("update profiles set role='manager',account_status='active',reminder_inapp_opt_in=true,reminder_email_opt_in=true where id=$1",[users.other])
+      for(let day=1;day<=8;day++) for(let retry=0;retry<2;retry++) await db.query('select enqueue_event_reminders($1)',[`2085-07-0${day}T07:00:00+08:00`])
+      for(const recipient of [users.manager,users.other]) expect(await scalar('select count(*)::int as value from reminder_deliveries where reservation_id=$1 and recipient_id=$2',[rid,recipient])).toBe(14)
+      expect(await scalar("select count(*)::int as value from reminder_deliveries where reservation_id=$1 and recipient_id=any($2::uuid[])",[rid,[users.customer,users.super]])).toBe(0)
+      expect(await scalar("select count(*)::int as value from (select recipient_id,reminder_date,channel,count(*) from reminder_deliveries where reservation_id=$1 group by 1,2,3 having count(*)>1)x",[rid])).toBe(0)
+    } finally { await restorePreferences(previous) }
+  })
+  it('binds the worker job to the manager recipient and revalidates their opt-out without cancelling the customer job', async () => {
+    const previous=await preferenceSnapshot()
+    try {
+      await identity('operator')
+      const day=await scalar<string>("select ((now() at time zone 'Asia/Manila')::date+6)::text as value")
+      const at=await scalar<string>("select (((now() at time zone 'Asia/Manila')::date+time '07:00') at time zone 'Asia/Manila')::text as value")
+      const rid=await ownerDraft(day,100);await db.query('select finalize_reservation($1)',[rid]);await db.query('select update_reminder_preferences(true,true)')
+      await identity('manager');await db.query('select update_reminder_preferences(true,true)');await db.query("select manager_reservation_status($1,'approved')",[rid])
+      await identity('operator');await db.query('select enqueue_event_reminders($1)',[at]);await db.query('select * from claim_event_reminder_emails($1,20)',[at])
+      const delivery=await scalar<string>("select id as value from reminder_deliveries where reservation_id=$1 and recipient_id=$2 and channel='email'",[rid,users.manager])
+      expect(await scalar('select (prepare_reminder_email($1)).recipient_id::text as value',[delivery])).toBe(users.manager)
+      await identity('manager');await db.query('select update_reminder_preferences(true,false)')
+      await identity('operator');await expect(db.query('select prepare_reminder_email($1)',[delivery])).rejects.toThrow(/no longer eligible/)
+      expect(await scalar('select status as value from reminder_deliveries where id=$1',[delivery])).toBe('cancelled')
+      expect(await scalar("select status as value from reminder_deliveries where reservation_id=$1 and recipient_id=$2 and channel='email'",[rid,users.customer])).toBe('sending')
+    } finally { await restorePreferences(previous) }
+  })
+  it('stops suspended/former managers, preserves sent notices, and recomputes after reschedule and completion', async () => {
+    const previous=await preferenceSnapshot()
+    try {
+      const rid=await ownerDraft('2085-08-08',100);await db.query('select finalize_reservation($1)',[rid]);await db.query('select update_reminder_preferences(true,true)')
+      await identity('manager');await db.query('select update_reminder_preferences(true,true)');await db.query("select manager_reservation_status($1,'approved')",[rid])
+      await identity('operator');await db.query("select enqueue_event_reminders('2085-08-01T07:00:00+08:00')")
+      const delivery=await scalar<string>("select id as value from reminder_deliveries where reservation_id=$1 and recipient_id=$2 and channel='email'",[rid,users.manager])
+      await db.query("update profiles set account_status='suspended' where id=$1",[users.manager])
+      expect(await scalar('select error_code as value from reminder_deliveries where id=$1',[delivery])).toBe('recipient_inactive')
+      await db.query("update profiles set account_status='active' where id=$1",[users.manager]);await db.query("select enqueue_event_reminders('2085-08-01T07:05:00+08:00')")
+      await db.query("update profiles set role='customer' where id=$1",[users.manager])
+      expect(await scalar('select error_code as value from reminder_deliveries where id=$1',[delivery])).toBe('recipient_role_changed')
+      await db.query("update profiles set role='manager' where id=$1",[users.manager]);await db.query("select enqueue_event_reminders('2085-08-01T07:10:00+08:00')")
+      expect(await scalar("select count(*)::int as value from reminder_deliveries where reservation_id=$1 and recipient_id=$2 and channel='in_app'",[rid,users.manager])).toBe(1)
+      await db.query("update reservations set event_date='2085-08-09' where id=$1",[rid]);expect(await scalar('select status as value from reminder_deliveries where id=$1',[delivery])).toBe('cancelled')
+      await db.query("select enqueue_event_reminders('2085-08-02T07:00:00+08:00')")
+      expect(await scalar("select count(*)::int as value from reminder_deliveries where reservation_id=$1 and recipient_id=$2 and reminder_date='2085-08-02' and event_date='2085-08-09'",[rid,users.manager])).toBe(2)
+      await db.query("update reservations set status='completed' where id=$1",[rid]);await db.query("select enqueue_event_reminders('2085-08-03T07:00:00+08:00')")
+      expect(await scalar("select count(*)::int as value from reminder_deliveries where reservation_id=$1 and reminder_date='2085-08-03'",[rid])).toBe(0)
+    } finally { await restorePreferences(previous) }
+  })
 })

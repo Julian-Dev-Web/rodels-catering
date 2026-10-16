@@ -17,8 +17,8 @@ Deno.serve(async req=>{
         const prepared=await db.rpc('prepare_reminder_email',{delivery_id:job.id});if(prepared.error)continue
         let payload=prepared.data.provider_payload
         if(!payload){
-          const reservation=await db.from('reservations').select('customer_id').eq('id',job.reservation_id).single();if(reservation.error)throw Error('Recipient unavailable')
-          const user=await db.auth.admin.getUserById(reservation.data.customer_id);if(user.error||!user.data.user?.email)throw Error('Recipient unavailable')
+          if(typeof job.recipient_id!=='string')throw Error('Recipient unavailable')
+          const user=await db.auth.admin.getUserById(job.recipient_id);if(user.error||!user.data.user?.email)throw Error('Recipient unavailable')
           payload={from:Deno.env.get('EMAIL_FROM'),to:[user.data.user.email],subject:job.title,text:job.body+'\n\n'+Deno.env.get('APP_URL')+job.href}
           const bound=await db.rpc('prepare_reminder_email',{delivery_id:job.id,payload});if(bound.error)continue;payload=bound.data.provider_payload
         }

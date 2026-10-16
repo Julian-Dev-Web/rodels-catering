@@ -1,5 +1,7 @@
 # Rodel’s Catering — hosted setup
 
+October 17 manager reminder update: active managers now receive their own daily in-app/email preparation reminders according to their Settings preferences. Hosted schema 0028 uses separate recipients alongside customer reminders. See [the rollout and verification status](docs/MANAGER_REMINDERS_2026-10-17.md). Earlier schema counts/status statements below are historical where superseded.
+
 October 16 domain/email update: the main website is [www.rodelscatering.online](https://www.rodelscatering.online). An authorized test email was accepted by the provider and appeared as an in-app manager notification; actual inbox receipt awaits user confirmation. See [the current setup status](docs/REMINDER_EMAIL_SETUP.md). Earlier URLs/status statements below are historical where superseded.
 
 Current panel revisions: [implementation, verification and business setup status](docs/PANEL_REVISIONS_2026-10-15.md). Hosted schema 0027 includes shared equipment, persistent incomplete drafts, allergy acknowledgments, tax/discount snapshots and scheduled upcoming reminders. Actual chair stock and tax registration still need business confirmation. Reminder email needs a verified sender; see [email setup](docs/REMINDER_EMAIL_SETUP.md). Earlier implementation counts and unresolved-item lists below are historical where superseded by this handoff.
