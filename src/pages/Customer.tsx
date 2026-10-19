@@ -299,13 +299,17 @@ export function ReservationDetail() {
                       kind="primary"
                       confirm="You will continue to PayMongo’s secure checkout. A redirect alone does not confirm payment or your event date."
                       run={async () => {
-                        const data = await edge<{ url: string }>(
+                        const data = await edge<{ url?: string; quote_updated?: boolean }>(
                           'create-paymongo-checkout',
                           {
                             reservation_id: r.id,
                             intent,
+                            expected_total:r.total,
+                            expected_quote_at:r.financial_snapshot?.captured_at,
                           },
                         )
+                        if(data.quote_updated){await query.refetch();throw new Error('Your quotation has been updated. Review the discount, total and down payment, then choose your payment again.')}
+                        if(!data.url)throw new Error('Checkout URL unavailable')
                         const url = new URL(data.url)
                         if (
                           url.protocol !== 'https:' ||

@@ -36,7 +36,7 @@ import { ErrorState, Loading, PageHeading } from '../components/ui'
 import { FoodPhoto } from '../components/FoodPhoto'
 import { AllergyFields, useAllergyWarnings } from '../components/AllergyFields'
 import { FinancialBreakdown } from '../components/FinancialBreakdown'
-import { financialQuote, type TaxPolicy } from '../lib/financial'
+import { effectiveDiscount, financialQuote, type TaxPolicy } from '../lib/financial'
 import { EquipmentAvailability, type EquipmentAvailabilityRow } from '../components/EquipmentAvailability'
 import {
   EventTimeSelect,
@@ -337,6 +337,7 @@ export function ReservationWizard() {
   const allergyWarnings = useAllergyWarnings(values.allergy_allergen_ids,values.allergy_notes,values.dish_ids)
   const taxPolicy = useQuery({queryKey:['tax-policy'],queryFn:()=>rpc<TaxPolicy>('tax_configuration')})
   const assignedDiscount = useQuery({queryKey:['assigned-discount',reservationKey],enabled:!!reservationKey,queryFn:async()=>{const r=await supabase.from('reservation_discounts').select('*').eq('reservation_id',reservationKey!).maybeSingle();if(r.error)throw r.error;return r.data}})
+  const accountDiscount = useQuery({queryKey:['account-discount',profile?.id],enabled:!!profile?.id,queryFn:async()=>{const r=await supabase.from('profiles').select('account_discount_bps,account_discount_reason').eq('id',profile!.id).single();if(r.error)throw r.error;return r.data}})
   const selected = catalog.data?.menu_sets.find(
     (p) => p.id === values.menu_set_id,
   )
@@ -487,7 +488,8 @@ export function ReservationWizard() {
       navigate('/customer/reservations/' + rid)
     },
   })
-  if (catalog.isPending || (id && detail.isPending) || (draftId&&savedDraft.isPending)) return <Loading />
+  if (catalog.isPending || (id && detail.isPending) || (draftId&&savedDraft.isPending) || accountDiscount.isPending || taxPolicy.isPending || (reservationKey&&assignedDiscount.isPending)) return <Loading />
+  if(accountDiscount.error||taxPolicy.error||assignedDiscount.error)return <ErrorState error={accountDiscount.error||taxPolicy.error||assignedDiscount.error}/>
   if (catalog.error || detail.error || savedDraft.error)
     return <ErrorState error={catalog.error || detail.error || savedDraft.error} />
   if(savedDraft.data?.submitted_at)return <section className="panel"><h2>This draft was already submitted.</h2><Link className="button" to={'/customer/reservations/'+savedDraft.data.reservation_id}>Open saved reservation</Link></section>
@@ -514,7 +516,7 @@ export function ReservationWizard() {
     weddingConfiguration.data || null,
   )
   let financialPreview = null
-  try { if(estimated&&taxPolicy.data) financialPreview=financialQuote(estimated.total,assignedDiscount.data,taxPolicy.data) } catch { /* Keep incomplete drafts editable; validation runs on Next/finalize. */ }
+  try { if(estimated&&taxPolicy.data&&accountDiscount.data) financialPreview=financialQuote(estimated.total,effectiveDiscount(assignedDiscount.data,accountDiscount.data),taxPolicy.data) } catch { /* Keep incomplete drafts editable; validation runs on Next/finalize. */ }
   const financialSnapshot = step===3&&id ? detail.data?.reservation.financial_snapshot : financialPreview
   const rawQuote = step===3&&quote ? quote : estimated
   const displayedQuote = rawQuote&&Number.isSafeInteger(rawQuote.total) ? {...rawQuote,total:financialSnapshot?.total ?? rawQuote.total} : null

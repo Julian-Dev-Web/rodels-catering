@@ -25,6 +25,9 @@ export interface Profile {
   created_at: string
   reminder_inapp_opt_in?: boolean
   reminder_email_opt_in?: boolean
+  account_discount_bps?: number
+  account_discount_reason?: string
+  account_discount_changed_at?: string | null
 }
 export interface CatalogItem {
   id: string

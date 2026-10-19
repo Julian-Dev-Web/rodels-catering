@@ -19,6 +19,7 @@ import { Empty, Loading } from '../components/ui'
 const FoodPhotoCredits = lazy(() => import('../pages/FoodPhotoCredits').then(module => ({ default: module.FoodPhotoCredits })))
 const EquipmentManagement = lazy(()=>import('../pages/PanelOperations').then(m=>({default:m.EquipmentManagement})))
 const DiscountOffers = lazy(()=>import('../pages/PanelOperations').then(m=>({default:m.DiscountOffers})))
+const CustomerManagement = lazy(()=>import('../pages/CustomerManagement').then(m=>({default:m.CustomerManagement})))
 const PanelSystemConfiguration = lazy(()=>import('../pages/PanelOperations').then(m=>({default:m.PanelSystemConfiguration})))
 const ManagerUpcoming = lazy(()=>import('../pages/PanelOperations').then(m=>({default:m.ManagerUpcoming})))
 const AvailableDates = lazy(() =>
@@ -241,6 +242,7 @@ export function Router() {
                 <Route path="calendar" element={<ManagerCalendar />} />
                 <Route path="equipment" element={<EquipmentManagement/>}/>
                 <Route path="discounts" element={<DiscountOffers/>}/>
+                <Route path="customers" element={<CustomerManagement/>}/>
                 <Route path="upcoming" element={<ManagerUpcoming/>}/>
                 <Route path="operating-hours" element={<OperatingHours />} />
                 <Route path="catalog" element={<ManagerCatalog />} />

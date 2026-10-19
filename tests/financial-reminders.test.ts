@@ -1,5 +1,7 @@
 import {describe,it,expect} from 'vitest'
-import {financialQuote,financialRows} from '../src/lib/financial'
+import {effectiveDiscount,financialQuote,financialRows} from '../src/lib/financial'
+import {paymentReportRows,reservationReportRows,savedFinancialLabel} from '../src/lib/reports'
+import type {Reservation} from '../src/types'
 import {sendReminderEmail} from '../supabase/functions/_shared/reminder-email'
 describe('visible financial snapshot calculations',()=>{
  const inclusive={mode:'vat_inclusive' as const,rate_bps:1200,business_confirmed:false}
@@ -13,6 +15,22 @@ describe('visible financial snapshot calculations',()=>{
  })
  it('does not invent VAT for historical records and keeps deposit/balance amounts consistent',()=>{
   const rows=financialRows(null,10001,5001);expect(rows).toContainEqual(['50% down payment',5001]);expect(rows).toContainEqual(['Balance',5000]);expect(rows.some(([k])=>k.includes('VAT ('))).toBe(false)
+ })
+ it('shows the account percentage and saved amounts consistently in quotes, receipts and reports',()=>{
+  const account={account_discount_bps:1500,account_discount_reason:'Approved account benefit'}
+  const discount=effectiveDiscount(null,account),snapshot=financialQuote(11201,discount,inclusive)
+  expect(snapshot).toMatchObject({discount_amount:1680,discount_percent:15,discount_source:'account',total:9521})
+  const rows=financialRows(snapshot,snapshot.total)
+  expect(rows[0]).toEqual(['Subtotal before discount',11201]);expect(rows[1]).toEqual(['Discount percentage','15%'])
+  expect(rows).toContainEqual(['50% down payment',4761]);expect(rows).toContainEqual(['VAT (12% included)',1020])
+  expect(savedFinancialLabel(snapshot)).toContain('Account discount (15%): PHP 16.80')
+  const reservation={id:'discount-fixture',event_name:'Discount report fixture',event_date:'2084-01-01',event_time:'12:00',guests:100,status:'approved',total:snapshot.total,paid:4761,financial_snapshot:snapshot} as Reservation
+  expect(reservationReportRows([reservation])[0]).toMatchObject({total:95.21,paid:47.61,remaining:47.6,tax_discount:savedFinancialLabel(snapshot)})
+  expect(paymentReportRows([reservation],[{id:'verified-fixture',reservation_id:reservation.id,kind:'payment',amount:4761,created_at:'2026-10-19T00:00:00Z'}],[],[])[0]).toMatchObject({received:47.61,balance:47.6,tax_discount:savedFinancialLabel(snapshot)})
+  const promo={kind:'percentage',value:500,name:'Explicit promotion',source:'promotion'}
+  expect(effectiveDiscount(promo,account)).toBe(promo)
+  expect(effectiveDiscount({...promo,source:'account'},account)?.value).toBe(1500)
+  expect(effectiveDiscount({...promo,source:'account'},{account_discount_bps:0})).toBeNull()
  })
 })
 describe('email provider acceptance and retry identity',()=>{

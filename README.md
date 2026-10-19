@@ -1,5 +1,7 @@
 # Rodel’s Catering — hosted setup
 
+October 19 account discounts: Managers can assign account percentages under Customer Management. New quotes use the server-calculated rate; promotions do not stack, changed unpaid checkout quotes require review, and pending/paid prices remain protected. See [the account-discount guide](docs/ACCOUNT_DISCOUNTS_2026-10-19.md) for behavior and validation. Schema 0029 supersedes older schema-version notes below.
+
 October 17 manager reminder update: active managers now receive their own daily in-app/email preparation reminders according to their Settings preferences. Hosted schema 0028 uses separate recipients alongside customer reminders. See [the rollout and verification status](docs/MANAGER_REMINDERS_2026-10-17.md). Earlier schema counts/status statements below are historical where superseded.
 
 October 16 domain/email update: the main website is [www.rodelscatering.online](https://www.rodelscatering.online). An authorized test email was accepted by the provider and appeared as an in-app manager notification; actual inbox receipt awaits user confirmation. See [the current setup status](docs/REMINDER_EMAIL_SETUP.md). Earlier URLs/status statements below are historical where superseded.

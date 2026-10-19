@@ -37,6 +37,7 @@ export const navigation: Record<
     ['Upcoming preparation', 'upcoming', 'date'],
     ['Equipment inventory', 'equipment', 'utensils'],
     ['Discounts & promos', 'discounts', 'wallet'],
+    ['Customer Management', 'customers', 'users'],
     ['Operating hours', 'operating-hours', 'clock'],
     ['Packages & menus', 'catalog', 'utensils'],
     ['Menu library', 'menu', 'utensils'],

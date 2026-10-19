@@ -13,12 +13,20 @@ endpoint(async (req) => {
     throw new Error('Active customer access required')
   secret('PAYMONGO_SECRET_KEY')
   const base = new URL(secret('APP_URL')).origin
-  const { reservation_id, intent } = await req.json()
+  const { reservation_id, intent, expected_total, expected_quote_at } = await req.json()
   if (
     typeof reservation_id !== 'string' ||
     !['partial', 'full', 'balance'].includes(intent)
   )
     throw new Error('Invalid checkout request')
+  const {data:quote,error:quoteError}=await client.rpc('prepare_checkout_quote',{
+    rid:reservation_id,
+    expected_total:Number.isSafeInteger(expected_total)?expected_total:null,
+    expected_quote_at:typeof expected_quote_at==='string'&&expected_quote_at.length<100?expected_quote_at:null,
+  })
+  if(quoteError)throw quoteError
+  // Persist and display the refreshed quote before reserving a provider payment.
+  if(quote.quote_updated)return json({quote_updated:true,total:quote.total})
   const db = admin()
   const { data: p, error } = await db.rpc('begin_checkout', {
     rid: reservation_id,
