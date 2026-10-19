@@ -245,7 +245,7 @@ describe('system administration and private application export', () => {
       exclusions: string[]
     }>('select export_application_snapshot() as value')
     expect(snapshot.format).toBe('rodelconnect-application-export')
-    expect(Object.keys(snapshot.tables)).toHaveLength(46)
+    expect(Object.keys(snapshot.tables)).toHaveLength(47)
     expect(snapshot.tables.profiles).toHaveLength(5)
     expect(snapshot.tables).not.toHaveProperty('users')
     expect(snapshot.tables).not.toHaveProperty('storage.objects')
@@ -1639,7 +1639,7 @@ describe('catalog food photographs',()=>{
  })
  it('exports the matching photo schema without granting customer access to the operator snapshot',async()=>{
   await identity('customer');await expect(db.query('select export_application_snapshot()')).rejects.toThrow(/permission denied/)
-  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0030_customer_directory_chair_stock.sql')
+  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0031_discount_lifecycle.sql')
  })
 })
 
@@ -1875,7 +1875,7 @@ describe('staff customer directory and physical chair adjustments',()=>{
    await identity('manager')
    const found=await scalar<{customers:{id:string;email:string}[];total:number}>('select staff_customer_directory($1,0,20) as value',['DIRECTORY-FIXTURE@'])
    expect(found.total).toBe(1);expect(found.customers[0]).toMatchObject({id:users.customer,email:'directory-fixture@example.invalid'})
-   expect(Object.keys(found.customers[0]).sort()).toEqual(['id','full_name','email','account_status','account_discount_bps','account_discount_changed_at'].sort())
+   expect(Object.keys(found.customers[0]).sort()).toEqual(['id','full_name','email','account_status','account_discount_bps','account_discount_changed_at','assignment_id','usage_type','expires_on','discount_status'].sort())
    const a=await scalar<{customers:{id:string}[]}>('select staff_customer_directory($1,0,1) as value',['']),b=await scalar<{customers:{id:string}[]}>('select staff_customer_directory($1,1,1) as value',[''])
    expect(a.customers[0].id).not.toBe(b.customers[0].id)
    expect(await scalar('select staff_customer_directory($1) as value',['no-such-customer-unique-fixture'])).toMatchObject({total:0,customers:[]})
@@ -1941,9 +1941,106 @@ describe('staff customer directory and physical chair adjustments',()=>{
  })
  it('can reapply the incremental migration without duplicating stock, allocations or export wrappers',async()=>{
   await identity('operator');const before=await scalar('select count(*)::int as value from equipment_allocations')
+  await db.exec('begin')
   await db.exec(await readFile('supabase/migrations/0030_customer_directory_chair_stock.sql','utf8'))
   expect(await scalar("select count(*)::int as value from equipment_inventory where code='monoblock_chair'")).toBe(1)
   expect(await scalar('select count(*)::int as value from equipment_allocations')).toBe(before)
+  await db.exec('rollback')
+ })
+})
+
+describe('versioned ongoing and one-time account offers',()=>{
+ async function assign(bps=2000,usage='one_time',expiry:string|null=null){
+  await identity('manager');const id=await scalar<string|null>('select account_discount_id as value from profiles where id=$1',[users.customer])
+  return scalar<{assignment_id:string}>('select save_customer_discount($1,$2,$3,$4,$5) as value',[users.customer,bps,usage,expiry,id])
+ }
+ async function reset(){await identity('manager');await db.query('select manage_customer_account_discount($1,0)',[users.customer])}
+ async function checkout(rid:string,intent='partial'){
+  await identity('operator');return scalar<{id:string;amount:number}>("select to_jsonb(begin_checkout($1,$2,$3)) as value",[rid,users.customer,intent])
+ }
+ async function status(id:string){await identity('operator');return scalar<string>('select private.account_discount_status(a) as value from customer_discount_assignments a where id=$1',[id])}
+ it('offers an atomic customer-row save, preserves versions, and rejects stale edits or customer writes',async()=>{
+  try{
+   const a=await assign(1000,'ongoing');expect(await status(a.assignment_id)).toBe('ACTIVE')
+   await identity('customer');await expect(db.query('select save_customer_discount($1,2000,$2,null,$3)',[users.customer,'one_time',a.assignment_id])).rejects.toThrow(/Staff/)
+   await expect(db.query('update customer_discount_assignments set percentage_bps=9999 where id=$1',[a.assignment_id])).rejects.toThrow(/permission/)
+   expect(await scalar('select count(*)::int as value from customer_discount_assignments where customer_id=$1',[users.other_customer])).toBe(0)
+   await expect(db.query('select release_checkout(gen_random_uuid())')).rejects.toThrow(/permission/)
+   const b=await assign(1500,'one_time','2090-12-31');expect(await status(a.assignment_id)).toBe('REMOVED')
+   await identity('manager');await expect(db.query('select save_customer_discount($1,500,$2,null,$3)',[users.customer,'ongoing',a.assignment_id])).rejects.toThrow(/changed/)
+   await expect(db.query("select save_customer_discount($1,500,'ongoing',current_date-2,$2)",[users.customer,b.assignment_id])).rejects.toThrow(/before today/)
+   await identity('customer');expect(await scalar('select my_account_discount() as value')).toMatchObject({account_discount_bps:1500,status:'ACTIVE',usage_type:'one_time',expires_on:'2090-12-31'})
+  }finally{await reset()}
+ })
+ it('applies ongoing offers to successive Simple Buffet, Birthday and Wedding bookings without consumption',async()=>{
+  try{const a=await assign(1000,'ongoing');for(const[index,setup]of['Simple buffet setup','Birthday setup','Wedding setup'].entries()){
+   const rid=await ownerDraft(`2090-01-0${index+1}`,100,'Monoblock',setup,undefined,'Round table',{event_preferences:{occasion_type:index===1?'birthday':index===2?'wedding':'other',theme:'',colors:'',celebrant_age:null,setup_inclusions:index===1?birthdayKeys:index===2?weddingKeys:[]}})
+   await db.query('select finalize_reservation($1)',[rid]);const f=await scalar<{gross_subtotal:number;total:number}>('select financial_snapshot as value from reservations where id=$1',[rid]);expect(f.total).toBe(Math.round(f.gross_subtotal*.9))
+  }expect(await status(a.assignment_id)).toBe('ACTIVE')}finally{await reset()}
+ })
+ it('honors the inclusive Manila deadline and reprices expired unpaid quotes without consuming them',async()=>{
+  try{const a=await assign();const rid=await ownerDraft('2090-02-01',100);await identity('operator')
+   await db.query("update customer_discount_assignments set expires_on='2090-11-30' where id=$1",[a.assignment_id])
+   expect(await scalar("select private.account_discount_status(a,'2090-11-30T23:59:59.999+08:00') as value from customer_discount_assignments a where id=$1",[a.assignment_id])).toBe('ACTIVE')
+   expect(await scalar("select private.account_discount_status(a,'2090-12-01T00:00:00+08:00') as value from customer_discount_assignments a where id=$1",[a.assignment_id])).toBe('EXPIRED')
+   await db.query('update customer_discount_assignments set expires_on=(now() at time zone $2)::date-1 where id=$1',[a.assignment_id,'Asia/Manila'])
+   await identity('customer');expect(await scalar('select prepare_checkout_quote($1) as value',[rid])).toMatchObject({quote_updated:true,total:3200000});expect(await scalar('select my_account_discount() as value')).toMatchObject({status:'EXPIRED',account_discount_bps:0})
+  }finally{await reset()}
+ })
+ it('does not consume drafts, holds exactly one checkout, and refreshes the competing quote before payment',async()=>{
+  try{const a=await assign();const r1=await ownerDraft('2090-03-01',100),r2=await ownerDraft('2090-03-02',100)
+   expect(await status(a.assignment_id)).toBe('ACTIVE');await identity('customer');await db.query('select finalize_reservation($1)',[r1]);await db.query('select finalize_reservation($1)',[r2])
+   const p=await checkout(r1);expect(p.amount).toBe(1280000);expect(await status(a.assignment_id)).toBe('RESERVED');expect((await checkout(r1)).id).toBe(p.id)
+   await expect(checkout(r2)).rejects.toThrow(/changed|reserved/)
+   await identity('customer');expect(await scalar('select prepare_checkout_quote($1) as value',[r2])).toMatchObject({quote_updated:true,total:3200000})
+   expect((await checkout(r2)).amount).toBe(1600000)
+   expect(await status(a.assignment_id)).toBe('RESERVED')
+  }finally{await reset()}
+ })
+ it('consumes once on the verified half payment, keeps balance/frozen VAT terms, and never restores on cancellation/refund',async()=>{
+  try{const a=await assign();const rid=await ownerDraft('2090-04-01',100);await db.query('select finalize_reservation($1)',[rid]);const p=await checkout(rid)
+   await db.query("update payments set external_session_id='cs_v2_partial' where id=$1",[p.id]);const frozen=await scalar('select financial_snapshot as value from reservations where id=$1',[rid])
+   for(let i=0;i<2;i++)await db.query("select confirm_provider_payment('evt_v2_partial','cs_v2_partial','pay_v2_partial',$1)",[p.amount])
+   expect(await status(a.assignment_id)).toBe('USED');expect(await scalar('select count(*)::int as value from audit_logs where entity_id=$1 and action=$2',[a.assignment_id,'account_discount.redeemed'])).toBe(1)
+   await assign(500,'ongoing');await identity('customer');await db.query('select prepare_checkout_quote($1)',[rid]);expect(await scalar('select financial_snapshot as value from reservations where id=$1',[rid])).toEqual(frozen)
+   const balance=await checkout(rid,'balance');expect(balance.amount).toBe(1280000);await db.query("update payments set external_session_id='cs_v2_balance' where id=$1",[balance.id]);await db.query("select confirm_provider_payment('evt_v2_balance','cs_v2_balance','pay_v2_balance',$1)",[balance.amount])
+   expect(await scalar('select paid as value from reservations where id=$1',[rid])).toBe(2560000);expect(await scalar('select financial_snapshot as value from reservations where id=$1',[rid])).toEqual(frozen)
+   await db.query("update reservations set status='cancelled',refunded=100 where id=$1",[rid]);expect(await status(a.assignment_id)).toBe('USED')
+   expect(await scalar("select sum(amount)::bigint as value from transactions where reservation_id=$1 and kind='payment'",[rid])).toBe(2560000)
+  }finally{await reset()}
+ })
+ it('releases only unclaimed or provider-confirmed terminal holds, audits once, and safely retries',async()=>{
+  try{const a=await assign();const rid=await ownerDraft('2090-05-01',100);await db.query('select finalize_reservation($1)',[rid]);const p=await checkout(rid)
+   await db.query('select release_checkout($1)',[p.id]);await db.query('select release_checkout($1)',[p.id]);expect(await status(a.assignment_id)).toBe('ACTIVE')
+   const retry=await checkout(rid);await db.query("update payments set provider_claimed_at=now() where id=$1",[retry.id]);await expect(db.query('select release_checkout($1)',[retry.id])).rejects.toThrow(/Ambiguous/)
+   await db.query("update payments set external_session_id='cs_v2_closed' where id=$1",[retry.id]);await expect(db.query('select release_checkout($1,$2)',[retry.id,'wrong'])).rejects.toThrow(/Provider-confirmed/)
+   await db.query("select release_checkout($1,'cs_v2_closed')",[retry.id]);expect(await status(a.assignment_id)).toBe('ACTIVE')
+   await expect(db.query("select confirm_provider_payment('evt_late_released','cs_v2_closed','pay_late_released',$1)",[retry.amount])).rejects.toThrow(/pending checkout/)
+   expect(await status(a.assignment_id)).toBe('ACTIVE');expect(await scalar('select paid as value from reservations where id=$1',[rid])).toBe(0)
+   expect(await scalar("select count(*)::int as value from audit_logs where action='account_discount.released' and entity_id=$1",[a.assignment_id])).toBe(2)
+  }finally{await reset()}
+ })
+ it('preserves an edited/removed payable version through expiry until its real payment is verified',async()=>{
+  try{const a=await assign();const rid=await ownerDraft('2090-06-01',100);await db.query('select finalize_reservation($1)',[rid]);const p=await checkout(rid)
+   await db.query("update payments set external_session_id='cs_v2_removed' where id=$1",[p.id]);const frozen=await scalar('select financial_snapshot as value from reservations where id=$1',[rid])
+   await reset();await identity('operator');await db.query('update customer_discount_assignments set expires_on=current_date-1 where id=$1',[a.assignment_id]);await identity('customer');await db.query('select prepare_checkout_quote($1)',[rid]);expect(await scalar('select financial_snapshot as value from reservations where id=$1',[rid])).toEqual(frozen)
+   await identity('operator');await db.query("select confirm_provider_payment('evt_v2_removed','cs_v2_removed','pay_v2_removed',$1)",[p.amount]);expect(await status(a.assignment_id)).toBe('USED')
+  }finally{await reset()}
+ })
+ it('does not redeem a pending payment when the underlying verifier rejects a replayed event',async()=>{
+  try{const a=await assign();const rid=await ownerDraft('2090-07-01',100);await db.query('select finalize_reservation($1)',[rid]);const p=await checkout(rid)
+   await db.query("update payments set external_session_id='cs_v2_duplicate_event' where id=$1",[p.id]);await db.query("select confirm_provider_payment('evt_v2_partial','cs_v2_duplicate_event','pay_unaccepted',$1)",[p.amount])
+   expect(await status(a.assignment_id)).toBe('RESERVED');expect(await scalar('select paid as value from reservations where id=$1',[rid])).toBe(0)
+  }finally{await reset()}
+ })
+ it('retains genuine promo precedence and restores complete one-time metadata immediately when it is removed',async()=>{
+  try{const a=await assign();const rid=await ownerDraft('2090-08-01',100)
+   await identity('manager');const promo=await scalar<string>('select save_discount_offer($1) as value',[JSON.stringify({name:'V2 explicit promo fixture',kind:'percentage',value:500})])
+   await db.query('select apply_reservation_discount($1,$2,$3)',[rid,promo,'Explicit promotion fixture'])
+   expect(await scalar('select financial_snapshot as value from reservations where id=$1',[rid])).toMatchObject({discount_source:'promotion',discount_percent:5,total:3040000})
+   expect(await status(a.assignment_id)).toBe('ACTIVE');await identity('manager');await db.query('select apply_reservation_discount($1,null,$2)',[rid,'Restore account offer fixture'])
+   expect(await scalar('select financial_snapshot as value from reservations where id=$1',[rid])).toMatchObject({discount_source:'account',discount_usage_type:'one_time',discount_assignment_id:a.assignment_id,discount_percent:20,total:2560000})
+  }finally{await reset()}
  })
 })
 

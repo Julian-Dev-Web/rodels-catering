@@ -6,6 +6,7 @@ import {
   paymongo,
   secret,
 } from '../_shared/http.ts'
+import { reconcilePayment } from '../_shared/reconcile-payment.ts'
 endpoint(async (req) => {
   const { client, user } = await authenticated(req)
   const { data: role, error: roleError } = await client.rpc('current_app_role')
@@ -19,6 +20,11 @@ endpoint(async (req) => {
     !['partial', 'full', 'balance'].includes(intent)
   )
     throw new Error('Invalid checkout request')
+  const {data:pending,error:pendingError}=await client.from('payments').select('id,external_session_id,provider_claimed_at,expires_at').eq('reservation_id',reservation_id).eq('status','pending').maybeSingle()
+  if(pendingError)throw pendingError
+  if(pending&&new Date(pending.expires_at).getTime()<=Date.now()){
+    if(await reconcilePayment(pending)==='pending')throw Error('The existing payment is still processing. Wait for confirmation before retrying.')
+  }
   const {data:quote,error:quoteError}=await client.rpc('prepare_checkout_quote',{
     rid:reservation_id,
     expected_total:Number.isSafeInteger(expected_total)?expected_total:null,
@@ -39,6 +45,7 @@ endpoint(async (req) => {
     .from('payments')
     .update({ provider_claimed_at: new Date().toISOString() })
     .eq('id', p.id)
+    .eq('status', 'pending')
     .is('provider_claimed_at', null)
     .select('id')
     .maybeSingle()

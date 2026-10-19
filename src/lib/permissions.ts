@@ -36,7 +36,7 @@ export const navigation: Record<
     ['Event calendar', 'calendar', 'date'],
     ['Upcoming preparation', 'upcoming', 'date'],
     ['Equipment inventory', 'equipment', 'utensils'],
-    ['Discounts & promos', 'discounts', 'wallet'],
+    ['Promotions', 'discounts', 'wallet'],
     ['Customer Management', 'customers', 'users'],
     ['Operating hours', 'operating-hours', 'clock'],
     ['Packages & menus', 'catalog', 'utensils'],

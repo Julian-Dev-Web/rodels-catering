@@ -29,6 +29,7 @@ import {
 } from '../components/BookingDetails'
 import { RefundRequest } from '../components/RefundRequest'
 import { FinancialBreakdown } from '../components/FinancialBreakdown'
+import { FeedbackNotice } from '../components/FeedbackNotice'
 import { financialRows } from '../lib/financial'
 import { downloadReportPdf, savedFinancialLabel } from '../lib/reports'
 import { RescheduleForm } from '../components/RescheduleForm'
@@ -170,6 +171,7 @@ export function ReservationDetail() {
     catalog = useCatalog({ includeArchived: true })
   const [modal, setModal] = useState<'cancel' | 'reschedule' | null>(null)
   const [statementError,setStatementError]=useState<unknown>(null),[statementBusy,setStatementBusy]=useState(false)
+  const [checkoutNotice,setCheckoutNotice]=useState('')
   if (query.isPending) return <Loading />
   if (query.error) return <ErrorState error={query.error} />
   const { reservation: r, children: c } = query.data
@@ -286,6 +288,7 @@ export function ReservationDetail() {
           {payable && (
             <div className="payment-box">
               <h3>A little closer to your celebration.</h3>
+              {checkoutNotice&&<FeedbackNotice text={checkoutNotice} close={()=>setCheckoutNotice('')}/>}
               <p>
                 Choose how you’d like to pay. Your confirmed payment state
                 appears here after verified server processing.
@@ -321,6 +324,12 @@ export function ReservationDetail() {
                     />
                   ),
                 )}
+                <Action label="Close or reconcile unfinished checkout" confirm="We will check PayMongo first. A processing payment stays open. Closing an unpaid session releases any unused one-time offer." run={async()=>{
+                  const result=await edge<{state:string}>('reconcile-paymongo-checkout',{reservation_id:r.id})
+                  await query.refetch()
+                  if(result.state==='pending')throw Error('PayMongo is still processing this payment. Your quote and offer remain held; please wait for confirmation.')
+                  setCheckoutNotice(result.state==='paid'?'Payment verified. Your booking now shows its updated payment state.':result.state==='released'?'Unpaid checkout safely closed. Any unused one-time offer is available again while eligible.':'There is no unfinished checkout to close.')
+                }}/>
               </div>
             </div>
           )}

@@ -38,6 +38,7 @@ import { AllergyFields, useAllergyWarnings } from '../components/AllergyFields'
 import { FinancialBreakdown } from '../components/FinancialBreakdown'
 import { MenuSelectionProgress } from '../components/MenuSelectionProgress'
 import { effectiveDiscount, financialQuote, type TaxPolicy } from '../lib/financial'
+import type { AccountDiscountEligibility } from '../lib/account-discount'
 import { EquipmentAvailability, type EquipmentAvailabilityRow } from '../components/EquipmentAvailability'
 import {
   EventTimeSelect,
@@ -338,7 +339,7 @@ export function ReservationWizard() {
   const allergyWarnings = useAllergyWarnings(values.allergy_allergen_ids,values.allergy_notes,values.dish_ids)
   const taxPolicy = useQuery({queryKey:['tax-policy'],queryFn:()=>rpc<TaxPolicy>('tax_configuration')})
   const assignedDiscount = useQuery({queryKey:['assigned-discount',reservationKey],enabled:!!reservationKey,queryFn:async()=>{const r=await supabase.from('reservation_discounts').select('*').eq('reservation_id',reservationKey!).maybeSingle();if(r.error)throw r.error;return r.data}})
-  const accountDiscount = useQuery({queryKey:['account-discount',profile?.id],enabled:!!profile?.id,queryFn:async()=>{const r=await supabase.from('profiles').select('account_discount_bps,account_discount_reason').eq('id',profile!.id).single();if(r.error)throw r.error;return r.data}})
+  const accountDiscount = useQuery({queryKey:['account-discount',profile?.id],enabled:!!profile?.id,refetchInterval:60000,queryFn:()=>rpc<AccountDiscountEligibility>('my_account_discount')})
   const selected = catalog.data?.menu_sets.find(
     (p) => p.id === values.menu_set_id,
   )
@@ -527,6 +528,8 @@ export function ReservationWizard() {
       <PageHeading title="Let’s plan your celebration." eyebrow="MAKE IT YOURS">
         A few thoughtful choices. A celebration to remember.
       </PageHeading>
+      {accountDiscount.data?.status==='RESERVED'&&accountDiscount.data.reserved_reservation_id!==reservationKey&&<p className="account-offer">Your one-time offer is held for an unfinished checkout. <Link to={'/customer/reservations/'+accountDiscount.data.reserved_reservation_id}>Open that booking</Link> to pay or safely close the checkout. Other bookings use their own current quote.</p>}
+      {accountDiscount.data?.status==='USED'&&<p className="date-help">Your one-time account offer was already used. Its original booking keeps the agreed total for balance payments.</p>}
       {detail.data && !selected && (
         <div className="alert">
           <p>

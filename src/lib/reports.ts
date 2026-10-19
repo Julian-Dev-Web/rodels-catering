@@ -18,7 +18,7 @@ export interface ReportDocument {
 }
 export function savedFinancialLabel(snapshot?: FinancialSnapshot | null) {
   if (!snapshot) return 'Historical tax/discount breakdown not recorded'
-  return `VAT ${human(snapshot.tax_mode)}: PHP ${(snapshot.vat_amount / 100).toFixed(2)}; discount ${snapshot.discount_name || 'none'}${snapshot.discount_percent!=null?' ('+snapshot.discount_percent+'%)':''}: PHP ${(snapshot.discount_amount / 100).toFixed(2)}${snapshot.discount_reason ? '; reason: ' + snapshot.discount_reason : ''}; ${snapshot.business_confirmed ? 'configured' : 'tax confirmation pending'}`
+  return `VAT ${human(snapshot.tax_mode)}: PHP ${(snapshot.vat_amount / 100).toFixed(2)}; discount ${snapshot.discount_name || 'none'}${snapshot.discount_percent!=null?' ('+snapshot.discount_percent+'%)':''}: PHP ${(snapshot.discount_amount / 100).toFixed(2)}${snapshot.discount_usage_type?'; '+(snapshot.discount_usage_type==='one_time'?'one-time offer':'ongoing offer'):''}${snapshot.discount_expires_on?'; deadline '+snapshot.discount_expires_on+' Manila':''}${snapshot.discount_reason ? '; reason: ' + snapshot.discount_reason : ''}; ${snapshot.business_confirmed ? 'configured' : 'tax confirmation pending'}`
 }
 export function paymentReportRows(
   reservations: Reservation[],
