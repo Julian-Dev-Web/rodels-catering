@@ -2,21 +2,14 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useReservations } from '../features/reservations'
 import { records, rpc } from '../lib/supabase'
-import { date, money, todayManila } from '../lib/format'
+import { money, todayManila } from '../lib/format'
 import { DataTable, ErrorState, Loading, Modal, PageHeading } from '../components/ui'
 import type { RecordRow, Reservation } from '../types'
-import { EquipmentAvailability } from '../components/EquipmentAvailability'
+export { EquipmentManagement } from './EquipmentManagement'
 import type { TaxPolicy } from '../lib/financial'
 export function ManagerUpcoming() {
   const query=useReservations(),today=todayManila(),end=new Date(today+'T00:00:00Z');end.setUTCDate(end.getUTCDate()+7)
   return <><PageHeading title="Upcoming event preparation." eyebrow="NEXT SEVEN DAYS">Review confirmed upcoming events and preparation cautions. Daily manager reminders use your in-app and email preferences in Settings.</PageHeading>{query.error&&<ErrorState error={query.error}/>}<DataTable rows={(query.data||[]).filter(r=>r.status==='approved'&&r.event_date>=today&&r.event_date<=end.toISOString().slice(0,10)).map(r=>({...r,elegant_chairs:r.selection_snapshot?.filter(s=>s.name.toLowerCase()==='elegant chair').reduce((n,s)=>n+s.quantity,0)??'Historical quantity not recorded',allergies:(r.allergy_allergen_ids||[]).join(', '),caution:r.allergy_notes||'Confirm ingredients and cross-contact risks with customer'}))} columns={[{key:'reservation_reference',label:'Reference'},{key:'event_name',label:'Event'},{key:'event_date',label:'Date'},{key:'event_time',label:'Start · Manila'},{key:'guests',label:'Guests'},{key:'elegant_chairs',label:'Elegant Chairs'},{key:'allergies',label:'Declared allergens'},{key:'caution',label:'Preparation caution'}]}/></>
-}
-export function EquipmentManagement() {
-  const qc=useQueryClient(),[day,setDay]=useState(todayManila()),bookings=useReservations()
-  const inventory=useQuery({queryKey:['equipment-inventory'],queryFn:()=>records<RecordRow>('equipment_inventory','name',true)})
-  const allocations=useQuery({queryKey:['equipment-allocations',day],queryFn:()=>records<RecordRow>('equipment_allocations','event_date',true,{event_date:day})})
-  const mutation=useMutation({mutationFn:({id,form}:{id:string;form:HTMLFormElement})=>{const d=new FormData(form);return rpc('configure_equipment',{eid:id,quantity:Number(d.get('quantity')),is_active:d.get('active')==='on'})},onSuccess:()=>void qc.invalidateQueries()})
-  return <><PageHeading title="Shared catering equipment." eyebrow="WHOLE-DAY INVENTORY">Confirm actual usable stock. Lowering stock preserves approved bookings and flags shortages for review.</PageHeading><label>Event date<input type="date" value={day} onChange={e=>setDay(e.target.value)}/></label><EquipmentAvailability day={day} requested={0}/>{inventory.data?.map(i=><form className="panel form" key={i.id} onSubmit={e=>{e.preventDefault();mutation.mutate({id:i.id,form:e.currentTarget})}}><h2>{String(i.name)}</h2><label>Confirmed usable quantity<input name="quantity" type="number" min={0} max={1000000} step={1} required defaultValue={i.usable_quantity===null?'':String(i.usable_quantity)}/></label><label><input type="checkbox" name="active" defaultChecked={Boolean(i.active)}/> Available for new allocations</label><label className="consent-check"><input type="checkbox" required/> I verified this usable quantity with the catering team.</label><button className="button" disabled={mutation.isPending}>Update confirmed inventory</button></form>)}{(mutation.error||inventory.error||allocations.error)&&<ErrorState error={mutation.error||inventory.error||allocations.error}/>}<h2>Bookings consuming stock on {date(day)}</h2><DataTable rows={(allocations.data||[]).map(a=>{const b=bookings.data?.find(b=>b.id===a.reservation_id);return {...a,id:String(a.reservation_id)+String(a.equipment_id),reference:b?.reservation_reference,event:b?.event_name,status:b?.status}})} columns={[{key:'reference',label:'Reservation'},{key:'event',label:'Event'},{key:'quantity',label:'Allocated chairs'},{key:'status',label:'Booking status'}]}/></>
 }
 export function DiscountOffers() {
   const qc=useQueryClient(),[editing,setEditing]=useState<RecordRow|null|undefined>(),[kind,setKind]=useState('fixed')

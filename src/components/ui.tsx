@@ -212,6 +212,7 @@ export function DataTable({
   actions,
   searchValue,
   onSearchChange,
+  externalPagination = false,
 }: {
   rows: RecordRow[]
   columns: {
@@ -222,6 +223,7 @@ export function DataTable({
   actions?: (row: RecordRow) => ReactNode
   searchValue?: string
   onSearchChange?: (value: string) => void
+  externalPagination?: boolean
 }) {
   const [search, setSearch] = useState(''),
     [page, setPage] = useState(0)
@@ -254,7 +256,7 @@ export function DataTable({
   const current = Math.min(page, pages - 1)
   return (
     <div className="table-panel">
-      <div className="table-toolbar">
+      {!externalPagination&&<div className="table-toolbar">
         <label className="search-field">
           <Search size={17} />
           <input
@@ -286,7 +288,7 @@ export function DataTable({
         <span className="muted" aria-live="polite">
           {filtered.length} records
         </span>
-      </div>
+      </div>}
       {filtered.length ? (
         <div className="table-scroll">
           <table>
@@ -329,7 +331,7 @@ export function DataTable({
             </thead>
             <tbody>
               {filtered
-                .slice(current * pageSize, current * pageSize + pageSize)
+                .slice(externalPagination?0:current * pageSize, externalPagination?filtered.length:current * pageSize + pageSize)
                 .map((row) => (
                   <tr key={row.id}>
                     {columns.map((c) => (
@@ -350,7 +352,7 @@ export function DataTable({
       ) : (
         <Empty title="No matching records" />
       )}
-      <div className="pagination">
+      {!externalPagination&&<div className="pagination">
         <button
           className="button small secondary"
           disabled={current === 0}
@@ -368,7 +370,7 @@ export function DataTable({
         >
           Next
         </button>
-      </div>
+      </div>}
     </div>
   )
 }

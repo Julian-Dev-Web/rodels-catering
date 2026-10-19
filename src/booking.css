@@ -248,3 +248,16 @@
     animation: none;
   }
 }
+.feedback-notice {display:flex;align-items:flex-start;gap:12px;padding:16px 18px;margin:18px 0;border:1px solid #9db3a4;border-radius:9px;background:#f0f7f1;color:#234a31}
+.feedback-notice.failure {background:#fff2f0;border-color:#cba39b;color:#702c25}
+.feedback-notice p {margin:0;flex:1;font-size:.9rem;line-height:1.6}
+.feedback-notice > svg {flex-shrink:0;margin-top:3px}
+.feedback-notice .icon-button {color:inherit}
+.inventory-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:20px;margin:24px 0}
+.directory-pagination {margin:18px 0;font-size:.85rem;flex-wrap:wrap}
+.account-offer {padding:12px 14px;color:#4e2030;background:#fff9f1;border:1px solid #d3b99c;border-radius:7px;font-size:.88rem;line-height:1.6}
+.menu-selection-progress {position:sticky;top:8px;z-index:12;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:13px 15px;background:#fffaf1;border:1px solid #cdbb9d;border-radius:8px;box-shadow:0 3px 12px #39261612}
+.menu-selection-progress strong {display:block;font-size:.9rem;color:#4e2030}
+.menu-selection-progress span {display:flex;align-items:center;gap:6px;margin-top:5px;font-size:.76rem;color:#51483c;line-height:1.4}
+.food-choice {scroll-margin-top:125px}
+@media (max-width:600px) {.menu-selection-progress{padding:10px;gap:10px}.menu-selection-progress strong{font-size:.8rem}.menu-selection-progress span{font-size:.7rem}.directory-pagination>span{width:100%}}

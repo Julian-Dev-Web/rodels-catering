@@ -1,5 +1,7 @@
 # RodelConnect ELEC5 documentation handoff
 
+October 20: [unified discount, inventory and booking completion report](UNIFIED_DISCOUNT_INVENTORY_BOOKING_2026-10-20.md) contains current files, database changes, deployment, acceptance and remaining configuration. Historical paper snapshots below are unchanged.
+
 October 19: [customer account discounts](ACCOUNT_DISCOUNTS_2026-10-19.md) extend the current application. The paper remains its original submission snapshot.
 
 Current application update, October 17: [manager daily reminders](MANAGER_REMINDERS_2026-10-17.md) and [email setup status](REMINDER_EMAIL_SETUP.md). The paper below remains an October 14 snapshot; its older chatbot/email status is superseded by subsequent implementation handoffs.

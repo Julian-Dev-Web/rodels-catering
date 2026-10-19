@@ -36,6 +36,7 @@ import { ErrorState, Loading, PageHeading } from '../components/ui'
 import { FoodPhoto } from '../components/FoodPhoto'
 import { AllergyFields, useAllergyWarnings } from '../components/AllergyFields'
 import { FinancialBreakdown } from '../components/FinancialBreakdown'
+import { MenuSelectionProgress } from '../components/MenuSelectionProgress'
 import { effectiveDiscount, financialQuote, type TaxPolicy } from '../lib/financial'
 import { EquipmentAvailability, type EquipmentAvailabilityRow } from '../components/EquipmentAvailability'
 import {
@@ -646,7 +647,12 @@ export function ReservationWizard() {
               }
               try {
                 const chair=c.chair_types.find(chair=>chair.id===v.chair_type_id)
-                if(step===2&&chair?.equipment_id){const stock=await rpc<EquipmentAvailabilityRow[]>('equipment_availability',{day:v.event_date,rid:id||null});const item=stock.find(i=>i.equipment_id===chair.equipment_id);if(!item?.active||item.total===null||v.elegant_chair_quantity>(item.available??0))throw new Error('Not enough confirmed Elegant Chair stock for this event date. Review the availability panel or choose Monoblock seating.')}
+                if(step===2&&includedSeating&&chair){
+                  const stock=await rpc<EquipmentAvailabilityRow[]>('equipment_availability',{day:v.event_date,rid:id||null})
+                  const upgraded=(chair.price||0)>0
+                  const requests=[{id:chair.equipment_id,quantity:upgraded?v.elegant_chair_quantity:v.guests},...(upgraded&&v.guests>v.elegant_chair_quantity?[{id:c.chair_types.find(c=>c.name==='Monoblock')?.equipment_id,quantity:v.guests-v.elegant_chair_quantity}]:[])]
+                  for(const request of requests){if(!request.id||!request.quantity)continue;const item=stock.find(i=>i.equipment_id===request.id);if(!item||item.total===null)throw new Error(`${item?.name||'Selected chair'} stock needs manager confirmation.`);if(!item.active||request.quantity>(item.available??0))throw new Error(`Only ${item.available??0} ${item.name} are available for this event date; ${request.quantity} requested. Review seating or choose another date.`)}
+                }
                 const availability = await rpc<BookingWindow>(
                   'booking_window',
                   { day: v.event_date, rid: id || null },
@@ -662,7 +668,7 @@ export function ReservationWizard() {
                   return
                 }
               } catch (error) {
-                form.setError('event_time', {
+                form.setError(step===2?'chair_type_id':'event_time', {
                   type: 'manual',
                   message:
                       error instanceof Error ? error.message : 'Could not verify this event date/time. Retry before continuing.',
@@ -792,6 +798,7 @@ export function ReservationWizard() {
             )}
             {step === 1 && (
               <>
+                <MenuSelectionProgress dishes={values.dish_ids} required={selected?.dish_count||0} drink={values.drink_id}/>
                 <h2>A menu everyone will love.</h2>
                 <p>
                   Choose exactly <strong>{selected?.dish_count}</strong> dishes.{' '}
@@ -799,6 +806,8 @@ export function ReservationWizard() {
                     {values.dish_ids.length} selected
                   </span>
                 </p>
+                <p className="date-help">Changing the set menu keeps your choices. Adjust them to the dish count shown above before continuing.</p>
+                {errors.dish_ids&&<p className="field-error" role="alert">{errors.dish_ids.message}</p>}
                 {!!selected?.suggested_dishes?.length && (
                   <div className="suggested-menu">
                     <strong>Suggested dishes for {selected.name}</strong>
@@ -1012,7 +1021,7 @@ export function ReservationWizard() {
                   </label>
                 ))}
                 <h3>A place for everyone</h3>
-                {!!c.chair_types.find(chair=>chair.id===values.chair_type_id)?.equipment_id&&<EquipmentAvailability day={values.event_date} rid={id} requested={values.elegant_chair_quantity}/>}
+                {!!c.chair_types.find(chair=>chair.id===values.chair_type_id)?.equipment_id&&<EquipmentAvailability day={values.event_date} rid={id} requested={(c.chair_types.find(chair=>chair.id===values.chair_type_id)?.price||0)>0?values.elegant_chair_quantity:0} monoblockRequested={(c.chair_types.find(chair=>chair.id===values.chair_type_id)?.price||0)>0?Math.max(values.guests-values.elegant_chair_quantity,0):values.guests}/>}
                 <div className="form-grid">
                   <Select
                     label="Table type"
@@ -1056,6 +1065,7 @@ export function ReservationWizard() {
                           </option>
                         ))}
                       </select>
+                      {errors.chair_type_id&&<span className="field-error" role="alert">{errors.chair_type_id.message}</span>}
                     </label>
                     {(c.chair_types.find(
                       (chair) => chair.id === values.chair_type_id,

@@ -1,6 +1,7 @@
 import { PGlite } from '@electric-sql/pglite'
 import { beforeAll, afterAll, describe, expect, it } from 'vitest'
 import { readFile, readdir } from 'node:fs/promises'
+import { birthdayKeys, weddingKeys } from '../src/lib/booking-constants'
 const db = new PGlite()
 const users = {
   customer: '90000000-0000-0000-0000-000000000001',
@@ -1638,7 +1639,7 @@ describe('catalog food photographs',()=>{
  })
  it('exports the matching photo schema without granting customer access to the operator snapshot',async()=>{
   await identity('customer');await expect(db.query('select export_application_snapshot()')).rejects.toThrow(/permission denied/)
-  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0029_customer_account_discounts.sql')
+  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0030_customer_directory_chair_stock.sql')
  })
 })
 
@@ -1662,15 +1663,19 @@ describe('confirmed buffet extras and Wedding rates',()=>{
 
 describe('shared whole-day Elegant Chair inventory',()=>{
  it('requires configured stock, prevents over-allocation, releases cancellations and moves approved reschedules',async()=>{
-  await identity('operator');await db.exec('update equipment_inventory set usable_quantity=null');
+  await identity('operator');await db.exec("update equipment_inventory set usable_quantity=null where code='elegant_chair'");
   await expect(ownerDraft('2090-11-20',600,'Elegant chair')).rejects.toThrow(/not configured/)
   await identity('manager');const eid=await scalar<string>("select id as value from equipment_inventory where code='elegant_chair'");await db.query('select configure_equipment($1,1000)',[eid]);
   const a=await ownerDraft('2090-11-20',600,'Elegant chair');await db.query('select finalize_reservation($1)',[a]);await identity('manager');await db.query("select manager_reservation_status($1,'approved')",[a]);
   const b=await ownerDraft('2090-11-21',500,'Elegant chair');await db.query('select finalize_reservation($1)',[b]);await identity('operator');await db.query('update reservations set customer_id=$1,event_date=$2 where id=$3',[users.other_customer,'2090-11-20',b]);await identity('manager');await expect(db.query("select manager_reservation_status($1,'approved')",[b])).rejects.toThrow(/shortage.*500 requested, 400 available/);
   expect(await scalar<number>('select sum(quantity)::int as value from equipment_allocations where event_date=$1',['2090-11-20'])).toBe(600);
-  await db.query('select configure_equipment($1,400)',[eid]);expect((await scalar<{overcommitted:boolean;available:number}[]>("select equipment_availability('2090-11-20') as value"))[0]).toMatchObject({overcommitted:true,available:0});expect(await scalar('select status::text as value from reservations where id=$1',[a])).toBe('approved');
+  await expect(db.query('select configure_equipment($1,400)',[eid])).rejects.toThrow(/below 600/);
+  // Represent a pre-existing shortage without allowing a manager to create one.
+  await identity('operator');await db.query('update equipment_inventory set usable_quantity=400 where id=$1',[eid]);await identity('manager');expect((await scalar<{overcommitted:boolean;available:number}[]>("select equipment_availability('2090-11-20') as value")).find(i=>i.overcommitted)).toMatchObject({overcommitted:true,available:0});expect(await scalar('select status::text as value from reservations where id=$1',[a])).toBe('approved');
+  expect(await scalar('select adjust_equipment_stock($1,$2,50,$3,gen_random_uuid()) as value',[eid,'add','Partial shortage recovery fixture'])).toMatchObject({total:450});
+  await db.query('select set_equipment_active($1,false)',[eid]);await db.query('select set_equipment_active($1,true)',[eid]);expect(await scalar('select usable_quantity as value from equipment_inventory where id=$1',[eid])).toBe(450);
   await identity('operator');await db.query("update reservations set status='cancelled' where id=$1",[a]);await identity('manager');await db.query('select configure_equipment($1,1000)',[eid]);await db.query("select manager_reservation_status($1,'approved')",[b]);
-  await identity('other_customer');const request=await scalar<string>("select request_reschedule($1,'2090-11-22','Inventory date move') as value",[b]);await identity('manager');await db.query('select review_reschedule($1,true)',[request]);expect(await scalar("select event_date::text as value from equipment_allocations where reservation_id=$1",[b])).toBe('2090-11-22');expect((await scalar<{available:number}[]>("select equipment_availability('2090-11-20') as value"))[0].available).toBe(1000);
+  await identity('other_customer');const request=await scalar<string>("select request_reschedule($1,'2090-11-22','Inventory date move') as value",[b]);await identity('manager');await db.query('select review_reschedule($1,true)',[request]);expect(await scalar("select event_date::text as value from equipment_allocations where reservation_id=$1",[b])).toBe('2090-11-22');expect((await scalar<{available:number;code:string}[]>("select equipment_availability('2090-11-20') as value")).find(i=>i.code==='elegant_chair')?.available).toBe(1000);
   await identity('customer');await expect(db.query('select configure_equipment($1,1000000)',[eid])).rejects.toThrow(/Staff/);await expect(db.query('update equipment_inventory set usable_quantity=1000000')).rejects.toThrow(/permission/);
   await identity('operator');await db.exec('update equipment_inventory set usable_quantity=1000000');
  })
@@ -1855,6 +1860,91 @@ describe('customer account discounts', () => {
       }
     }finally{await resetAccount();await db.query('update app_settings set value=$1 where key=$2',[JSON.stringify(policy),'tax_policy'])}
   })
+})
+
+describe('staff customer directory and physical chair adjustments',()=>{
+ it('confirms initial stock once and preserves new stock when an outdated initialization is retried',async()=>{
+  await identity('operator');const eid=await scalar<string>("insert into equipment_inventory(code,name) values('qa_initial_confirmation','QA initial stock') returning id as value")
+  try{await identity('customer');await expect(db.query('select confirm_equipment_stock($1,100)',[eid])).rejects.toThrow(/Staff/);await identity('manager');expect(await scalar('select confirm_equipment_stock($1,100) as value',[eid])).toMatchObject({total:100});await db.query('select adjust_equipment_stock($1,$2,50,$3,gen_random_uuid())',[eid,'add','After initial confirmation']);await expect(db.query('select confirm_equipment_stock($1,200)',[eid])).rejects.toThrow(/already confirmed/);await db.query('select set_equipment_active($1,false)',[eid]);expect(await scalar('select usable_quantity as value from equipment_inventory where id=$1',[eid])).toBe(150)}finally{await identity('operator');await db.query('delete from equipment_inventory where id=$1',[eid])}
+ })
+ it('restricts the legitimate Auth email directory to active staff and searches/paginates without exposing credentials',async()=>{
+  await identity('operator');await db.query('update auth.users set email=$1 where id=$2',['directory-fixture@example.invalid',users.customer])
+  try{
+   await identity('customer');await expect(db.query('select staff_customer_directory()')).rejects.toThrow(/Staff/)
+   await db.exec('reset role;set role anon');await expect(db.query('select staff_customer_directory()')).rejects.toThrow(/permission/)
+   await identity('manager')
+   const found=await scalar<{customers:{id:string;email:string}[];total:number}>('select staff_customer_directory($1,0,20) as value',['DIRECTORY-FIXTURE@'])
+   expect(found.total).toBe(1);expect(found.customers[0]).toMatchObject({id:users.customer,email:'directory-fixture@example.invalid'})
+   expect(Object.keys(found.customers[0]).sort()).toEqual(['id','full_name','email','account_status','account_discount_bps','account_discount_changed_at'].sort())
+   const a=await scalar<{customers:{id:string}[]}>('select staff_customer_directory($1,0,1) as value',['']),b=await scalar<{customers:{id:string}[]}>('select staff_customer_directory($1,1,1) as value',[''])
+   expect(a.customers[0].id).not.toBe(b.customers[0].id)
+   expect(await scalar('select staff_customer_directory($1) as value',['no-such-customer-unique-fixture'])).toMatchObject({total:0,customers:[]})
+   await expect(db.query('select staff_customer_directory($1,-1,20)',[''])).rejects.toThrow(/Invalid/)
+   await identity('operator');await db.query("update profiles set account_status='suspended' where id=$1",[users.manager]);await identity('manager');await expect(db.query('select staff_customer_directory()')).rejects.toThrow(/Staff/)
+  }finally{await identity('operator');await db.query("update profiles set account_status='active' where id=$1",[users.manager]);await db.query('update auth.users set email=null where id=$1',[users.customer])}
+ })
+ it('uses one account discount across Simple Buffet, Birthday and Wedding, then removes it for future bookings',async()=>{
+  try{
+   await identity('manager');expect(await scalar('select manage_customer_account_discount($1,1000) as value',[users.customer])).toMatchObject({previous_bps:0,percentage_bps:1000})
+   for(const [index,setup]of['Simple buffet setup','Birthday setup','Wedding setup'].entries()){
+    const rid=await ownerDraft(`2083-01-0${index+1}`,100,'Monoblock',setup,undefined,'Round table',{event_preferences:{occasion_type:index===1?'birthday':index===2?'wedding':'other',theme:'',colors:'',celebrant_age:null,setup_inclusions:index===1?birthdayKeys:index===2?weddingKeys:[]}})
+    await db.query('select finalize_reservation($1)',[rid])
+    const f=await scalar<{gross_subtotal:number;total:number}>('select financial_snapshot as value from reservations where id=$1',[rid])
+    expect(f.total).toBe(Math.round(f.gross_subtotal*.9))
+   }
+   await identity('manager');expect(await scalar('select manage_customer_account_discount($1,2000) as value',[users.customer])).toMatchObject({previous_bps:1000,percentage_bps:2000})
+   const changed=await ownerDraft('2083-01-04',100);expect(await scalar('select total as value from reservations where id=$1',[changed])).toBe(2560000)
+   await identity('manager');await db.query('select manage_customer_account_discount($1,0)',[users.customer])
+   const normal=await ownerDraft('2083-01-05',100);expect(await scalar('select total as value from reservations where id=$1',[normal])).toBe(3200000)
+   await identity('customer');await expect(db.query('select manage_customer_account_discount($1,2000)',[users.other])).rejects.toThrow(/Staff/)
+  }finally{await identity('operator');await db.query("update profiles set account_discount_bps=0,account_discount_reason='' where id=$1",[users.customer])}
+ })
+ it('adds/removes both chair types atomically, retains history and deduplicates retried adjustments',async()=>{
+  for(const code of['qa_elegant_adjustment','qa_monoblock_adjustment']){
+   await identity('operator');const eid=await scalar<string>('insert into equipment_inventory(code,name,usable_quantity) values($1,$2,300) returning id as value',[code,code])
+   try{
+    await identity('customer');await expect(db.query('select adjust_equipment_stock($1,$2,200,$3,gen_random_uuid())',[eid,'add','Purchased fixture'])).rejects.toThrow(/Staff/)
+    await identity('manager');const operation=await scalar<string>('select gen_random_uuid() as value')
+    const add=()=>scalar('select adjust_equipment_stock($1,$2,200,$3,$4) as value',[eid,'add','Purchased fixture',operation])
+    expect(await add()).toMatchObject({previous_quantity:300,total:500,change:200});expect(await add()).toMatchObject({total:500})
+    await expect(db.query('select adjust_equipment_stock($1,$2,100,$3,$4)',[eid,'add','Purchased fixture',operation])).rejects.toThrow(/already used/)
+    expect(await scalar('select adjust_equipment_stock($1,$2,100,$3,gen_random_uuid()) as value',[eid,'remove','Damaged fixture'])).toMatchObject({previous_quantity:500,total:400,change:-100})
+    for(const q of[0,-1,1000001])await expect(db.query('select adjust_equipment_stock($1,$2,$3,$4,gen_random_uuid())',[eid,'add',q,'Bad input'])).rejects.toThrow(/positive whole/)
+    await expect(db.query('select adjust_equipment_stock($1,$2,$3,$4,gen_random_uuid())',[eid,'add','1.5','Bad input'])).rejects.toThrow()
+    await expect(db.query('select adjust_equipment_stock($1,$2,401,$3,gen_random_uuid())',[eid,'remove','Too many'])).rejects.toThrow(/resulting stock/)
+    await identity('super');expect(await scalar("select count(*)::int as value from audit_logs where entity_id=$1 and action='equipment.stock_adjusted'",[eid])).toBe(2)
+   }finally{await identity('operator');await db.query('delete from equipment_inventory where id=$1',[eid])}
+  }
+ })
+ it('blocks stock reductions below daily commitments, releases allocations once, and leaves physical stock unchanged on cancellation',async()=>{
+  const rid=await ownerDraft('2083-02-01',100);await db.query('select finalize_reservation($1)',[rid]);await identity('manager');await db.query("select manager_reservation_status($1,'approved')",[rid])
+  await identity('operator');const eid=await scalar<string>("insert into equipment_inventory(code,name,usable_quantity) values('qa_committed_stock','QA commitment stock',200) returning id as value")
+  try{
+   await db.query("insert into equipment_allocations(reservation_id,equipment_id,event_date,quantity) values($1,$2,'2083-02-01',100)",[rid,eid]);await identity('manager')
+   await expect(db.query('select adjust_equipment_stock($1,$2,101,$3,gen_random_uuid())',[eid,'remove','Would break commitments'])).rejects.toThrow(/100 are committed/)
+   await expect(db.query('select configure_equipment($1,99)',[eid])).rejects.toThrow(/below 100/)
+   await identity('customer');const request=await scalar<string>('select request_cancellation($1,$2) as value',[rid,'Controlled cancellation release'])
+   await identity('manager');await db.query('select review_cancellation($1,true)',[request]);await expect(db.query('select review_cancellation($1,true)',[request])).rejects.toThrow(/already reviewed/)
+   expect(await scalar('select usable_quantity as value from equipment_inventory where id=$1',[eid])).toBe(200)
+   expect(await scalar('select count(*)::int as value from equipment_allocations where reservation_id=$1',[rid])).toBe(0)
+   expect(await scalar('select adjust_equipment_stock($1,$2,150,$3,gen_random_uuid()) as value',[eid,'remove','Released commitment'])).toMatchObject({total:50})
+  }finally{await identity('operator');await db.query('delete from equipment_allocations where equipment_id=$1',[eid]);await db.query('delete from equipment_inventory where id=$1',[eid])}
+ })
+ it('requires confirmed Monoblock stock and rejects mixed modern seating above the guest count without changing prices',async()=>{
+  await identity('operator');const mono=await scalar<string>("select id as value from equipment_inventory where code='monoblock_chair'")
+  try{await db.query('update equipment_inventory set usable_quantity=null where id=$1',[mono]);await expect(ownerDraft('2083-03-01',100)).rejects.toThrow(/Monoblock.*not configured/)}finally{await identity('operator');await db.query('update equipment_inventory set usable_quantity=1000000 where id=$1',[mono])}
+  const normal=await scalar<string>("select id as value from chair_types where name='Monoblock'"),elegant=await scalar<string>("select id as value from chair_types where name='Elegant chair'")
+  await expect(ownerDraft('2083-03-02',100,'Monoblock','Simple buffet setup',undefined,'Round table',{chairs:[{id:normal,quantity:60},{id:elegant,quantity:60}]})).rejects.toThrow(/guest count|chair type/)
+  const mixed=await ownerDraft('2083-03-04',100,'Elegant chair','Simple buffet setup',undefined,'Round table',{chairs:[{id:elegant,quantity:40},{id:normal,quantity:60}]})
+  expect(await scalar('select total as value from reservations where id=$1',[mixed])).toBe(3240000)
+  const rid=await ownerDraft('2083-03-03',100);expect(await scalar('select total as value from reservations where id=$1',[rid])).toBe(3200000)
+ })
+ it('can reapply the incremental migration without duplicating stock, allocations or export wrappers',async()=>{
+  await identity('operator');const before=await scalar('select count(*)::int as value from equipment_allocations')
+  await db.exec(await readFile('supabase/migrations/0030_customer_directory_chair_stock.sql','utf8'))
+  expect(await scalar("select count(*)::int as value from equipment_inventory where code='monoblock_chair'")).toBe(1)
+  expect(await scalar('select count(*)::int as value from equipment_allocations')).toBe(before)
+ })
 })
 
 describe('manager and customer reminder recipients', () => {

@@ -1,5 +1,7 @@
 # Rodel’s Catering — hosted setup
 
+October 20 unified update: [completion report and configuration](docs/UNIFIED_DISCOUNT_INVENTORY_BOOKING_2026-10-20.md). Customer Management now searches actual staff-authorized names/emails; chair inventory supports audited Add/Remove and stock guards for Elegant/Monoblock; menu selection has sticky counters and a single allergy input. Hosted schema 0030 supersedes older status notes. Monoblock starting stock needs real manager confirmation before bookings can secure those chairs.
+
 October 19 account discounts: Managers can assign account percentages under Customer Management. New quotes use the server-calculated rate; promotions do not stack, changed unpaid checkout quotes require review, and pending/paid prices remain protected. See [the account-discount guide](docs/ACCOUNT_DISCOUNTS_2026-10-19.md) for behavior and validation. Schema 0029 supersedes older schema-version notes below.
 
 October 17 manager reminder update: active managers now receive their own daily in-app/email preparation reminders according to their Settings preferences. Hosted schema 0028 uses separate recipients alongside customer reminders. See [the rollout and verification status](docs/MANAGER_REMINDERS_2026-10-17.md). Earlier schema counts/status statements below are historical where superseded.

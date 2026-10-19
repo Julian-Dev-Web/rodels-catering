@@ -1,5 +1,7 @@
 # Database contract
 
+Current schema 0030: see the [unified completion report](../docs/UNIFIED_DISCOUNT_INVENTORY_BOOKING_2026-10-20.md) for staff-only Auth email search, account-discount controls and whole-day Elegant/Monoblock stock. New Monoblock stock is NULL until verified; existing booking/payment snapshots are preserved. Stock adjustments are atomic, audited, idempotent and cannot reduce stock below upcoming commitments. The earlier contract notes below are historical where superseded by migrations, including the selected-guest-chair PHP10 upgrade rule.
+
 All IDs are UUIDs except app_settings.key and webhook_events.id. Monetary fields are integer Philippine centavos; created/updated/action timestamps are timestamptz. Event date and time are separate Manila-local values. All migrations must be applied in order; no manual table setup is required.
 
 Owner-confirmed catalog update: migrations 0014–0015 define four 3–6 dish menus at PHP 320/350/380/420 per guest for 100–1,000 guests. `menu_sets` adds `max_guests`, `pricing_version`, `inclusions` and `suggested_dishes`. Version 2 includes basic seating/setup and charges elegant-chair upgrades for every guest; version 1 preserves the original excess-chair calculation. `event_setups.description` records inclusions and `event_features.required_setup_id` restricts upgrades such as the wedding glass floor. History-read policies allow authenticated owners to resolve archived choices in their bookings. See [the pricing addendum](../docs/catalog-pricing-update.md).

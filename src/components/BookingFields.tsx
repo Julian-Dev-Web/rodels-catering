@@ -230,10 +230,10 @@ export function LocationFields({ form }: { form: UseFormReturn<Values> }) {
         />
       )}
       <label>
-        Dietary needs & notes
+        Venue notes · optional
         <textarea
           maxLength={2000}
-          placeholder="Allergies, access instructions, special requests…"
+          placeholder="Venue access instructions, parking, or setup requests…"
           {...register('address.notes')}
         />
       </label>
