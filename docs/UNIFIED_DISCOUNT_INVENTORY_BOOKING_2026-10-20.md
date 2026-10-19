@@ -68,6 +68,8 @@ Additional browser acceptance passed verified initial-stock confirmation, pause/
 
 No real charge, refund, customer email, paid provider webhook or end-to-end paid receipt was generated during this acceptance. Existing paid-payment verification and reporting were exercised in isolated regressions. This report does not claim live merchant payment acceptance or inbox delivery.
 
+Release verification: implementation commit `76ec8fa` was pushed to GitHub main. The custom domain served the exact tested `/assets/index-BBbgfcqh.js` bundle. Authenticated production checks passed the real name/email directory, prevention of applying to a previous customer after changing search, both chair inventory types, and restored customer draft menu counters. All isolated QA accounts, equipment, chairs, drafts and unpaid booking fixtures were removed while audit history was retained. Real recorded stock was unchanged. The final post-cleanup six-table check also confirmed original reservation/financial snapshots, payments, refunds and balances unchanged.
+
 ## Configuration and limitations
 
 1. **Monoblock usable stock is unconfigured.** A manager must verify the actual count and use Equipment inventory > Monoblock Chairs > Confirm starting stock. Until then new bookings requiring those chairs cannot pass the stock check/finalization. Saving an incomplete draft remains available. The recorded Elegant Chair setting is preserved; this work does not certify the physical count.
