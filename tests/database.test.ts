@@ -1639,7 +1639,7 @@ describe('catalog food photographs',()=>{
  })
  it('exports the matching photo schema without granting customer access to the operator snapshot',async()=>{
   await identity('customer');await expect(db.query('select export_application_snapshot()')).rejects.toThrow(/permission denied/)
-  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0032_discount_expiration_options.sql')
+  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0033_optional_booking_fields.sql')
  })
 })
 
@@ -2113,6 +2113,35 @@ describe('account discount expiration options',()=>{
    await save('90_days','ongoing',null,2000);await identity('customer');await db.query('select prepare_checkout_quote($1)',[first]);expect(await scalar('select financial_snapshot as value from reservations where id=$1',[first])).toEqual(frozen)
    await identity('operator');const balance=await scalar<{amount:number}>("select to_jsonb(begin_checkout($1,$2,'balance')) as value",[first,users.customer]);expect(balance.amount).toBe(1440000);expect(p.amount).toBe(1440000)
   }finally{await reset()}
+ })
+})
+
+describe('optional booking fields and historical venue notes',()=>{
+ it('accepts omitted/null optional fields, no declared allergies and no add-ons through finalization',async()=>{
+  const id=await ownerDraft('2096-06-01',100,'Monoblock','Simple buffet setup',undefined,'Round table',{address:{...testAddress,notes:undefined},feature_ids:null,add_ons:null,allergy_allergen_ids:null,allergy_acknowledgments:null,allergy_notes:null,event_preferences:{occasion_type:'other',theme:null,colors:null,celebrant_age:null,setup_inclusions:null},save_contact:null})
+  await db.query('select finalize_reservation($1)',[id]);expect(await scalar('select status::text as value from reservations where id=$1',[id])).toBe('for_approval');expect(await scalar('select total as value from reservations where id=$1',[id])).toBe(3200000);expect(await scalar('select allergy_allergen_ids as value from reservations where id=$1',[id])).toEqual([])
+ })
+ it('preserves a customer historical venue note when the updated client omits that removed field',async()=>{
+  const id=await ownerDraft('2096-06-02',100,'Monoblock','Simple buffet setup',undefined,'Round table',{address:{...testAddress,notes:'Historical setup access instructions'}})
+  await ownerDraft('2096-06-02',100,'Monoblock','Simple buffet setup',undefined,'Round table',{id,address:{...testAddress,notes:undefined}})
+  expect(await scalar("select address->>'notes' as value from reservations where id=$1",[id])).toBe('Historical setup access instructions')
+  await identity('other_customer');await expect(db.query('select save_reservation($1)',[JSON.stringify({id,address:{...testAddress}})])).rejects.toThrow();await identity('customer');expect(await scalar("select address->>'notes' as value from reservations where id=$1",[id])).toBe('Historical setup access instructions')
+ })
+ it('saves incomplete drafts freely but validates required fields only upon submission',async()=>{
+  await identity('customer');const d=await scalar<{id:string;version:number}>('select to_jsonb(save_booking_draft($1)) as value',[JSON.stringify({event_name:'',allergy_notes:null,addon_quantities:{blank:null},event_preferences:{theme:null,colors:'',celebrant_age:null}})])
+  expect(d.id).toBeTruthy();await expect(db.query('select submit_booking_draft($1,$2)',[d.id,d.version])).rejects.toThrow();expect(await scalar('select submitted_at as value from reservation_drafts where id=$1',[d.id])).toBeNull()
+ })
+ it('normalizes blank optional quantity records but rejects supplied negative, fractional and over-limit quantities',async()=>{
+  const source=await ownerDraft('2096-06-03',100),base=await draftPayloadFrom(source,'2096-06-04')
+  await identity('customer');const d=await scalar<{id:string;version:number}>('select to_jsonb(save_booking_draft($1)) as value',[JSON.stringify({...base,addon_quantities:{blank:'',unset:null},chair_quantities:{},chair_type_id:await scalar("select id as value from chair_types where name='Monoblock'"),elegant_chair_quantity:null})])
+  const id=await scalar<string>('select submit_booking_draft($1,$2) as value',[d.id,d.version]);expect(await scalar('select total as value from reservations where id=$1',[id])).toBe(3200000)
+  for(const quantity of[-1,1.5,1001])await expect(db.query('select save_reservation($1)',[JSON.stringify({...base,event_date:'2096-06-05',addon_quantities:{invalid:quantity}})])).rejects.toThrow(/Optional quantities/)
+ })
+ it('accepts blank birthday age/theme/colors while retaining supplied optional preferences and contact opt-in behavior',async()=>{
+  const id=await ownerDraft('2096-06-06',100,'Monoblock','Birthday setup',undefined,'Round table',{event_preferences:{occasion_type:'birthday',theme:'',colors:null,celebrant_age:'',setup_inclusions:[]},save_contact:false})
+  await db.query('select finalize_reservation($1)',[id]);expect(await scalar('select event_preferences as value from reservations where id=$1',[id])).toMatchObject({theme:'',colors:'',celebrant_age:null,setup_inclusions:[]})
+  const next=await ownerDraft('2096-06-07',100,'Monoblock','Birthday setup',undefined,'Round table',{event_preferences:{occasion_type:'birthday',theme:'Garden',colors:'Ivory',celebrant_age:18,setup_inclusions:[]},save_contact:false});expect(await scalar('select event_preferences as value from reservations where id=$1',[next])).toMatchObject({theme:'Garden',colors:'Ivory',celebrant_age:18})
+  await expect(ownerDraft('2096-06-08',100,'Monoblock','Simple buffet setup',undefined,'Round table',{address:{...testAddress,contact:''}})).rejects.toThrow(/09XXXXXXXXX|mobile/)
  })
 })
 

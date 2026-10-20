@@ -27,3 +27,18 @@ export function financialRows(f: FinancialSnapshot|null|undefined,total:number,p
   if(f?.discount_expires_on)rows.push(['Offer deadline (Manila)',f.discount_expires_on+' · end of day; saved paid terms retained'])
   return [...rows,['Total',total],['50% down payment',Math.ceil(total/2)],['Verified paid',paid],['Balance',balance??Math.max(total-paid,0)]]
 }
+// Customer booking summaries reuse the exact calculated/saved centavo amounts.
+// Full tax-status and document disclosures remain in payment/PDF records.
+export function bookingFinancialRows(f:FinancialSnapshot|null|undefined,total:number,paid=0,balance?:number):[string,number][] {
+  const rows:[string,number][]=[]
+  if(f){
+    rows.push(['Subtotal',f.gross_subtotal])
+    if(f.discount_amount>0)rows.push([`${f.discount_source==='account'?'Customer discount':'Discount'}${f.discount_percent!=null?' ('+f.discount_percent+'%)':''}`,-f.discount_amount],['Subtotal after discount',f.discounted_subtotal])
+    if(f.tax_mode!=='non_vat')rows.push(['VAT-exclusive amount',f.taxable_basis],[`VAT (${f.rate_bps/100}% ${f.tax_mode==='vat_inclusive'?'included':'added'})`,f.vat_amount])
+  }
+  return [...rows,['Final reservation total',total],['50% down payment',Math.ceil(total/2)],['Verified payments',paid],['Remaining balance',balance??Math.max(total-paid,0)]]
+}
+export function bookingPriceLines(quote:Record<string,number>) {
+  const labels:Record<string,string>={menu:'Menu / catering package',setup:'Event setup',features:'Features',add_ons:'Add-ons',chair_upgrade:'Chair upgrades',guest_chair_upgrade:'Chair upgrades',extra_chairs:'Extra chairs',tables:'Tables'}
+  return Object.entries(quote).filter(([key,amount])=>key!=='total'&&(amount!==0||key==='setup')).map(([key,amount])=>({key,label:labels[key]||key.replaceAll('_',' '),amount}))
+}

@@ -21,6 +21,7 @@ import {
 } from '../../supabase/functions/_shared/phone'
 import type { Values } from '../pages/ReservationWizard'
 import type { CatalogItem } from '../types'
+import { optionalAge } from '../lib/booking-validation'
 
 export function LocationFields({ form }: { form: UseFormReturn<Values> }) {
   const { register, control, setValue } = form,
@@ -68,7 +69,7 @@ export function LocationFields({ form }: { form: UseFormReturn<Values> }) {
           ? address.province_code
           : address.city_code,
     ).find((item) => item.code === code)
-    setValue(`address.${field}_code`, code, { shouldDirty: true })
+    setValue(`address.${field}_code`, code, { shouldDirty: true, shouldValidate: true })
     setValue(`address.${field}`, item?.name || '', { shouldDirty: true })
     if (field === 'province') {
       setValue('address.city', '')
@@ -153,7 +154,7 @@ export function LocationFields({ form }: { form: UseFormReturn<Values> }) {
             setValue(
               'address.contact',
               e.target.value === 'other' ? '' : e.target.value,
-              { shouldDirty: true },
+              { shouldDirty: true, shouldValidate: true },
             )
             setValue('save_contact', false)
           }}
@@ -229,14 +230,6 @@ export function LocationFields({ form }: { form: UseFormReturn<Values> }) {
           retry={() => void contacts.refetch()}
         />
       )}
-      <label>
-        Venue notes · optional
-        <textarea
-          maxLength={2000}
-          placeholder="Venue access instructions, parking, or setup requests…"
-          {...register('address.notes')}
-        />
-      </label>
     </>
   )
 }
@@ -268,9 +261,10 @@ export function EventPreferenceFields({
             min={1}
             max={120}
             {...form.register('event_preferences.celebrant_age', {
-              setValueAs: (v) => (v === '' ? null : Number(v)),
+              setValueAs: optionalAge,
             })}
           />
+          {form.formState.errors.event_preferences?.celebrant_age&&<span className="field-error" role="alert">{form.formState.errors.event_preferences.celebrant_age.message}</span>}
         </label>
       )}
       <div className="form-grid">
@@ -281,6 +275,7 @@ export function EventPreferenceFields({
             placeholder="e.g. Garden celebration"
             {...form.register('event_preferences.theme')}
           />
+          {form.formState.errors.event_preferences?.theme&&<span className="field-error" role="alert">{form.formState.errors.event_preferences.theme.message}</span>}
         </label>
         <label>
           Preferred colors · optional
@@ -289,6 +284,7 @@ export function EventPreferenceFields({
             placeholder="e.g. Ivory and sage green"
             {...form.register('event_preferences.colors')}
           />
+          {form.formState.errors.event_preferences?.colors&&<span className="field-error" role="alert">{form.formState.errors.event_preferences.colors.message}</span>}
         </label>
       </div>
       {!!keys.length && (

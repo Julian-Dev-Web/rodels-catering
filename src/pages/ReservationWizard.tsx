@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, useWatch } from 'react-hook-form'
-import type { UseFormReturn } from 'react-hook-form'
-import { z } from 'zod'
+import type { UseFormReturn, Resolver, FieldErrors, FieldPath } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, ArrowRight, Check, ShieldCheck } from 'lucide-react'
 import { useCatalog } from '../features/catalog'
@@ -17,7 +16,7 @@ import {
   restorePersistedDraft,
 } from '../lib/booking-draft'
 import { rpc, supabase } from '../lib/supabase'
-import { money, date, human, earliestEventDate } from '../lib/format'
+import { money, date, earliestEventDate } from '../lib/format'
 import {
   LocationFields,
   EventPreferenceFields,
@@ -37,7 +36,7 @@ import { FoodPhoto } from '../components/FoodPhoto'
 import { AllergyFields, useAllergyWarnings } from '../components/AllergyFields'
 import { FinancialBreakdown } from '../components/FinancialBreakdown'
 import { MenuSelectionProgress } from '../components/MenuSelectionProgress'
-import { effectiveDiscount, financialQuote, type TaxPolicy } from '../lib/financial'
+import { bookingPriceLines, effectiveDiscount, financialQuote, type TaxPolicy } from '../lib/financial'
 import type { AccountDiscountEligibility } from '../lib/account-discount'
 import { EquipmentAvailability, type EquipmentAvailabilityRow } from '../components/EquipmentAvailability'
 import {
@@ -47,54 +46,8 @@ import {
   type BookingWindow,
 } from '../components/EventTimeSelect'
 import type { CatalogItem } from '../types'
-const schema = z.object({
-  event_name: z.string().min(2).max(150),
-  event_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose an event date')
-    .refine(
-      (value) => value >= earliestEventDate(),
-      'Choose a date at least 3 days ahead for preparation',
-    ),
-  event_time: z.string().min(5),
-  guests: z.number().int().min(1).max(10000),
-  menu_set_id: z.string().min(1, 'Choose a package'),
-  drink_id: z.string(),
-  dessert_id: z.string(),
-  setup_id: z.string(),
-  dish_ids: z.array(z.string()),
-  allergy_allergen_ids: z.array(z.string()),
-  allergy_notes: z.string().max(2000),
-  allergy_acknowledgments: z.array(z.object({dish_id:z.string(),allergen_id:z.string(),token:z.string()})),
-  feature_ids: z.array(z.string()),
-  table_type_id: z.string(),
-  event_preferences: z.object({
-    occasion_type: z.enum(['birthday', 'wedding', 'other']),
-    theme: z.string().max(200),
-    colors: z.string().max(200),
-    celebrant_age: z.number().int().min(1).max(120).nullable(),
-    setup_inclusions: z.array(z.string()),
-  }),
-  consent_accepted: z.boolean(),
-  consent_version: z.string(),
-  save_contact: z.boolean(),
-  chair_quantities: z.record(z.string(), z.number().int().min(0).max(10000)),
-  chair_type_id: z.string(),
-  elegant_chair_quantity: z.number().int().min(0).max(10000),
-  addon_quantities: z.record(z.string(), z.number().int().min(0).max(1000)),
-  address: z.object({
-    street: z.string(),
-    province: z.string(),
-    city: z.string(),
-    barangay: z.string(),
-    province_code: z.string(),
-    city_code: z.string(),
-    barangay_code: z.string(),
-    contact: z.string(),
-    notes: z.string().max(2000),
-  }),
-})
-export type Values = z.infer<typeof schema>
+import { bookingStepSchema, bookingFieldStep, bookingPayload, optionalQuantity, type Values } from '../lib/booking-validation'
+export type { Values } from '../lib/booking-validation'
 const defaults: Values = {
   event_name: '',
   event_date: '',
@@ -203,7 +156,8 @@ export function ReservationWizard() {
     ...(params.has('package') ? { menu_set_id: params.get('package')! } : {}),
   }
   const form = useForm<Values>({
-    resolver: zodResolver(schema),
+    resolver: (data,context,options)=>(zodResolver(bookingStepSchema(step,catalog.data,allergyWarnings)) as Resolver<Values>)(data,context,options),
+    reValidateMode: 'onChange',
     defaultValues: initial,
   })
   useEffect(()=>{if(draftId&&savedDraft.data&&location.pathname==='/customer/drafts/'+draftId)navigate(`/customer/drafts/${draftId}/${['edit','menu','event-setup','confirm'][savedDraft.data.wizard_step]}`,{replace:true})},[draftId,savedDraft.data,location.pathname,navigate])
@@ -328,8 +282,15 @@ export function ReservationWizard() {
       },
     })
   }, [form, draftKey, id, draftId])
+  useEffect(()=>{
+    const issue=location.state?.bookingIssue as {path:FieldPath<Values>;message:string}|undefined
+    if(!issue||!catalog.data||(id&&detail.isPending)||(draftId&&savedDraft.isPending))return
+    form.setError(issue.path,{type:'manual',message:issue.message})
+    requestAnimationFrame(()=>{const input=document.getElementsByName(issue.path)[0] as HTMLElement|undefined;input?.scrollIntoView({behavior:'smooth',block:'center'});input?.focus({preventScroll:true})})
+    navigate(location.pathname+location.search,{replace:true,state:null})
+  },[location.state,location.pathname,location.search,catalog.data,id,detail.isPending,draftId,savedDraft.isPending,form,navigate])
   const values = useWatch({ control: form.control }) as Values
-  const persistDraft = useMutation({mutationFn:async({data,target}:{data:Values;target:number})=>rpc<SavedDraft>('save_booking_draft',{payload:data,did:draftId||null,step:target,expected_version:savedVersion.current,existing_reservation:id||null}),onSuccess:(d,args)=>{
+  const persistDraft = useMutation({mutationFn:async({data,target}:{data:Values;target:number})=>rpc<SavedDraft>('save_booking_draft',{payload:bookingPayload(data),did:draftId||null,step:target,expected_version:savedVersion.current,existing_reservation:id||null}),onSuccess:(d,args)=>{
     savedVersion.current=d.version;draftRevision.current=d.updated_at
     qc.setQueryData(['saved-draft',d.id],d);void qc.invalidateQueries({queryKey:['saved-drafts']})
     writeBookingDraft(bookingDraftKey(profile?.id,'saved:'+d.id),args.data,d.updated_at)
@@ -337,6 +298,9 @@ export function ReservationWizard() {
     navigate(`/customer/drafts/${d.id}/${['edit','menu','event-setup','confirm'][args.target]}`)
   }})
   const allergyWarnings = useAllergyWarnings(values.allergy_allergen_ids,values.allergy_notes,values.dish_ids)
+  useEffect(()=>{
+    if((step===1||step===3)&&form.getFieldState('allergy_acknowledgments').error&&!allergyWarnings.isFetching&&!allergyWarnings.error)void form.trigger('allergy_acknowledgments')
+  },[step,allergyWarnings.data,allergyWarnings.isFetching,allergyWarnings.error,form])
   const taxPolicy = useQuery({queryKey:['tax-policy'],queryFn:()=>rpc<TaxPolicy>('tax_configuration')})
   const assignedDiscount = useQuery({queryKey:['assigned-discount',reservationKey],enabled:!!reservationKey,queryFn:async()=>{const r=await supabase.from('reservation_discounts').select('*').eq('reservation_id',reservationKey!).maybeSingle();if(r.error)throw r.error;return r.data}})
   const accountDiscount = useQuery({queryKey:['account-discount',profile?.id],enabled:!!profile?.id,refetchInterval:60000,queryFn:()=>rpc<AccountDiscountEligibility>('my_account_discount')})
@@ -426,7 +390,7 @@ export function ReservationWizard() {
         )
       const rid = await rpc<string>('save_reservation', {
         data: {
-          ...v,
+          ...bookingPayload(v),
           id,
           chairs: includedSeating
             ? v.chair_type_id
@@ -480,8 +444,8 @@ export function ReservationWizard() {
     onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
   })
   const finalize = useMutation({
-    mutationFn: async () => {
-      if(draftId){const d=await rpc<SavedDraft>('save_booking_draft',{payload:form.getValues(),did:draftId,step:3,expected_version:savedVersion.current});savedVersion.current=d.version;return rpc<string>('submit_booking_draft',{did:draftId,expected_version:d.version})}
+    mutationFn: async (v:Values) => {
+      if(draftId){const d=await rpc<SavedDraft>('save_booking_draft',{payload:bookingPayload(v),did:draftId,step:3,expected_version:savedVersion.current});savedVersion.current=d.version;return rpc<string>('submit_booking_draft',{did:draftId,expected_version:d.version})}
       await rpc('finalize_reservation',{rid:id});return id!
     },
     onSuccess: (rid) => {
@@ -523,6 +487,63 @@ export function ReservationWizard() {
   const rawQuote = step===3&&quote ? quote : estimated
   const displayedQuote = rawQuote&&Number.isSafeInteger(rawQuote.total) ? {...rawQuote,total:financialSnapshot?.total ?? rawQuote.total} : null
   const wizardPath = (target:number) => draftId ? `/customer/drafts/${draftId}/${['edit','menu','event-setup','confirm'][target]}` : `/customer/reservations/${id}/${['edit','menu','event-setup','confirm'][target]}`
+  function focusErrors(errors:FieldErrors<Values>) {
+    function first(value:unknown,prefix=''): {path:string;message:string}|null {
+      if(!value||typeof value!=='object')return null
+      const item=value as Record<string,unknown>
+      if(typeof item.message==='string')return {path:prefix,message:item.message}
+      for(const [key,child]of Object.entries(item)){if(key==='ref')continue;const found=first(child,prefix?prefix+'.'+key:key);if(found)return found}
+      return null
+    }
+    const issue=first(errors);if(!issue)return
+    const target=bookingFieldStep(issue.path)
+    if(target>=0&&target!==step){navigate(wizardPath(target),{state:{bookingIssue:issue}});return}
+    requestAnimationFrame(()=>{
+      const input=[...document.getElementsByName(issue.path)].find(e=>!(e as HTMLInputElement).disabled) as HTMLElement|undefined
+      const element=input||document.querySelector('.field-error')?.parentElement
+      element?.scrollIntoView({behavior:'smooth',block:'center'})
+      if(input)input.focus({preventScroll:true});else form.setFocus(issue.path as FieldPath<Values>)
+    })
+  }
+  async function checkAvailability(v:Values,phase:number) {
+    let errorField:'event_time'|'chair_type_id'='event_time'
+              try {
+                const chair=c.chair_types.find(chair=>chair.id===v.chair_type_id)
+                if((phase===2||phase===3)&&includedSeating&&chair){
+                  errorField='chair_type_id'
+                  const stock=await rpc<EquipmentAvailabilityRow[]>('equipment_availability',{day:v.event_date,rid:id||null})
+                  const upgraded=(chair.price||0)>0
+                  const requests=[{id:chair.equipment_id,quantity:upgraded?v.elegant_chair_quantity:v.guests},...(upgraded&&v.guests>v.elegant_chair_quantity?[{id:c.chair_types.find(c=>c.name==='Monoblock')?.equipment_id,quantity:v.guests-v.elegant_chair_quantity}]:[])]
+                  for(const request of requests){if(!request.id||!request.quantity)continue;const item=stock.find(i=>i.equipment_id===request.id);if(!item||item.total===null)throw new Error(`${item?.name||'Selected chair'} stock needs manager confirmation.`);if(!item.active||request.quantity>(item.available??0))throw new Error(`Only ${item.available??0} ${item.name} are available for this event date; ${request.quantity} requested. Review seating or choose another date.`)}
+                }
+                errorField='event_time'
+                const availability = await rpc<BookingWindow>(
+                  'booking_window',
+                  { day: v.event_date, rid: id || null },
+                )
+                if (!validWindowTime(availability, v.event_time)) {
+                  form.setError('event_time', {
+                    type: 'manual',
+                    message:
+                      availability.reason ||
+                      'Choose a start time within the configured hours.',
+                  })
+                  focusErrors({event_time:{type:'manual',message:availability.reason||'Choose an available event time.'}})
+                  return false
+                }
+              } catch (error) {
+                const message=error instanceof Error?error.message:'Could not check availability. Please try again.'
+                form.setError(errorField, {
+                  type: 'manual',
+                  message,
+                })
+                focusErrors({[errorField]:{type:'manual',message}})
+                return false
+              }
+
+    return true
+  }
+
   return (
     <>
       <PageHeading title="Let’s plan your celebration." eyebrow="MAKE IT YOURS">
@@ -565,122 +586,10 @@ export function ReservationWizard() {
             className="form"
             noValidate
             onSubmit={handleSubmit(async (v) => {
-              const fields: [Parameters<typeof form.setFocus>[0], string][] = []
-              if (!v.consent_accepted)
-                fields.push([
-                  'consent_accepted',
-                  'Accept the current Terms and Privacy Notice.',
-                ])
-              if (!validMobile(v.address.contact))
-                fields.push([
-                  'address.contact',
-                  'Enter a valid Philippine mobile number.',
-                ])
-              for (const key of [
-                'province_code',
-                'city_code',
-                'barangay_code',
-                'street',
-              ] as const)
-                if (!v.address[key])
-                  fields.push([
-                    `address.${key}`,
-                    'Complete this event location field.',
-                  ])
-              if (!selected)
-                fields.push(['menu_set_id', 'Choose a current set menu.'])
-              if (
-                selected &&
-                (v.guests < (selected.min_guests || 1) ||
-                  v.guests > (selected.max_guests || 10000))
-              )
-                fields.push([
-                  'guests',
-                  `Choose ${selected.min_guests}–${selected.max_guests || 10000} guests.`,
-                ])
-              const upgraded =
-                (c.chair_types.find((chair) => chair.id === v.chair_type_id)
-                  ?.price || 0) > 0
-              if (
-                upgraded &&
-                (!Number.isInteger(v.elegant_chair_quantity) ||
-                  v.elegant_chair_quantity < 1 ||
-                  v.elegant_chair_quantity > v.guests)
-              )
-                fields.push([
-                  'elegant_chair_quantity',
-                  'Choose a whole chair count from 1 to your guest count.',
-                ])
-              if (
-                upgraded &&
-                v.elegant_chair_quantity < v.guests &&
-                !c.chair_types.some(
-                  (chair) => chair.name === 'Monoblock' && chair.price === 0,
-                )
-              )
-                fields.push([
-                  'chair_type_id',
-                  'Included Monoblock seating is currently unavailable. Contact support.',
-                ])
-              if (step === 1) {
-                if (allergyWarnings.isFetching || allergyWarnings.error || allergyWarnings.data?.some(w=>!v.allergy_acknowledgments.some(a=>a.token===w.token))) fields.push(['allergy_acknowledgments','Review and acknowledge each matching allergy warning before continuing.'])
-                if (v.dish_ids.length !== selected?.dish_count)
-                  fields.push([
-                    'dish_ids',
-                    `Choose exactly ${selected?.dish_count} dishes.`,
-                  ])
-                if (!v.drink_id) fields.push(['drink_id', 'Choose one drink.'])
-                if (!v.dessert_id)
-                  fields.push(['dessert_id', 'Choose one dessert.'])
-              }
-              if (step === 2) {
-                if (!v.setup_id)
-                  fields.push(['setup_id', 'Choose an event setup.'])
-                if (!v.table_type_id)
-                  fields.push(['table_type_id', 'Choose the table shape.'])
-                if (includedSeating && !v.chair_type_id)
-                  fields.push(['chair_type_id', 'Choose guest seating.'])
-              }
-              if (fields.length) {
-                fields.forEach(([key, message]) =>
-                  form.setError(key, { type: 'manual', message }),
-                )
-                form.setFocus(fields[0][0])
-                return
-              }
-              try {
-                const chair=c.chair_types.find(chair=>chair.id===v.chair_type_id)
-                if(step===2&&includedSeating&&chair){
-                  const stock=await rpc<EquipmentAvailabilityRow[]>('equipment_availability',{day:v.event_date,rid:id||null})
-                  const upgraded=(chair.price||0)>0
-                  const requests=[{id:chair.equipment_id,quantity:upgraded?v.elegant_chair_quantity:v.guests},...(upgraded&&v.guests>v.elegant_chair_quantity?[{id:c.chair_types.find(c=>c.name==='Monoblock')?.equipment_id,quantity:v.guests-v.elegant_chair_quantity}]:[])]
-                  for(const request of requests){if(!request.id||!request.quantity)continue;const item=stock.find(i=>i.equipment_id===request.id);if(!item||item.total===null)throw new Error(`${item?.name||'Selected chair'} stock needs manager confirmation.`);if(!item.active||request.quantity>(item.available??0))throw new Error(`Only ${item.available??0} ${item.name} are available for this event date; ${request.quantity} requested. Review seating or choose another date.`)}
-                }
-                const availability = await rpc<BookingWindow>(
-                  'booking_window',
-                  { day: v.event_date, rid: id || null },
-                )
-                if (!validWindowTime(availability, v.event_time)) {
-                  form.setError('event_time', {
-                    type: 'manual',
-                    message:
-                      availability.reason ||
-                      'Choose a start time within the configured hours.',
-                  })
-                  form.setFocus('event_time')
-                  return
-                }
-              } catch (error) {
-                form.setError(step===2?'chair_type_id':'event_time', {
-                  type: 'manual',
-                  message:
-                      error instanceof Error ? error.message : 'Could not verify this event date/time. Retry before continuing.',
-                })
-                return
-              }
+              if(!await checkAvailability(v,step))return
               if(!id)persistDraft.mutate({data:v,target:Math.min(step+1,3)})
               else save.mutate(v)
-            })}
+            },focusErrors)}
           >
             {step === 0 && (
               <>
@@ -725,7 +634,7 @@ export function ReservationWizard() {
                       inputRef={register('event_time').ref}
                       onChange={(value) =>
                         form.setValue('event_time', value, {
-                          shouldDirty: true,
+                          shouldDirty: true, shouldValidate: true,
                         })
                       }
                     />
@@ -960,6 +869,7 @@ export function ReservationWizard() {
                       </option>
                     ))}
                   </select>
+                  {errors.setup_id&&<span className="field-error" role="alert">{errors.setup_id.message}</span>}
                 </label>
                 <EventPreferenceFields
                   form={form}
@@ -1013,7 +923,7 @@ export function ReservationWizard() {
                       max={1000}
                       defaultValue={0}
                       {...register(`addon_quantities.${a.id}`, {
-                        valueAsNumber: true,
+                        setValueAs: optionalQuantity,
                       })}
                     />
                     {errors.addon_quantities?.[a.id]?.message && (
@@ -1045,7 +955,7 @@ export function ReservationWizard() {
                         {...register('chair_type_id')}
                         onChange={(e) => {
                           form.setValue('chair_type_id', e.target.value, {
-                            shouldDirty: true,
+                            shouldDirty: true, shouldValidate: true,
                           })
                           form.setValue(
                             'elegant_chair_quantity',
@@ -1127,9 +1037,10 @@ export function ReservationWizard() {
                           max={10000}
                           defaultValue={0}
                           {...register(`chair_quantities.${a.id}`, {
-                            valueAsNumber: true,
+                            setValueAs: optionalQuantity,
                           })}
                         />
+                        {errors.chair_quantities?.[a.id]?.message&&<small className="field-error" role="alert">{errors.chair_quantities[a.id]?.message}</small>}
                       </label>
                     ))}
                   </>
@@ -1228,7 +1139,7 @@ export function ReservationWizard() {
                 <div className="alert">
                   <ShieldCheck />
                   <p>
-                    Review your server-calculated quote. Finalizing sends your
+                    Review your quote. Finalizing sends your
                     booking for review. Payment and date confirmation follow.
                   </p>
                 </div>
@@ -1252,7 +1163,7 @@ export function ReservationWizard() {
                   type="button"
                   className="button"
                   disabled={finalize.isPending || persistDraft.isPending || !values.consent_accepted || allergyWarnings.isFetching || !!allergyWarnings.error || !!allergyWarnings.data?.some(w=>!values.allergy_acknowledgments.some(a=>a.token===w.token))}
-                  onClick={()=>finalize.mutate()}
+                  onClick={()=>void handleSubmit(async v=>{if(await checkAvailability(v,3))finalize.mutate(v)},focusErrors)()}
                 >
                   {finalize.isPending
                     ? 'Finalizing…'
@@ -1266,10 +1177,7 @@ export function ReservationWizard() {
             {persistDraft.error&&<ErrorState error={persistDraft.error}/>}
             {errors.root?.message&&<p className="field-error" role="alert">{errors.root.message}</p>}
             {Object.keys(errors).length > 0 && (
-              <p className="field-error" role="alert">
-                Please complete the required event details with valid
-                quantities.
-              </p>
+              <p className="field-error" role="alert">Please check the highlighted fields.</p>
             )}
             <div className="wizard-actions">
               {(!id||detail.data?.reservation.status==='draft')&&<button type="button" className="button secondary" disabled={persistDraft.isPending||finalize.isPending} onClick={()=>persistDraft.mutate({data:form.getValues(),target:step})}>{persistDraft.isPending?'Saving draft…':'Save draft'}</button>}
@@ -1313,7 +1221,7 @@ export function ReservationWizard() {
               Basic tables, Monoblock chairs and simple buffet setup included.
             </p>
           )}
-          {includedSeating && values.chair_type_id && (
+          {includedSeating && (c.chair_types.find(chair=>chair.id===values.chair_type_id)?.price||0)>0 && (
             <p className="date-help">
               Guest chair upgrade: {values.elegant_chair_quantity} selected
               chairs ×{' '}
@@ -1327,20 +1235,15 @@ export function ReservationWizard() {
           {displayedQuote ? (
             <>
               <hr />
-              {Object.entries(displayedQuote)
-                .filter(([k]) => k !== 'total')
-                .map(([k, v]) => (
-                  <div className="price-line" key={k}>
-                    <span>{human(k)}</span>
-                    <strong>{money(v)}</strong>
+              {bookingPriceLines(displayedQuote)
+                .map(({key,label,amount}) => (
+                  <div className="price-line" key={key}>
+                    <span>{label}</span>
+                    <strong>{amount===0?'Included':money(amount)}</strong>
                   </div>
                 ))}
-              <FinancialBreakdown snapshot={financialSnapshot} total={displayedQuote.total}/>
-              <small>
-                {step === 3
-                  ? 'Finalization recalculates this quote using the current catalog.'
-                  : 'This estimate updates as you choose. Save & continue to obtain a server-checked quote.'}
-              </small>
+              <FinancialBreakdown booking snapshot={financialSnapshot} total={displayedQuote.total}/>
+              <small>Review your total before confirming your booking.</small>
             </>
           ) : (
             <div className="quote-placeholder">
@@ -1362,6 +1265,7 @@ export function ReservationWizard() {
           </Link>
         </aside>
       </div>
+      <details className="booking-information"><summary>Quotation and tax information</summary><p>This booking summary is a quotation, not an official BIR tax invoice. Payment records and downloadable documents include their applicable receipt information.</p>{financialSnapshot&&!financialSnapshot.business_confirmed&&<p>Tax figures use the current system settings and await business/accounting confirmation.</p>}{financialSnapshot?.tax_mode==='vat_inclusive'&&<p>VAT shown is included in the reservation total.</p>}{financialSnapshot?.tax_mode==='non_vat'&&<p>The saved tax treatment is non-VAT.</p>}</details>
     </>
   )
 }
