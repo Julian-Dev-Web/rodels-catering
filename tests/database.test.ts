@@ -1639,7 +1639,7 @@ describe('catalog food photographs',()=>{
  })
  it('exports the matching photo schema without granting customer access to the operator snapshot',async()=>{
   await identity('customer');await expect(db.query('select export_application_snapshot()')).rejects.toThrow(/permission denied/)
-  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0031_discount_lifecycle.sql')
+  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0032_discount_expiration_options.sql')
  })
 })
 
@@ -1875,7 +1875,7 @@ describe('staff customer directory and physical chair adjustments',()=>{
    await identity('manager')
    const found=await scalar<{customers:{id:string;email:string}[];total:number}>('select staff_customer_directory($1,0,20) as value',['DIRECTORY-FIXTURE@'])
    expect(found.total).toBe(1);expect(found.customers[0]).toMatchObject({id:users.customer,email:'directory-fixture@example.invalid'})
-   expect(Object.keys(found.customers[0]).sort()).toEqual(['id','full_name','email','account_status','account_discount_bps','account_discount_changed_at','assignment_id','usage_type','expires_on','discount_status'].sort())
+   expect(Object.keys(found.customers[0]).sort()).toEqual(['id','full_name','email','account_status','account_discount_bps','account_discount_changed_at','assignment_id','usage_type','expires_on','discount_status','expiration_option'].sort())
    const a=await scalar<{customers:{id:string}[]}>('select staff_customer_directory($1,0,1) as value',['']),b=await scalar<{customers:{id:string}[]}>('select staff_customer_directory($1,1,1) as value',[''])
    expect(a.customers[0].id).not.toBe(b.customers[0].id)
    expect(await scalar('select staff_customer_directory($1) as value',['no-such-customer-unique-fixture'])).toMatchObject({total:0,customers:[]})
@@ -1968,7 +1968,7 @@ describe('versioned ongoing and one-time account offers',()=>{
    await expect(db.query('select release_checkout(gen_random_uuid())')).rejects.toThrow(/permission/)
    const b=await assign(1500,'one_time','2090-12-31');expect(await status(a.assignment_id)).toBe('REMOVED')
    await identity('manager');await expect(db.query('select save_customer_discount($1,500,$2,null,$3)',[users.customer,'ongoing',a.assignment_id])).rejects.toThrow(/changed/)
-   await expect(db.query("select save_customer_discount($1,500,'ongoing',current_date-2,$2)",[users.customer,b.assignment_id])).rejects.toThrow(/before today/)
+   await expect(db.query("select save_customer_discount($1,500,'ongoing',current_date-2,$2)",[users.customer,b.assignment_id])).rejects.toThrow(/today or a future/)
    await identity('customer');expect(await scalar('select my_account_discount() as value')).toMatchObject({account_discount_bps:1500,status:'ACTIVE',usage_type:'one_time',expires_on:'2090-12-31'})
   }finally{await reset()}
  })
@@ -1980,7 +1980,7 @@ describe('versioned ongoing and one-time account offers',()=>{
  })
  it('honors the inclusive Manila deadline and reprices expired unpaid quotes without consuming them',async()=>{
   try{const a=await assign();const rid=await ownerDraft('2090-02-01',100);await identity('operator')
-   await db.query("update customer_discount_assignments set expires_on='2090-11-30' where id=$1",[a.assignment_id])
+   await db.query("update customer_discount_assignments set expiration_option='specific_date',expires_on='2090-11-30' where id=$1",[a.assignment_id])
    expect(await scalar("select private.account_discount_status(a,'2090-11-30T23:59:59.999+08:00') as value from customer_discount_assignments a where id=$1",[a.assignment_id])).toBe('ACTIVE')
    expect(await scalar("select private.account_discount_status(a,'2090-12-01T00:00:00+08:00') as value from customer_discount_assignments a where id=$1",[a.assignment_id])).toBe('EXPIRED')
    await db.query('update customer_discount_assignments set expires_on=(now() at time zone $2)::date-1 where id=$1',[a.assignment_id,'Asia/Manila'])
@@ -2023,7 +2023,7 @@ describe('versioned ongoing and one-time account offers',()=>{
  it('preserves an edited/removed payable version through expiry until its real payment is verified',async()=>{
   try{const a=await assign();const rid=await ownerDraft('2090-06-01',100);await db.query('select finalize_reservation($1)',[rid]);const p=await checkout(rid)
    await db.query("update payments set external_session_id='cs_v2_removed' where id=$1",[p.id]);const frozen=await scalar('select financial_snapshot as value from reservations where id=$1',[rid])
-   await reset();await identity('operator');await db.query('update customer_discount_assignments set expires_on=current_date-1 where id=$1',[a.assignment_id]);await identity('customer');await db.query('select prepare_checkout_quote($1)',[rid]);expect(await scalar('select financial_snapshot as value from reservations where id=$1',[rid])).toEqual(frozen)
+   await reset();await identity('operator');await db.query("update customer_discount_assignments set expiration_option='specific_date',expires_on=current_date-1 where id=$1",[a.assignment_id]);await identity('customer');await db.query('select prepare_checkout_quote($1)',[rid]);expect(await scalar('select financial_snapshot as value from reservations where id=$1',[rid])).toEqual(frozen)
    await identity('operator');await db.query("select confirm_provider_payment('evt_v2_removed','cs_v2_removed','pay_v2_removed',$1)",[p.amount]);expect(await status(a.assignment_id)).toBe('USED')
   }finally{await reset()}
  })
@@ -2040,6 +2040,78 @@ describe('versioned ongoing and one-time account offers',()=>{
    expect(await scalar('select financial_snapshot as value from reservations where id=$1',[rid])).toMatchObject({discount_source:'promotion',discount_percent:5,total:3040000})
    expect(await status(a.assignment_id)).toBe('ACTIVE');await identity('manager');await db.query('select apply_reservation_discount($1,null,$2)',[rid,'Restore account offer fixture'])
    expect(await scalar('select financial_snapshot as value from reservations where id=$1',[rid])).toMatchObject({discount_source:'account',discount_usage_type:'one_time',discount_assignment_id:a.assignment_id,discount_percent:20,total:2560000})
+  }finally{await reset()}
+ })
+})
+
+describe('account discount expiration options',()=>{
+ async function save(option:string,usage='ongoing',date:string|null=null,bps=1000){
+  await identity('manager');const previous=await scalar<string|null>('select account_discount_id as value from profiles where id=$1',[users.customer]);
+  return scalar<{assignment_id:string;expires_on:string|null;assigned_at:string;expiration_option:string}>('select save_customer_discount($1,$2,$3,$4,$5,$6) as value',[users.customer,bps,usage,date,previous,option]);
+ }
+ async function reset(){await identity('manager');await db.query('select manage_customer_account_discount($1,0)',[users.customer])}
+ for(const [ui,usage]of['ongoing','one_time'].entries())for(const[oi,option]of['none','30_days','90_days','specific_date'].entries()){
+  it(`saves and applies ${usage} with ${option}, retaining expiry metadata and an audit`,async()=>{
+   try{
+    await identity('operator');const today=await scalar<string>("select (clock_timestamp() at time zone 'Asia/Manila')::date::text as value")
+    const a=await save(option,usage,option==='specific_date'?today:null)
+    const rid=await ownerDraft(`2097-06-${String(ui*4+oi+1).padStart(2,'0')}`,100)
+    expect(await scalar('select financial_snapshot as value from reservations where id=$1',[rid])).toMatchObject({discount_percent:10,discount_usage_type:usage,discount_expires_on:a.expires_on,total:2880000})
+    await identity('operator');expect(await scalar('select expiration_option as value from customer_discount_assignments where id=$1',[a.assignment_id])).toBe(option)
+    expect(await scalar("select expires_on is not distinct from case $2 when 'none' then null::date when '30_days' then (assigned_at at time zone 'Asia/Manila')::date+30 when '90_days' then (assigned_at at time zone 'Asia/Manila')::date+90 else $3::date end as value from customer_discount_assignments where id=$1",[a.assignment_id,option,today])).toBe(true)
+    expect(await scalar("select details->>'expiration_option' as value from audit_logs where action='account_discount.expiration_set' and entity_id=$1",[a.assignment_id])).toBe(option)
+    await identity('manager');const directory=await scalar<{customers:{id:string;expiration_option:string;expires_on:string|null}[];server_today:string}>('select staff_customer_directory() as value');expect(directory.server_today).toBe(today);expect(directory.customers.find(c=>c.id===users.customer)).toMatchObject({expiration_option:option,expires_on:a.expires_on})
+   }finally{await reset()}
+  })
+ }
+ it('uses Manila date rollover, calendar months and leap years independently of the database session timezone',async()=>{
+  await identity('operator');await db.exec("set timezone='America/Los_Angeles'")
+  try{
+   expect(await scalar("select private.discount_expiration('30_days',null,'2026-10-20T00:00:00+08:00')::text as value")).toBe('2026-11-19')
+   expect(await scalar("select private.discount_expiration('30_days',null,'2026-10-19T15:59:59Z')::text as value")).toBe('2026-11-18')
+   expect(await scalar("select private.discount_expiration('30_days',null,'2026-10-19T16:00:00Z')::text as value")).toBe('2026-11-19')
+   expect(await scalar("select private.discount_expiration('30_days',null,'2028-01-31T22:00:00+08:00')::text as value")).toBe('2028-03-01')
+   expect(await scalar("select private.discount_expiration('90_days',null,'2026-10-20T23:59:59+08:00')::text as value")).toBe('2027-01-18')
+  }finally{await db.exec("set timezone='UTC'")}
+ })
+ it('rejects tampered preset dates, invalid choices, past/invalid manual dates and unauthorized assignment',async()=>{
+  try{
+   for(const option of['none','30_days','90_days'])await expect(save(option,'ongoing','2099-12-31')).rejects.toThrow(/server/)
+   await expect(save('7_days')).rejects.toThrow(/valid expiration/)
+   await expect(save('specific_date')).rejects.toThrow(/today or a future/)
+   await expect(save('specific_date','ongoing','2020-01-01')).rejects.toThrow(/today or a future/)
+   for(const day of['infinity','-infinity'])await expect(save('specific_date','one_time',day)).rejects.toThrow(/today or a future/)
+   await expect(save('specific_date','ongoing','2026-02-30')).rejects.toThrow()
+   await identity('customer');await expect(db.query("select save_customer_discount($1,1000,'one_time',null,null,'30_days')",[users.customer])).rejects.toThrow(/Staff/)
+   await expect(db.query("select private.discount_expiration('30_days',null,now())")).rejects.toThrow(/permission/)
+   await expect(db.query("update customer_discount_assignments set expiration_option='none' where customer_id=$1",[users.customer])).rejects.toThrow(/permission/)
+   await identity('operator');const current=await scalar<string|null>('select account_discount_id as value from profiles where id=$1',[users.customer]);await identity('manager');await expect(db.query("select save_customer_discount($1,1000,'ongoing','infinity'::date,$2)",[users.customer,current])).rejects.toThrow(/today or a future/)
+  }finally{await reset()}
+ })
+ it('expires ongoing and unused one-time presets at the inclusive Manila deadline and excludes new bookings',async()=>{
+  try{for(const[ui,usage]of['ongoing','one_time'].entries()){
+   const a=await save('30_days',usage);await identity('operator')
+   expect(await scalar("select private.account_discount_status(a,((expires_on::timestamp+time '23:59:59.999') at time zone 'Asia/Manila')) as value from customer_discount_assignments a where id=$1",[a.assignment_id])).toBe('ACTIVE')
+   expect(await scalar("select private.account_discount_status(a,((expires_on+1)::timestamp at time zone 'Asia/Manila')) as value from customer_discount_assignments a where id=$1",[a.assignment_id])).toBe('EXPIRED')
+   await db.query("update customer_discount_assignments set expires_on=(clock_timestamp() at time zone 'Asia/Manila')::date-1 where id=$1",[a.assignment_id])
+   const rid=await ownerDraft(`2097-07-0${ui+1}`,100);expect(await scalar('select total as value from reservations where id=$1',[rid])).toBe(3200000);expect(await scalar('select my_account_discount() as value')).toMatchObject({status:'EXPIRED',account_discount_bps:0})
+  }}finally{await reset()}
+ })
+ it('does not rewrite finalized quotes or payments when assigning, editing or removing expiration settings',async()=>{
+  try{
+   await save('90_days');const rid=await ownerDraft('2097-08-01',100);await db.query('select finalize_reservation($1)',[rid]);const before=await scalar('select to_jsonb(r) as value from reservations r where id=$1',[rid])
+   for(const option of['30_days','specific_date','none']){await save(option,'one_time',option==='specific_date'?'2095-12-31':null);await identity('operator');expect(await scalar('select to_jsonb(r) as value from reservations r where id=$1',[rid])).toEqual(before)}
+   await reset();await identity('operator');expect(await scalar('select to_jsonb(r) as value from reservations r where id=$1',[rid])).toEqual(before);expect(await scalar('select count(*)::int as value from payments where reservation_id=$1',[rid])).toBe(0)
+  }finally{await reset()}
+ })
+ it('preserves exclusive one-time redemption and paid balance terms for a 30-day assignment',async()=>{
+  try{
+   const a=await save('30_days','one_time');const first=await ownerDraft('2097-09-01',100),second=await ownerDraft('2097-09-02',100);await db.query('select finalize_reservation($1)',[first]);await db.query('select finalize_reservation($1)',[second]);await identity('operator');
+   const p=await scalar<{id:string;amount:number}>("select to_jsonb(begin_checkout($1,$2,'partial')) as value",[first,users.customer]);await expect(db.query("select begin_checkout($1,$2,'partial')",[second,users.customer])).rejects.toThrow(/changed|reserved/)
+   const frozen=await scalar('select financial_snapshot as value from reservations where id=$1',[first]);await db.query("update payments set external_session_id='cs_expiration_preset' where id=$1",[p.id]);for(let i=0;i<2;i++)await db.query("select confirm_provider_payment('evt_expiration_preset','cs_expiration_preset','pay_expiration_preset',$1)",[p.amount]);
+   expect(await scalar('select private.account_discount_status(a) as value from customer_discount_assignments a where id=$1',[a.assignment_id])).toBe('USED');const newBooking=await ownerDraft('2097-09-03',100);expect(await scalar('select total as value from reservations where id=$1',[newBooking])).toBe(3200000)
+   await save('90_days','ongoing',null,2000);await identity('customer');await db.query('select prepare_checkout_quote($1)',[first]);expect(await scalar('select financial_snapshot as value from reservations where id=$1',[first])).toEqual(frozen)
+   await identity('operator');const balance=await scalar<{amount:number}>("select to_jsonb(begin_checkout($1,$2,'balance')) as value",[first,users.customer]);expect(balance.amount).toBe(1440000);expect(p.amount).toBe(1440000)
   }finally{await reset()}
  })
 })

@@ -2,32 +2,34 @@ import { useDeferredValue, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { rpc } from '../lib/supabase'
 import { discountBasisPoints } from '../lib/manager-input'
-import { message } from '../lib/format'
+import { message, todayManila } from '../lib/format'
 import { DataTable, ErrorState, Loading, Modal, PageHeading } from '../components/ui'
 import { FeedbackNotice } from '../components/FeedbackNotice'
-import { discountSummary, discountDate, type DiscountUsage } from '../lib/account-discount'
+import { discountSummary, discountDate, discountExpiryPreview, expirationOptions, type DiscountUsage, type DiscountExpiration } from '../lib/account-discount'
 import type { RecordRow } from '../types'
 
-interface Customer {id:string;full_name:string;email:string;account_status:string;account_discount_bps:number;assignment_id:string|null;usage_type:DiscountUsage|null;expires_on:string|null;discount_status:string}
-interface Directory {customers:Customer[];total:number;min_bps:number;max_bps:number}
-interface SavedDiscount {customer_name:string;previous_bps:number;percentage_bps:number;usage_type:DiscountUsage;expires_on:string|null}
+interface Customer {id:string;full_name:string;email:string;account_status:string;account_discount_bps:number;assignment_id:string|null;usage_type:DiscountUsage|null;expires_on:string|null;discount_status:string;expiration_option?:DiscountExpiration}
+interface Directory {customers:Customer[];total:number;min_bps:number;max_bps:number;server_today?:string}
+interface SavedDiscount {customer_name:string;previous_bps:number;percentage_bps:number;usage_type:DiscountUsage;expires_on:string|null;expiration_option:DiscountExpiration}
 export function CustomerManagement() {
   const qc=useQueryClient()
   const [search,setSearch]=useState(''),[page,setPage]=useState(0),keyword=useDeferredValue(search)
-  const directory=useQuery({queryKey:['customer-directory',keyword,page],queryFn:()=>rpc<Directory>('staff_customer_directory',{search:keyword,page_number:page,page_size:20})})
   const [target,setTarget]=useState<Customer|null>(null),[choice,setChoice]=useState('10'),[custom,setCustom]=useState('')
-  const [usage,setUsage]=useState<DiscountUsage>('ongoing'),[expires,setExpires]=useState(false),[expiry,setExpiry]=useState(''),[fieldError,setFieldError]=useState('')
+  const directory=useQuery({queryKey:['customer-directory',keyword,page],refetchInterval:target?60000:false,queryFn:()=>rpc<Directory>('staff_customer_directory',{search:keyword,page_number:page,page_size:20})})
+  const [usage,setUsage]=useState<DiscountUsage>('ongoing'),[expiration,setExpiration]=useState<DiscountExpiration>('none'),[expiry,setExpiry]=useState(''),[fieldError,setFieldError]=useState('')
   const [removing,setRemoving]=useState<Customer|null>(null),[notice,setNotice]=useState<{text:string;error?:boolean}|null>(null)
-  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
+  const today=directory.data?.server_today||todayManila()
   const mutation=useMutation({
     mutationFn:({customer,remove=false}:{customer:Customer;remove?:boolean})=>rpc<SavedDiscount>('save_customer_discount',{
       customer_id:customer.id,percentage_bps:remove?0:discountBasisPoints(choice==='custom'?custom:choice,directory.data?.min_bps,directory.data?.max_bps),
-      usage_type:remove?customer.usage_type||'ongoing':usage,expires_on:remove||!expires?null:expiry,expected_assignment_id:customer.assignment_id,
+      usage_type:remove?customer.usage_type||'ongoing':usage,expires_on:!remove&&expiration==='specific_date'?expiry:null,expected_assignment_id:customer.assignment_id,
+      expiration_option:remove?'none':expiration,
     }),
     onSuccess:async(saved)=>{
       await qc.invalidateQueries({queryKey:['customer-directory']})
       void qc.invalidateQueries({queryKey:['account-discount']})
-      setNotice({text:saved.percentage_bps===0?`Discount removed from ${saved.customer_name}. New eligible reservations will use regular pricing.`:`${saved.previous_bps?'Discount updated successfully. ':''}${saved.percentage_bps/100}% discount successfully assigned to ${saved.customer_name} — ${discountSummary(saved.usage_type,saved.expires_on)}.`})
+      const preset=saved.expiration_option==='30_days'?30:saved.expiration_option==='90_days'?90:null
+      setNotice({text:saved.percentage_bps===0?`Discount removed from ${saved.customer_name}. New eligible reservations will use regular pricing.`:`${saved.previous_bps?'Discount updated successfully. ':''}${saved.percentage_bps/100}% discount successfully assigned to ${saved.customer_name}.${preset?` Valid for ${preset} days.`:''} ${discountSummary(saved.usage_type,saved.expires_on)}.`})
       setTarget(null);setRemoving(null)
     },
     onError:error=>{const detail=message(error)||'Unable to save discount. Please try again.';setFieldError(detail);setNotice({text:detail,error:true});void qc.invalidateQueries({queryKey:['customer-directory']})},
@@ -37,18 +39,19 @@ export function CustomerManagement() {
     const editing=customer.account_discount_bps>0&&['ACTIVE','RESERVED'].includes(customer.discount_status)
     const percent=String(editing?customer.account_discount_bps/100:10)
     setChoice(['5','10','15','20'].includes(percent)?percent:'custom');setCustom(editing?percent:'')
-    setUsage(editing?customer.usage_type||'ongoing':'ongoing');setExpires(editing&&!!customer.expires_on);setExpiry(editing?customer.expires_on||'':'')
+    setUsage(editing?customer.usage_type||'ongoing':'ongoing');setExpiration(editing?customer.expiration_option||(customer.expires_on?'specific_date':'none'):'none');setExpiry(editing?customer.expires_on||'':'')
   }
   function save(){
     if(!target)return
     try{
       const bps=discountBasisPoints(choice==='custom'?custom:choice,directory.data?.min_bps,directory.data?.max_bps)
       if(bps===0)throw Error('Use Remove Discount to remove the offer, or choose a percentage greater than zero.')
-      if(expires&&(!expiry||expiry<today))throw Error('Choose today or a future expiration date (Manila).')
+      if(expiration==='specific_date'&&(!expiry||expiry<today))throw Error('Choose today or a future expiration date (Manila).')
       setFieldError('');mutation.mutate({customer:target})
     }catch(error){setFieldError(error instanceof Error?error.message:'Check the discount fields.')}
   }
   const customers=directory.data?.customers||[],currentPercent=choice==='custom'?custom:choice
+  const previewExpiry=discountExpiryPreview(expiration,expiry,today)
   return <>
     <PageHeading title="Your customers." eyebrow="MANAGER · CUSTOMER MANAGEMENT">Find a customer and manage their account offer. Paid bookings keep their agreed prices.</PageHeading>
     {notice&&<FeedbackNotice {...notice} close={()=>setNotice(null)}/>}
@@ -74,11 +77,11 @@ export function CustomerManagement() {
           <label className="discount-radio"><input type="radio" name="discount-usage" value="one_time" checked={usage==='one_time'} onChange={()=>setUsage('one_time')}/><span><strong>One-time only</strong><small>Used after one booking’s first verified payment.</small></span></label>
         </fieldset>
         <fieldset disabled={mutation.isPending}><legend>Expiration</legend>
-          <label className="discount-expiration"><input type="radio" name="discount-expiration" checked={!expires} onChange={()=>setExpires(false)}/>No expiration</label>
-          <label className="discount-expiration"><input type="radio" name="discount-expiration" checked={expires} onChange={()=>setExpires(true)}/>Ends on</label>
-          {expires&&<label>Last valid day (Manila)<input name="discount-expiry" type="date" value={expiry} min={today} required onChange={e=>setExpiry(e.target.value)}/></label>}
+          {expirationOptions.map(option=><label key={option.value} className="discount-expiration"><input type="radio" name="discount-expiration" value={option.value} checked={expiration===option.value} onChange={()=>setExpiration(option.value)}/>{option.label}</label>)}
+          {expiration==='specific_date'&&<label>Last valid day (Manila)<input name="discount-expiry" type="date" value={expiry} min={today} required onChange={e=>setExpiry(e.target.value)}/></label>}
+          {(expiration==='30_days'||expiration==='90_days')&&<small>Calculated from the successful save date in Manila. Saving an edited offer starts a new validity period.</small>}
         </fieldset>
-        <p className="account-offer" aria-live="polite">{currentPercent||'—'}% off · {discountSummary(usage,expires?expiry:null)}</p>
+        <p className="account-offer" aria-live="polite"><strong>{currentPercent||'—'}% Discount</strong><br/>Usage: {usage==='one_time'?'One-time only':'Every future booking'}<br/>Expiration: {expirationOptions.find(o=>o.value===expiration)?.label}{expiration!=='none'&&<><br/>Valid Until: {previewExpiry?discountDate(previewExpiry)+' · end of day (Manila)':'Choose a date'}</>}</p>
         {fieldError&&<p className="error" role="alert">{fieldError}</p>}
         <div className="actions"><button type="button" className="button secondary" disabled={mutation.isPending} onClick={()=>setTarget(null)}>Cancel</button><button className="button" disabled={mutation.isPending}>{mutation.isPending?'Saving…':'Save Discount'}</button></div>
       </form>
