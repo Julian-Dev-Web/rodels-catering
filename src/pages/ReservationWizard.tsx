@@ -1054,7 +1054,7 @@ export function ReservationWizard() {
                 <div className="review-summary">
                   <h3>{values.event_name}</h3>
                   <p>
-                    {date(values.event_date)} · {timeLabel(values.event_time)}{' '}
+                    {Number.isFinite(Date.parse(values.event_date)) ? date(values.event_date) : 'Choose an event date'} · {timeLabel(values.event_time)}{' '}
                     Manila · {values.guests} guests
                   </p>
                   <p>

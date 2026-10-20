@@ -6,6 +6,7 @@
 - Cleaned the sticky price summary with readable package, setup, extras and chair labels. Unnecessary zero-price extras are hidden; the included setup remains visible. Subtotal, applicable customer discount, VAT amounts, final total, 50% down payment, verified payments and remaining balance remain available.
 - Moved quotation/tax disclosures outside the sticky sidebar into **Quotation and tax information**. Payment/receipt/PDF disclosures remain unchanged. The current unconfirmed business tax configuration is still identified as awaiting business/accounting confirmation; the quotation is not represented as a BIR tax invoice.
 - Made validation specific to the current wizard step. Finalize validates all required steps and checks current event-time and equipment availability. Errors appear beside affected fields, focus/scroll to the first invalid field and direct the customer back to the relevant step when needed.
+- Fixed direct Review-page reloads: the initial blank date is displayed safely while a saved draft loads, instead of causing the application error screen. An incomplete review remains editable and Finalize returns to the missing menu step.
 - Kept Save Draft independent of final-booking validation, including incomplete drafts. Existing local persistence, server drafts, optimistic draft version checks and saved contact behavior remain in place.
 - Empty, null or omitted optional allergy declarations, notes, setup inclusions and optional quantity maps are normalized appropriately. Clearing quantity inputs becomes zero; clearing optional age becomes null. Supplied values retain their length, integer and range validation.
 - Theme, colors, age, allergy notes and optional extras may be skipped. Required contact, venue, date/time, package guest limits, exact dish count, drink, dessert, seating and consent remain enforced. Selecting Other Contact requires a valid Philippine mobile number; saving that number remains optional.
@@ -47,6 +48,7 @@ Original rows were hashed before rollout across ten protected tables: profiles, 
 | Edge Function type checks | Passed for the nine configured functions. |
 | Browser, production build | Passed desktop and 390px mobile checks against real Supabase using an isolated temporary customer. |
 | Incomplete draft | Saved before required booking fields were completed; subsequent Next correctly focused the event-name error. |
+| Direct review/reload | Opened an incomplete saved draft directly at Review; it rendered without crashing. Finalize returned to the missing-menu step with inline validation. |
 | Contact/menu validation | Other Contact rejected an empty number; the saved primary number worked. Empty required menu selections were blocked. |
 | Optional-value persistence | Voluntary age/theme/colors survived Save Draft and reload, then could be cleared successfully. |
 | Complete booking | Reached review and finalized an unpaid reservation with blank age/theme/colors/allergy notes, no declared allergens, no optional extras and no forced saved alternate contact. |
