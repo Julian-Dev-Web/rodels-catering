@@ -61,4 +61,11 @@ SQL regressions additionally verify retained historical notes, cross-customer re
 
 - Monoblock physical stock remains unconfigured in the existing deployment. Its inventory safeguards are preserved. The isolated finalization test selected 100 Elegant Chairs rather than inventing Monoblock stock.
 - Business/accounting confirmation of the configured VAT treatment remains outstanding. This change preserves the configured calculation and the pending-confirmation disclosure.
-- Live production-release verification and the final post-cleanup preservation comparison are recorded below after deployment.
+
+## Final release evidence
+
+- Implementation commits: `410fe46` (booking cleanup/migration) and `52cab5c` (direct-review reload safeguard), pushed to GitHub `main`.
+- Production domain: `https://www.rodelscatering.online`. The served entry bundle matched the tested build, `/assets/index-DKu6WA77.js`.
+- The complete browser scenario passed on the live domain, including direct incomplete-Review navigation, final validation returning to the missing-menu step, Save Draft/reload, saved and alternate contact behavior, mobile layout, automatic 10% account discount and successful unpaid finalization with every genuine optional field blank.
+- All isolated QA accounts, unpaid bookings, drafts, assignment fixtures and generated QA notifications were cleaned. The final comparison again found **no changed original rows across the ten protected tables**. Audit history was retained.
+- Supabase migration 0033 and the updated backup-export function are already deployed. No manual SQL application is required for this release.
