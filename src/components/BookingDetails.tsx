@@ -13,7 +13,7 @@ import { downloadReportPdf, type ReportDocument } from '../lib/reports'
 import { useState } from 'react'
 import { FinancialBreakdown } from './FinancialBreakdown'
 import { financialRows } from '../lib/financial'
-import { useAllergyWarnings } from './AllergyFields'
+import { AllergyRiskText,useAllergyWarnings } from './AllergyFields'
 import { DiscountAssignment } from '../pages/PanelOperations'
 type Children = Record<
   | 'reservation_items'
@@ -118,7 +118,7 @@ export function BookingSelections({
           .join(', ') || 'Not selected'}
       </dd>
       <dt>Allergy declarations and acknowledgment</dt>
-      <dd className="allergy-panel"><strong>Food allergy / preparation caution</strong><p>Declared: {(r.allergy_allergen_ids||[]).join(', ')||'None declared'}. {r.allergy_notes}</p>{allergyWarnings.data?.map(w=><p className="allergy-warning" key={w.token}>{w.dish}: may contain {w.allergen}. {(r.allergy_acknowledgments||[]).some(a=>a.token===w.token)?'Customer acknowledged this ingredient warning.':'Acknowledgment is missing or needs review after an ingredient/selection change.'}</p>)}<p>Unknown ingredient information is not a safety guarantee. Confirm ingredients and cross-contact risks with the catering team.</p></dd>
+      <dd className="allergy-panel"><strong>Food allergy / preparation caution</strong><p>Declared: {(r.allergy_allergen_ids||[]).join(', ')||'None declared'}. {r.allergy_notes}</p>{r.allergy_warning_snapshot?.length?<><h4>Recorded at booking submission</h4>{r.allergy_warning_snapshot.map(w=><div className="allergy-warning" key={w.token}><strong>{w.dish}</strong><AllergyRiskText warning={w}/><p>{w.acknowledged?'Customer explicitly acknowledged this warning.':'No acknowledgment required for this reviewed recipe result.'} {w.acknowledged_at&&dateTime(w.acknowledged_at)}</p><small>Recipe reference: {w.recipe_hash}</small></div>)}</>:<p>No ingredient-warning snapshot was recorded for this historical booking, or no allergies were declared. Existing declarations and acknowledgment records are retained.</p>}<details><summary>Current recipe review and staff follow-up</summary>{allergyWarnings.error&&<ErrorState error={allergyWarnings.error}/>} {allergyWarnings.data?.map(w=><div className="allergy-warning" key={w.token}><strong>{w.dish}</strong><AllergyRiskText warning={w}/><p>{(r.allergy_acknowledgments||[]).some(a=>a.token===w.token)?'Customer acknowledgment matches this recipe.':'Review current risks with the customer; historical booking terms and payments remain unchanged.'}</p></div>)}</details><p>Confirm ingredients and cross-contact risks with the catering team. Acknowledgment does not make a dish allergen-free.</p></dd>
       <dt>Terms/privacy consent</dt>
       <dd>
         {r.consent_at

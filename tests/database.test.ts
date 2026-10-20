@@ -245,7 +245,7 @@ describe('system administration and private application export', () => {
       exclusions: string[]
     }>('select export_application_snapshot() as value')
     expect(snapshot.format).toBe('rodelconnect-application-export')
-    expect(Object.keys(snapshot.tables)).toHaveLength(47)
+    expect(Object.keys(snapshot.tables)).toHaveLength(50)
     expect(snapshot.tables.profiles).toHaveLength(5)
     expect(snapshot.tables).not.toHaveProperty('users')
     expect(snapshot.tables).not.toHaveProperty('storage.objects')
@@ -1639,7 +1639,7 @@ describe('catalog food photographs',()=>{
  })
  it('exports the matching photo schema without granting customer access to the operator snapshot',async()=>{
   await identity('customer');await expect(db.query('select export_application_snapshot()')).rejects.toThrow(/permission denied/)
-  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0033_optional_booking_fields.sql')
+  await identity('operator');expect((await scalar<{schema_version:string}>('select export_application_snapshot() as value')).schema_version).toBe('0034_ingredient_allergy_warnings.sql')
  })
 })
 
@@ -1683,6 +1683,74 @@ describe('shared whole-day Elegant Chair inventory',()=>{
 async function draftPayloadFrom(rid:string,day:string){
  return scalar<Record<string,unknown>>(`select to_jsonb(r)||jsonb_build_object('id',null,'event_date',$2::text,'consent_accepted',true,'setup_id',(select event_setup_id from reservation_event_setups where reservation_id=r.id),'dish_ids',array(select dish_id from reservation_items where reservation_id=r.id),'table_type_id',(select table_type_id from reservation_tables_chairs where reservation_id=r.id limit 1),'chairs',(select jsonb_agg(jsonb_build_object('id',chair_type_id,'quantity',chair_quantity)) from reservation_tables_chairs where reservation_id=r.id),'feature_ids','[]'::jsonb,'add_ons','[]'::jsonb) as value from reservations r where id=$1`,[rid,day])
 }
+describe('ingredient-backed allergy matching and recipe authorization',()=>{
+ // Artificial recipes below are isolated test evidence, never production seeds.
+ type W=import('../src/lib/allergy').AllergyWarning
+ type I=import('../src/lib/allergy').RecipeIngredient
+ const ingredient=(name:string,tags:string[]=[],aliases:string[]=[],component_of=''):I=>({name,allergen_ids:tags,aliases,component_of,source_note:'Isolated test recipe; not business recipe data'})
+ async function recipe(name:string,items:I[],state='verified',contacts:string[]=[],notes=''){
+  await identity('manager');const id=await scalar<string>('insert into dishes(name) values($1) returning id as value',[name]);
+  await db.query('select save_dish_recipe($1,$2,$3,$4,$5,$6)',[id,JSON.stringify(items),state,contacts,notes,state==='verified']);await identity('customer');return id;
+ }
+ const warnings=(ids:string[],declared:string[]=[],notes='')=>scalar<W[]>('select allergy_warnings($1,$2,$3) as value',[declared,notes,ids]);
+ it('matches Egg to confirmed quail eggs and groups the full risk under that dish',async()=>{
+  const id=await recipe('Green Peas with Quail Eggs',[ingredient('Quail eggs',['egg'],['quail egg']),ingredient('Green peas')]);
+  const [w]=await warnings([id],['egg']);expect(w.status).toBe('contains');expect(w.requires_ack).toBe(true);expect(w.matches).toEqual([expect.objectContaining({allergen_id:'egg',ingredient:'Quail eggs'})]);
+  expect(await warnings([id])).toEqual([]);
+  expect(await warnings([id],[],' \t\n ')).toEqual([]);
+ })
+ it('matches every standardized allergen including fish/shellfish aliases, dairy, soy and compound ingredients',async()=>{
+  for(const [input,canonical,label] of[['milk_dairy','milk','Label-confirmed cream'],['soy','soy','Label-confirmed tofu'],['peanut','peanut','Peanuts'],['fish','seafood','Fish'],['shellfish','seafood','Shrimp'],['sesame','sesame','Sesame seeds'],['tree_nuts','tree_nuts','Almonds'],['wheat_gluten','wheat','Label-confirmed wheat flour']]){
+   const id=await recipe('Allergen fixture '+input,[ingredient(label,[input],[],'Confirmed sauce or main ingredient')]);const [w]=await warnings([id],[canonical]);expect(w.matches[0]).toMatchObject({allergen_id:canonical,ingredient:label});expect(w.requires_ack).toBe(true);
+  }
+  const id=await recipe('Multiple allergen fixture',[ingredient('Label-confirmed egg mayonnaise',['egg'],[],'Dressing'),ingredient('Label-confirmed dairy butter',['milk']),ingredient('Label-confirmed soy sauce',['soy','wheat'])]);const [w]=await warnings([id],['egg','milk','soy','wheat']);expect(w.matches.map(m=>m.allergen_id).sort()).toEqual(['egg','milk','soy','wheat']);
+ })
+ it('uses exact custom ingredient names and reliable aliases, not short substrings or unstructured guesses',async()=>{
+  const id=await recipe('Custom ingredient fixture',[ingredient('Garlic',[],['bawang']),ingredient('Peanuts',['peanut']),ingredient('Green onion',[],['spring onion'])]);
+  expect((await warnings([id],[],'garlic, spring onion'))[0].matches.map(m=>m.ingredient).sort()).toEqual(['Garlic','Green onion']);
+  expect((await warnings([id],[],'BAWANG'))[0].matches[0].ingredient).toBe('Garlic');
+  const [short]=await warnings([id],[],'pea');expect(short.matches).toEqual([]);expect(short.risk_types).toContain('custom_unresolved');
+  const [text]=await warnings([id],[],'I react badly to some sauces');expect(text.status).toBe('uncertain');expect(text.requires_ack).toBe(true);
+  const [unresolved]=await warnings([id],[],'???');expect(unresolved.risk_types).toContain('custom_unresolved');expect(unresolved.requires_ack).toBe(true);
+ })
+ it('separates confirmed matches, unknown recipes and possible cross-contact without safe-food claims',async()=>{
+  const incomplete=await recipe('Missing recipe fixture',[],'incomplete');let [w]=await warnings([incomplete],['egg']);expect(w.risk_types).toEqual(['incomplete']);expect(w.requires_ack).toBe(true);
+  const known=await recipe('Reviewed no match fixture',[ingredient('Rice')]);[w]=await warnings([known],['egg']);expect(w.status).toBe('reviewed_no_match');expect(w.requires_ack).toBe(false);
+  const cross=await recipe('Shared equipment fixture',[ingredient('Rice')],'verified',['egg'],'Shared preparation equipment');[w]=await warnings([cross],['egg']);expect(w.matches).toEqual([]);expect(w.risk_types).toContain('cross_contact');expect(w.cross_contact_allergens).toEqual(['Egg']);
+ })
+ it('invalidates acknowledgments when declarations, notes, selections or recipe revisions change',async()=>{
+  const first=await recipe('Revision fixture',[ingredient('Egg',['egg'])]),second=await recipe('Added dish fixture',[ingredient('Milk',['milk'])]);
+  const original=(await warnings([first],['egg']))[0];expect((await warnings([first],['egg','milk']))[0].token).not.toBe(original.token);expect((await warnings([first],['egg'],'garlic'))[0].token).not.toBe(original.token);
+  expect((await warnings([first,second],['egg'])).find(w=>w.dish_id===first)!.token).not.toBe(original.token);
+  await identity('manager');await db.query('select save_dish_recipe($1,$2,$3)',[first,JSON.stringify([ingredient('Egg',['egg'],['hen egg'])]),'incomplete']);await identity('customer');expect((await warnings([first],['egg']))[0].token).not.toBe(original.token);
+  expect(await warnings([second])).toEqual([]);
+ })
+ it('rejects browser bypass/stale tokens and records an authoritative acknowledged warning snapshot',async()=>{
+  const ids=[await recipe('Acknowledged egg fixture',[ingredient('Quail eggs',['egg'])]),await recipe('Reviewed plain fixture A',[ingredient('Rice')]),await recipe('Reviewed plain fixture B',[ingredient('Salt')])];
+  const data={dish_ids:ids,allergy_allergen_ids:['egg'],allergy_notes:''};let rid=await ownerDraft('2097-01-01',100,'Monoblock','Simple buffet setup',undefined,'Round table',data);
+  await expect(db.query('select finalize_reservation($1)',[rid])).rejects.toThrow(/Allergy acknowledgment required/);
+  const good=await warnings(ids,['egg']);rid=await ownerDraft('2097-01-01',100,'Monoblock','Simple buffet setup',undefined,'Round table',{...data,id:rid,allergy_acknowledgments:[{...good[0],token:'forged'}]});await expect(db.query('select finalize_reservation($1)',[rid])).rejects.toThrow(/Allergy acknowledgment required/);
+  rid=await ownerDraft('2097-01-01',100,'Monoblock','Simple buffet setup',undefined,'Round table',{...data,id:rid,allergy_acknowledgments:good.filter(w=>w.requires_ack)});await db.query('select finalize_reservation($1)',[rid]);
+  const snapshot=await scalar<(W&{acknowledged:boolean;acknowledged_at:string})[]>('select allergy_warning_snapshot as value from reservations where id=$1',[rid]);expect(snapshot.find(w=>w.requires_ack)).toMatchObject({acknowledged:true,matches:[expect.objectContaining({ingredient:'Quail eggs'})]});expect(snapshot.find(w=>w.requires_ack)!.acknowledged_at).toBeTruthy();
+  await identity('manager');await db.query('select save_dish_recipe($1,$2,$3)',[ids[0],JSON.stringify([ingredient('Chicken egg',['egg'])]),'incomplete']);expect(await scalar('select allergy_warning_snapshot as value from reservations where id=$1',[rid])).toEqual(snapshot);
+  await identity('other_customer');expect(await scalar('select count(*)::int as value from reservations where id=$1',[rid])).toBe(0);
+ })
+ it('preserves raw allergy notes and acknowledgments in drafts, and recomputes at submission after staff edits',async()=>{
+  const base=await ownerDraft('2097-02-01',100),payload=await draftPayloadFrom(base,'2097-02-02');const ids=[await recipe('Draft garlic fixture',[ingredient('Garlic')]),await recipe('Draft plain A',[ingredient('Rice')]),await recipe('Draft plain B',[ingredient('Salt')])];
+  const note='Garlic';const original=await warnings(ids,[],note);Object.assign(payload,{dish_ids:ids,allergy_allergen_ids:[],allergy_notes:note,allergy_acknowledgments:original.filter(w=>w.requires_ack)});
+  const d=await scalar<{id:string;version:number;data:Record<string,unknown>}>('select to_jsonb(save_booking_draft($1)) as value',[JSON.stringify(payload)]);expect(d.data.allergy_notes).toBe(note);expect(d.data.allergy_acknowledgments).toEqual(original.filter(w=>w.requires_ack));
+  await identity('manager');await db.query('select save_dish_recipe($1,$2,$3)',[ids[0],JSON.stringify([ingredient('Garlic',[],['bawang'])]),'incomplete']);await identity('customer');await expect(db.query('select submit_booking_draft($1,$2)',[d.id,d.version])).rejects.toThrow(/Allergy acknowledgment required/);expect(await scalar('select submitted_at as value from reservation_drafts where id=$1',[d.id])).toBeNull();
+  Object.assign(payload,{allergy_acknowledgments:(await warnings(ids,[],note)).filter(w=>w.requires_ack)});const updated=await scalar<{version:number}>('select to_jsonb(save_booking_draft($1,$2,3,$3)) as value',[JSON.stringify(payload),d.id,d.version]);const rid=await scalar<string>('select submit_booking_draft($1,$2) as value',[d.id,updated.version]);expect(await scalar('select allergy_notes as value from reservations where id=$1',[rid])).toBe(note);
+ })
+ it('enforces Manager authorization, explicit complete-recipe confirmation and private customer snapshots',async()=>{
+  await identity('manager');const id=await scalar<string>("insert into dishes(name) values('Protected recipe fixture') returning id as value");await expect(db.query('select save_dish_recipe($1,$2,$3)',[id,'[]','verified'])).rejects.toThrow(/actual ingredients/);
+  await expect(db.query('select save_dish_recipe($1,$2,$3)',[id,JSON.stringify([ingredient('Rice')]),'verified'])).rejects.toThrow(/explicitly confirm/);
+  await db.query('select save_dish_recipe($1,$2,$3,$4,$5,true)',[id,JSON.stringify([ingredient('Rice')]),'verified',[],'']);expect(await scalar('select ingredient_reviewed_by::text as value from dishes where id=$1',[id])).toBe(users.manager);
+  await identity('customer');await expect(db.query('select save_dish_recipe($1,$2,$3)',[id,'[]','incomplete'])).rejects.toThrow(/Staff/);await expect(db.query('select recipe_review_queue()')).rejects.toThrow(/Staff/);await expect(db.query("update dishes set ingredient_review_state='verified' where id=$1",[id])).rejects.toThrow(/permission/);await expect(db.query("insert into recipe_ingredients(name,normalized_name,definition_key) values('Forged','forged','forged')")).rejects.toThrow(/permission/);
+  await identity('operator');await db.exec('set role anon');await expect(db.query('select allergy_warnings($1,$2,$3)',[['egg'],'',[id]])).rejects.toThrow(/permission/);await expect(db.query('select * from dish_ingredients')).rejects.toThrow(/permission/);await identity('operator');
+ })
+})
+
 describe('persistent incomplete drafts and allergy acknowledgments',()=>{
  it('saves missing required fields without a reservation/hold, protects ownership/version and submits exactly once',async()=>{
   const template=await ownerDraft('2088-01-01',100),complete=await draftPayloadFrom(template,'2088-01-02');
@@ -1700,9 +1768,9 @@ describe('persistent incomplete drafts and allergy acknowledgments',()=>{
   await identity('customer');const shrimp=await scalar<string>("select id as value from dishes where name='Shrimp Tempura'"),chicken=await scalar<string>("select id as value from dishes where name='Fried Chicken'"),beef=await scalar<string>("select id as value from dishes where name='Korean Beef'");const dishes=[shrimp,chicken,beef];
   const payload={allergy_allergen_ids:['seafood'],allergy_notes:'Please discuss cross-contact with us',dish_ids:dishes};let rid=await ownerDraft('2088-02-01',100,'Monoblock','Simple buffet setup',undefined,'Round table',payload);
   await expect(db.query('select finalize_reservation($1)',[rid])).rejects.toThrow(/Allergy acknowledgment required/);
-  const warnings=await scalar<{token:string;dish_id:string;allergen_id:string}[]>('select allergy_warnings($1,$2,$3) as value',[['seafood'],payload.allergy_notes,dishes]);expect(warnings).toHaveLength(1);
+  const warnings=await scalar<{token:string;dish_id:string;allergen_id:string}[]>('select allergy_warnings($1,$2,$3) as value',[['seafood'],payload.allergy_notes,dishes]);expect(warnings).toHaveLength(3);
   rid=await ownerDraft('2088-02-01',100,'Monoblock','Simple buffet setup',undefined,'Round table',{...payload,id:rid,allergy_acknowledgments:warnings});await db.query('select finalize_reservation($1)',[rid]);
-  await identity('manager');await db.query('select configure_dish_allergens($1,$2,true)',[shrimp,['seafood','milk']]);const changed=await scalar<{token:string}[]>('select allergy_warnings($1,$2,$3) as value',[['seafood'],payload.allergy_notes,dishes]);expect(changed[0].token).not.toBe(warnings[0].token);
+  await identity('manager');await db.query('select configure_dish_allergens($1,$2,true)',[shrimp,['seafood','milk']]);const changed=await scalar<{token:string;dish_id:string}[]>('select allergy_warnings($1,$2,$3) as value',[['seafood'],payload.allergy_notes,dishes]);expect(changed.find(w=>w.dish_id===shrimp)!.token).not.toBe(warnings.find(w=>w.dish_id===shrimp)!.token);
   await identity('customer');await expect(db.query('select configure_dish_allergens($1,$2,true)',[shrimp,[]])).rejects.toThrow(/Staff/);
   expect(await scalar('select allergen_info_reviewed as value from dishes where id=$1',[chicken])).toBe(false);
  })

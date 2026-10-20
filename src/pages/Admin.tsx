@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect,useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -35,6 +35,7 @@ import type { Field } from '../components/Form'
 import { FoodPhoto } from '../components/FoodPhoto'
 import { CatalogPhotoEditor } from '../components/CatalogPhotoEditor'
 import { DishAllergenEditor } from '../components/AllergyFields'
+import { recipeStatus } from '../lib/allergy'
 import { isFoodKind } from '../lib/menu-photos'
 import type { CatalogItem } from '../types'
 import { Stat } from './Customer'
@@ -640,6 +641,9 @@ export function CatalogManager({
     [editing, setEditing] = useState<RecordRow | null | undefined>(undefined),
     [photoEditing, setPhotoEditing] = useState<RecordRow | null>(null)
   const [allergenEditing,setAllergenEditing]=useState<RecordRow|null>(null)
+  const [recipeFilter,setRecipeFilter]=useState('all'),[recipeFeedback,setRecipeFeedback]=useState('')
+  useEffect(()=>{const saved=(event:Event)=>setRecipeFeedback('Ingredients and allergens saved for '+String((event as CustomEvent).detail)+'.');window.addEventListener('recipe-saved',saved);return()=>window.removeEventListener('recipe-saved',saved)},[])
+  const recipeQueue=useQuery({queryKey:['recipe-review-queue'],enabled:table==='dishes'&&area==='menu',queryFn:()=>rpc<RecordRow[]>('recipe_review_queue')})
   const query = useQuery({
     queryKey: ['manage-catalog', table],
     queryFn: () => records<RecordRow>(table, 'name', true),
@@ -780,16 +784,18 @@ export function CatalogManager({
           </button>
         ))}
       </div>
+      {table==='dishes'&&area==='menu'&&<><p>Confirm actual recipes before marking Verified. Missing lists never mean allergen-free. Review priority uses booking frequency; historical booking allergy data stays private.</p><label>Ingredient review queue<select aria-label="Ingredient review queue" value={recipeFilter} onChange={e=>setRecipeFilter(e.target.value)}><option value="all">All dishes</option><option value="needs_review">Needs review / missing ingredients</option><option value="verified">Verified recipes</option></select></label>{recipeFeedback&&<p className="feedback-notice" role="status">{recipeFeedback}</p>}{recipeQueue.error&&<ErrorState error={recipeQueue.error}/>}</>}
       {query.isPending ? (
         <Loading />
       ) : query.error ? (
         <ErrorState error={query.error} />
       ) : (
         <DataTable
-          rows={query.data}
+          rows={table==='dishes'&&area==='menu'?query.data.map(r=>({...r,...recipeQueue.data?.find(x=>x.id===r.id)})).filter(r=>recipeFilter==='all'||(recipeFilter==='verified'?r.ingredient_review_state==='verified':r.ingredient_review_state!=='verified')).sort((a,b)=>Number(b.booking_count||0)-Number(a.booking_count||0)||String(a.name).localeCompare(String(b.name))):query.data}
           columns={[
             ...(isFoodKind(table) ? [{ key:'image_url',label:'Photo',render:(row:RecordRow)=><div className="food-table-photo"><FoodPhoto item={{name:String(row.name),image_url:row.image_url?String(row.image_url):undefined}} kind={table as 'dishes'|'drinks'|'desserts'}/></div> }] : []),
             { key: 'name', label: 'Name' },
+            ...(table==='dishes'&&area==='menu'?[{key:'ingredient_review_state',label:'Ingredients',render:(r:RecordRow)=><span className={'badge '+(r.ingredient_review_state==='verified'?'status-active':'status-pending')}>{recipeStatus(r.ingredient_review_state,Number(r.ingredient_count??0))}</span>},{key:'booking_count',label:'Booking selections'}]:[]),
             ...(priced
               ? [
                   {
@@ -818,7 +824,7 @@ export function CatalogManager({
                 Edit
               </button>}
               {isFoodKind(table)&&<button className="text-button" onClick={()=>setPhotoEditing(r)}>Photo</button>}
-              {table==='dishes'&&area==='menu'&&<button className="text-button" onClick={()=>setAllergenEditing(r)}>Allergens</button>}
+              {table==='dishes'&&area==='menu'&&<button className="text-button" onClick={()=>setAllergenEditing(r)}>Edit Ingredients & Allergens</button>}
               {area !== 'food-photos' && <Action
                 kind="small secondary"
                 label={r.active ? 'Archive' : 'Activate'}
@@ -840,7 +846,7 @@ export function CatalogManager({
         />
       )}{' '}
       {photoEditing&&isFoodKind(table)&&<Modal title={'Photo for '+String(photoEditing.name)} close={()=>setPhotoEditing(null)}><CatalogPhotoEditor table={table} item={photoEditing as unknown as CatalogItem} close={()=>setPhotoEditing(null)}/></Modal>}
-      {allergenEditing&&<Modal title={'Allergens for '+String(allergenEditing.name)} close={()=>setAllergenEditing(null)}><DishAllergenEditor dish={allergenEditing as unknown as CatalogItem} close={()=>setAllergenEditing(null)}/></Modal>}
+      {allergenEditing&&<Modal title={'Ingredients & Allergens — '+String(allergenEditing.name)} close={()=>setAllergenEditing(null)}><DishAllergenEditor dish={allergenEditing as unknown as CatalogItem} close={()=>setAllergenEditing(null)}/></Modal>}
       {editing !== undefined && (
         <Modal
           title={(editing ? 'Edit ' : 'Add ') + human(table).replace(/s$/, '')}

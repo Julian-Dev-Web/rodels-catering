@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { Catalog } from '../types'
 import { earliestEventDate } from './format'
 import { validMobile } from './booking'
+import { hasAllergyDeclaration,requiresAllergyAck } from './allergy'
 
 const emptyText=(value:unknown)=>value==null?'':value
 export const optionalQuantity=(value:unknown)=>value==null||value===''||(typeof value==='number'&&Number.isNaN(value))?0:Number(value)
@@ -17,7 +18,7 @@ export const bookingSchema=z.object({
   menu_set_id:z.string().min(1,'Choose a package.'),
   drink_id:z.string(),dessert_id:z.string(),setup_id:z.string(),dish_ids:z.array(z.string()),
   allergy_allergen_ids:list,allergy_notes:text(2000),
-  allergy_acknowledgments:z.preprocess(v=>v==null?[]:v,z.array(z.object({dish_id:z.string(),allergen_id:z.string(),token:z.string()}))),
+  allergy_acknowledgments:z.preprocess(v=>v==null?[]:v,z.array(z.object({dish_id:z.string(),allergen_id:z.string(),token:z.string(),matched_allergens:z.array(z.string()).optional(),risk_types:z.array(z.string()).optional(),recipe_hash:z.string().optional(),acknowledged_at:z.string().optional()}))),
   feature_ids:list,table_type_id:z.string(),
   event_preferences:z.object({occasion_type:z.enum(['birthday','wedding','other']),theme:text(200),colors:text(200),celebrant_age:z.preprocess(optionalAge,z.number().int('Enter a whole age.').min(1,'Age must be between 1 and 120.').max(120,'Age must be between 1 and 120.').nullable()),setup_inclusions:list}),
   consent_accepted:z.boolean(),consent_version:z.string(),save_contact:z.preprocess(v=>v==null?false:v,z.boolean()),
@@ -30,7 +31,7 @@ export const bookingSchema=z.object({
   }),
 })
 export type Values=z.output<typeof bookingSchema>
-interface Warnings {isFetching:boolean;error:unknown;data?:{token:string}[]}
+interface Warnings {isFetching:boolean;error:unknown;data?:{token:string;requires_ack?:boolean}[]}
 const fields=[
   ['event_name','event_date','event_time','guests','menu_set_id','address','consent_accepted','consent_version'],
   ['dish_ids','drink_id','dessert_id','allergy_allergen_ids','allergy_notes','allergy_acknowledgments'],
@@ -56,7 +57,7 @@ export function bookingStepSchema(step:number,catalog:Catalog|undefined,warnings
       if(v.dish_ids.length!==selected?.dish_count)error('dish_ids',`Choose exactly ${selected?.dish_count||'the required number of'} dishes.`)
       if(!v.drink_id)error('drink_id','Choose one drink.')
       if(!v.dessert_id)error('dessert_id','Choose one dessert.')
-      if(v.allergy_allergen_ids.length&&(warnings.isFetching||warnings.error||warnings.data?.some(w=>!v.allergy_acknowledgments.some(a=>a.token===w.token))))error('allergy_acknowledgments','Review and acknowledge each matching allergy warning before continuing.')
+      if(v.dish_ids.length>0&&hasAllergyDeclaration(v.allergy_allergen_ids,v.allergy_notes)&&(warnings.isFetching||warnings.error||warnings.data===undefined||warnings.data.some(w=>requiresAllergyAck(w)&&!v.allergy_acknowledgments.some(a=>a.token===w.token))))error('allergy_acknowledgments','Review and acknowledge each selected dish warning before continuing.')
     }
     if(step===2||step===3){
       if(!v.setup_id)error('setup_id','Choose an event setup.')

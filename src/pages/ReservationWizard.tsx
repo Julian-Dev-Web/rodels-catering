@@ -33,7 +33,8 @@ import {
 } from '../lib/booking'
 import { ErrorState, Loading, PageHeading } from '../components/ui'
 import { FoodPhoto } from '../components/FoodPhoto'
-import { AllergyFields, useAllergyWarnings } from '../components/AllergyFields'
+import { AllergyFields, DishAllergyWarning, useAllergyWarnings } from '../components/AllergyFields'
+import { hasAllergyDeclaration, requiresAllergyAck } from '../lib/allergy'
 import { FinancialBreakdown } from '../components/FinancialBreakdown'
 import { MenuSelectionProgress } from '../components/MenuSelectionProgress'
 import { bookingPriceLines, effectiveDiscount, financialQuote, type TaxPolicy } from '../lib/financial'
@@ -299,6 +300,12 @@ export function ReservationWizard() {
   }})
   const allergyWarnings = useAllergyWarnings(values.allergy_allergen_ids,values.allergy_notes,values.dish_ids)
   useEffect(()=>{
+    if(allergyWarnings.isFetching||allergyWarnings.error)return
+    const tokens=new Set((allergyWarnings.data||[]).filter(requiresAllergyAck).map(w=>w.token))
+    const current=values.allergy_acknowledgments,valid=current.filter(a=>tokens.has(a.token))
+    if(valid.length!==current.length)form.setValue('allergy_acknowledgments',valid,{shouldDirty:true,shouldValidate:true})
+  },[allergyWarnings.data,allergyWarnings.isFetching,allergyWarnings.error,values.allergy_allergen_ids,values.allergy_notes,values.dish_ids,values.allergy_acknowledgments,form])
+  useEffect(()=>{
     if((step===1||step===3)&&form.getFieldState('allergy_acknowledgments').error&&!allergyWarnings.isFetching&&!allergyWarnings.error)void form.trigger('allergy_acknowledgments')
   },[step,allergyWarnings.data,allergyWarnings.isFetching,allergyWarnings.error,form])
   const taxPolicy = useQuery({queryKey:['tax-policy'],queryFn:()=>rpc<TaxPolicy>('tax_configuration')})
@@ -499,7 +506,7 @@ export function ReservationWizard() {
     const target=bookingFieldStep(issue.path)
     if(target>=0&&target!==step){navigate(wizardPath(target),{state:{bookingIssue:issue}});return}
     requestAnimationFrame(()=>{
-      const input=[...document.getElementsByName(issue.path)].find(e=>!(e as HTMLInputElement).disabled) as HTMLElement|undefined
+      const input=((issue.path==='allergy_acknowledgments'?document.querySelector('[data-allergy-unacknowledged="true"] input'):null)||[...document.getElementsByName(issue.path)].find(e=>!(e as HTMLInputElement).disabled)) as HTMLElement|undefined
       const element=input||document.querySelector('.field-error')?.parentElement
       element?.scrollIntoView({behavior:'smooth',block:'center'})
       if(input)input.focus({preventScroll:true});else form.setFocus(issue.path as FieldPath<Values>)
@@ -783,14 +790,14 @@ export function ReservationWizard() {
                   {c.dishes
                     .filter(
                       (dish) =>
-                        (foodCategory === 'all' ||
+                        values.dish_ids.includes(dish.id) || ((foodCategory === 'all' ||
                           dish.category_id === foodCategory) &&
                         dish.name
                           .toLowerCase()
-                          .includes(foodSearch.toLowerCase().trim()),
+                          .includes(foodSearch.toLowerCase().trim())),
                     )
                     .map((d) => (
-                      <label className="selection food-choice" key={d.id}>
+                      <div className="food-choice-wrap" key={d.id}><label className="selection food-choice">
                         <input
                           type="checkbox"
                           value={d.id}
@@ -812,7 +819,7 @@ export function ReservationWizard() {
                             }
                           </small>
                         </span>
-                      </label>
+                      </label>{values.dish_ids.includes(d.id)&&allergyWarnings.data?.find(w=>w.dish_id===d.id)&&<DishAllergyWarning form={form} warning={allergyWarnings.data.find(w=>w.dish_id===d.id)!}/>}</div>
                     ))}
                 </div>
                 {(['drinks','desserts'] as const).map(kind => {
@@ -1162,7 +1169,7 @@ export function ReservationWizard() {
                 <button
                   type="button"
                   className="button"
-                  disabled={finalize.isPending || persistDraft.isPending || !values.consent_accepted || allergyWarnings.isFetching || !!allergyWarnings.error || !!allergyWarnings.data?.some(w=>!values.allergy_acknowledgments.some(a=>a.token===w.token))}
+                  disabled={finalize.isPending || persistDraft.isPending || !values.consent_accepted || (hasAllergyDeclaration(values.allergy_allergen_ids,values.allergy_notes)&&allergyWarnings.isFetching)}
                   onClick={()=>void handleSubmit(async v=>{if(await checkAvailability(v,3))finalize.mutate(v)},focusErrors)()}
                 >
                   {finalize.isPending

@@ -50,6 +50,7 @@ export interface CatalogItem {
   equipment_id?: string | null
   allergen_info_reviewed?: boolean
   allergen_revision?: number
+  ingredient_review_state?: 'not_reviewed'|'incomplete'|'verified'
 }
 export type CatalogTable =
   | 'menu_sets'
@@ -88,7 +89,8 @@ export interface Reservation {
   financial_snapshot?: import('./lib/financial').FinancialSnapshot | null
   allergy_allergen_ids?: string[]
   allergy_notes?: string
-  allergy_acknowledgments?: {dish_id:string;allergen_id:string;token:string}[]
+  allergy_acknowledgments?: import('./lib/allergy').AllergyAcknowledgment[]
+  allergy_warning_snapshot?: (import('./lib/allergy').AllergyWarning & {acknowledged:boolean;acknowledged_at:string|null;captured_at:string})[]
   booking_version?: number
   event_preferences?: import('./lib/booking').EventPreferences
   consent_version?: string | null

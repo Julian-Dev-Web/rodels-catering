@@ -16,7 +16,7 @@ function restoreShape(template: unknown, stored: unknown, field?: string): unkno
       ? stored
       : template
   if (Array.isArray(template) && field==='allergy_acknowledgments')
-    return Array.isArray(stored) ? stored.filter(v=>v&&typeof v==='object'&&['dish_id','allergen_id','token'].every(k=>typeof v[k]==='string'&&v[k].length<=200)).map(v=>({dish_id:v.dish_id,allergen_id:v.allergen_id,token:v.token})) : template
+    return Array.isArray(stored) ? stored.filter(v=>v&&typeof v==='object'&&['dish_id','allergen_id','token'].every(k=>typeof v[k]==='string'&&v[k].length<=200)).map(v=>({dish_id:v.dish_id,allergen_id:v.allergen_id,token:v.token,...Object.fromEntries(['matched_allergens','risk_types'].filter(k=>Array.isArray(v[k])&&v[k].length<=30&&v[k].every((x:unknown)=>typeof x==='string'&&x.length<=150)).map(k=>[k,v[k]])),...Object.fromEntries(['recipe_hash','acknowledged_at'].filter(k=>typeof v[k]==='string'&&v[k].length<=128).map(k=>[k,v[k]]))})) : template
   if (Array.isArray(template))
     return Array.isArray(stored) && stored.every((v) => typeof v === 'string')
       ? stored
