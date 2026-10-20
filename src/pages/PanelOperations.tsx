@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useReservations } from '../features/reservations'
+import { useAuth } from '../features/auth'
 import { records, rpc } from '../lib/supabase'
 import { money, todayManila } from '../lib/format'
 import { DataTable, ErrorState, Loading, Modal, PageHeading } from '../components/ui'
@@ -18,6 +20,12 @@ export function DiscountOffers() {
   return <><PageHeading title="Discounts and promotions." action={<button className="button" onClick={()=>{setKind('fixed');setEditing(null)}}>Create offer</button>}>One discount per unpaid booking. Staff apply offers; customers cannot assign them. Application dates use Asia/Manila. Usage caps count assigned bookings excluding cancelled, rejected and refunded bookings.</PageHeading>{offers.error&&<ErrorState error={offers.error}/>}<DataTable rows={offers.data||[]} columns={[{key:'name',label:'Offer'},{key:'kind',label:'Type'},{key:'value',label:'Discount',render:r=>r.kind==='percentage'?Number(r.value)/100+'%':money(Number(r.value))},{key:'active',label:'Active'},{key:'usage_cap',label:'Usage cap'}]} actions={r=><button className="text-button" onClick={()=>{setKind(String(r.kind));setEditing(r)}}>Edit offer</button>}/>{editing!==undefined&&<Modal title={editing?'Edit discount offer':'Create discount offer'} close={()=>setEditing(undefined)}><form className="form" onSubmit={e=>{e.preventDefault();mutation.mutate(e.currentTarget)}}><label>Name<input name="name" required minLength={3} maxLength={120} defaultValue={String(editing?.name||'')}/></label><label>Type<select value={kind} onChange={e=>setKind(e.target.value)}><option value="fixed">Fixed peso discount</option><option value="percentage">Percentage discount</option></select></label><label>{kind==='fixed'?'Discount in PHP':'Discount percent'}<input name="value" type="number" min={.01} max={kind==='percentage'?100:undefined} step=".01" required defaultValue={Number(editing?.value||0)/100||''}/></label><label>Minimum guests<input name="min_guests" type="number" min={1} required defaultValue={Number(editing?.min_guests||1)}/></label><label>Minimum subtotal in PHP<input name="min_total" type="number" min={0} step=".01" defaultValue={Number(editing?.min_total||0)/100}/></label><label>Starts on · optional<input type="date" name="starts_on" defaultValue={String(editing?.starts_on||'')}/></label><label>Ends on · optional<input type="date" name="ends_on" defaultValue={String(editing?.ends_on||'')}/></label><label>Usage cap · blank means no cap<input name="usage_cap" type="number" min={1} defaultValue={String(editing?.usage_cap||'')}/></label><label><input name="active" type="checkbox" defaultChecked={editing?Boolean(editing.active):true}/> Active</label>{mutation.error&&<ErrorState error={mutation.error}/>}<button className="button" disabled={mutation.isPending}>Save offer</button></form></Modal>}</>
 }
 export function DiscountAssignment({reservation:r}:{reservation:Reservation}) {
+  const {profile}=useAuth()
+  if(profile?.role==='manager')return <p>Account discounts are managed in <Link to="/manager/customers">Customer Management</Link>. Eligible future quotes apply them automatically.</p>
+  if(profile?.role!=='super_admin')return null
+  return <PromotionAssignment reservation={r}/>
+}
+function PromotionAssignment({reservation:r}:{reservation:Reservation}) {
   const [reason,setReason]=useState(''),[offer,setOffer]=useState(''),qc=useQueryClient()
   const offers=useQuery({queryKey:['discount-offers'],queryFn:()=>records<RecordRow>('discount_offers')})
   const mutation=useMutation({mutationFn:(remove:boolean)=>rpc('apply_reservation_discount',{rid:r.id,pid:remove?null:offer,reason}),onSuccess:()=>void qc.invalidateQueries()})

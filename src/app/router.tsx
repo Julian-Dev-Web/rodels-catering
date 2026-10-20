@@ -241,7 +241,7 @@ export function Router() {
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="calendar" element={<ManagerCalendar />} />
                 <Route path="equipment" element={<EquipmentManagement/>}/>
-                <Route path="discounts" element={<DiscountOffers/>}/>
+                <Route path="discounts" element={<Navigate to="/manager/customers" replace/>}/>
                 <Route path="customers" element={<CustomerManagement/>}/>
                 <Route path="upcoming" element={<ManagerUpcoming/>}/>
                 <Route path="operating-hours" element={<OperatingHours />} />
