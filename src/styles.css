@@ -3028,6 +3028,15 @@ input::placeholder, textarea::placeholder { color: #6b645c; opacity: 1; }
 .discount-radio small { display: block; }
 .discount-dialog .discount-expiration { display: flex; align-items: center; gap: .6rem; padding: .4rem 0; }
 .discount-expiration input { width: 1.1rem; flex: 0 0 auto; }
+.payment-history-entry { border: 1px solid var(--border, #d8cec1); padding: 1rem; border-radius: .6rem; margin: .8rem 0; overflow-wrap: anywhere; }
+.payment-history-entry h4 { margin: .8rem 0; }
+.payment-history-entry p { margin: .5rem 0; }
+.payment-email-status { margin-top: 1.5rem; padding: 1rem; background: #faf7f2; color: #39291d; border-radius: .6rem; }
+.change-comparison { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1.5rem; }
+.change-comparison .detail-list { grid-template-columns: 1fr; }
+.change-comparison .detail-list dt { font-weight: 600; }
+.booking-changes { margin: 1.5rem 0; }
+@media(max-width: 700px) { .change-comparison { grid-template-columns: 1fr; } .payment-history-entry .actions { flex-wrap: wrap; } }
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto !important;

@@ -1,3 +1,4 @@
+import type {ChangeProposal} from '../components/BookingChanges'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -47,7 +48,7 @@ import {
   type BookingWindow,
 } from '../components/EventTimeSelect'
 import type { CatalogItem } from '../types'
-import { bookingStepSchema, bookingFieldStep, bookingPayload, optionalQuantity, type Values } from '../lib/booking-validation'
+import { bookingStepSchema, bookingFieldStep, bookingPayload, bookingPayloadKey, optionalQuantity, type Values } from '../lib/booking-validation'
 export type { Values } from '../lib/booking-validation'
 const defaults: Values = {
   event_name: '',
@@ -124,7 +125,8 @@ function Select({
 export function ReservationWizard() {
   const { id, draftId } = useParams()
   const { profile } = useAuth()
-  const draftKey = bookingDraftKey(profile?.id, draftId ? 'saved:'+draftId : id)
+  const revisionMode = window.location.pathname.includes('/change/')
+  const draftKey = bookingDraftKey(profile?.id, revisionMode ? 'change:'+id : draftId ? 'saved:'+draftId : id)
   const savedDraft = useSavedDraft(draftId)
   const reservationKey=id||savedDraft.data?.reservation_id||undefined
   const savedVersion = useRef<number|null>(null)
@@ -141,6 +143,8 @@ export function ReservationWizard() {
   const initialized = useRef<string>('')
   const draftRevision = useRef<string | null>(null)
   const [quote, setQuote] = useState<Record<string, number> | null>(null)
+  const [changePreview,setChangePreview]=useState<(ChangeProposal&{formKey:string})|null>(null)
+  const [changeReason,setChangeReason]=useState('')
   const [foodSearch, setFoodSearch] = useState('')
   const [foodCategory, setFoodCategory] = useState('all')
   const step = location.pathname.endsWith('/menu')
@@ -354,6 +358,8 @@ export function ReservationWizard() {
       }
     }
   }, [values, catalog.data, form])
+  const previewChange=useMutation({mutationFn:async(v:Values)=>({...await rpc<ChangeProposal>('preview_reservation_change',{rid:id,data:bookingPayload(v)}),formKey:bookingPayloadKey(v)}),onSuccess:p=>{setChangePreview(p);navigate('/customer/reservations/'+id+'/change/confirm')}})
+  const submitChange=useMutation({mutationFn:async(v:Values)=>{if(!changePreview||changePreview.formKey!==bookingPayloadKey(v))throw Error('Review the updated proposal before submitting.');return rpc('request_reservation_change',{rid:id,data:bookingPayload(v),expected_hash:changePreview.quote_hash,reason:changeReason})},onSuccess:()=>{clearBookingDraft(draftKey);void qc.invalidateQueries();navigate('/customer/reservations/'+id,{state:{notice:'Change request submitted successfully. Your original booking remains in place until approved.'}})}})
   const save = useMutation({
     mutationFn: async (v: Values) => {
       if (!v.consent_accepted)
@@ -467,7 +473,7 @@ export function ReservationWizard() {
     return <ErrorState error={catalog.error || detail.error || savedDraft.error} />
   if(savedDraft.data?.submitted_at)return <section className="panel"><h2>This draft was already submitted.</h2><Link className="button" to={'/customer/reservations/'+savedDraft.data.reservation_id}>Open saved reservation</Link></section>
   if (
-    detail.data &&
+    !revisionMode && detail.data &&
     (!['draft', 'pending', 'for_approval'].includes(
       detail.data.reservation.status,
     ) ||
@@ -489,11 +495,13 @@ export function ReservationWizard() {
     weddingConfiguration.data || null,
   )
   let financialPreview = null
-  try { if(estimated&&taxPolicy.data&&accountDiscount.data) financialPreview=financialQuote(estimated.total,effectiveDiscount(assignedDiscount.data,accountDiscount.data),taxPolicy.data) } catch { /* Keep incomplete drafts editable; validation runs on Next/finalize. */ }
-  const financialSnapshot = step===3&&id ? detail.data?.reservation.financial_snapshot : financialPreview
-  const rawQuote = step===3&&quote ? quote : estimated
+  const savedFinancial=detail.data?.reservation.financial_snapshot
+  const previewDiscount=revisionMode?(savedFinancial?.discount_kind&&savedFinancial.discount_value?{kind:savedFinancial.discount_kind,value:savedFinancial.discount_value,name:savedFinancial.discount_name||undefined}:null):effectiveDiscount(assignedDiscount.data,accountDiscount.data)
+  try { if(estimated&&taxPolicy.data&&accountDiscount.data) financialPreview=financialQuote(estimated.total,previewDiscount,revisionMode&&savedFinancial?{...savedFinancial,mode:savedFinancial.tax_mode}:taxPolicy.data) } catch { /* Keep incomplete drafts editable; validation runs on Next/finalize. */ }
+  const financialSnapshot = revisionMode ? (changePreview?.formKey===bookingPayloadKey(values)?changePreview.financial_snapshot:financialPreview) : step===3&&id ? detail.data?.reservation.financial_snapshot : financialPreview
+  const rawQuote = revisionMode ? (changePreview?.formKey===bookingPayloadKey(values) ? changePreview.pricing : estimated) : step===3&&quote ? quote : estimated
   const displayedQuote = rawQuote&&Number.isSafeInteger(rawQuote.total) ? {...rawQuote,total:financialSnapshot?.total ?? rawQuote.total} : null
-  const wizardPath = (target:number) => draftId ? `/customer/drafts/${draftId}/${['edit','menu','event-setup','confirm'][target]}` : `/customer/reservations/${id}/${['edit','menu','event-setup','confirm'][target]}`
+  const wizardPath = (target:number) => revisionMode ? `/customer/reservations/${id}/change/${['edit','menu','event-setup','confirm'][target]}` : draftId ? `/customer/drafts/${draftId}/${['edit','menu','event-setup','confirm'][target]}` : `/customer/reservations/${id}/${['edit','menu','event-setup','confirm'][target]}`
   function focusErrors(errors:FieldErrors<Values>) {
     function first(value:unknown,prefix=''): {path:string;message:string}|null {
       if(!value||typeof value!=='object')return null
@@ -556,6 +564,7 @@ export function ReservationWizard() {
       <PageHeading title="Let’s plan your celebration." eyebrow="MAKE IT YOURS">
         A few thoughtful choices. A celebration to remember.
       </PageHeading>
+      {revisionMode&&<div className="alert"><strong>Request changes to your paid booking</strong><p>Your saved booking and original receipts stay in place until manager approval. Submit and approve at least 3 days before the event. Date and time changes use the separate reschedule request.</p><Link to={'/customer/reservations/'+id}>Return to saved booking</Link></div>}
       {accountDiscount.data?.status==='RESERVED'&&accountDiscount.data.reserved_reservation_id!==reservationKey&&<p className="account-offer">Your one-time offer is held for an unfinished checkout. <Link to={'/customer/reservations/'+accountDiscount.data.reserved_reservation_id}>Open that booking</Link> to pay or safely close the checkout. Other bookings use their own current quote.</p>}
       {accountDiscount.data?.status==='USED'&&<p className="date-help">Your one-time account offer was already used. Its original booking keeps the agreed total for balance payments.</p>}
       {detail.data && !selected && (
@@ -594,6 +603,7 @@ export function ReservationWizard() {
             noValidate
             onSubmit={handleSubmit(async (v) => {
               if(!await checkAvailability(v,step))return
+              if(revisionMode){if(step>=2)previewChange.mutate(v);else navigate(wizardPath(step+1));return}
               if(!id)persistDraft.mutate({data:v,target:Math.min(step+1,3)})
               else save.mutate(v)
             },focusErrors)}
@@ -621,7 +631,7 @@ export function ReservationWizard() {
                       min={earliestEventDate()}
                       aria-describedby="booking-date-help"
                       aria-invalid={!!errors.event_date}
-                      {...register('event_date')}
+                      {...register('event_date')} readOnly={revisionMode}
                     />
                     <small id="booking-date-help" className="date-help">
                       Please book at least 3 days ahead for preparation.
@@ -640,7 +650,7 @@ export function ReservationWizard() {
                       value={values.event_time}
                       inputRef={register('event_time').ref}
                       onChange={(value) =>
-                        form.setValue('event_time', value, {
+                        !revisionMode && form.setValue('event_time', value, {
                           shouldDirty: true, shouldValidate: true,
                         })
                       }
@@ -1169,17 +1179,17 @@ export function ReservationWizard() {
                 <button
                   type="button"
                   className="button"
-                  disabled={finalize.isPending || persistDraft.isPending || !values.consent_accepted || (hasAllergyDeclaration(values.allergy_allergen_ids,values.allergy_notes)&&allergyWarnings.isFetching)}
-                  onClick={()=>void handleSubmit(async v=>{if(await checkAvailability(v,3))finalize.mutate(v)},focusErrors)()}
+                  disabled={finalize.isPending || submitChange.isPending || (revisionMode&&(!changePreview||changePreview.formKey!==bookingPayloadKey(values))) || persistDraft.isPending || !values.consent_accepted || (hasAllergyDeclaration(values.allergy_allergen_ids,values.allergy_notes)&&allergyWarnings.isFetching)}
+                  onClick={()=>void handleSubmit(async v=>{if(await checkAvailability(v,3)){if(revisionMode)submitChange.mutate(v);else finalize.mutate(v)}},focusErrors)()}
                 >
-                  {finalize.isPending
-                    ? 'Finalizing…'
-                    : 'Finalize my reservation'}
+                  {revisionMode ? (submitChange.isPending?'Submitting request…':'Submit Change Request') : finalize.isPending ? 'Finalizing…' : 'Finalize my reservation'}
                   <Check size={17} />
                 </button>
                 {finalize.error && <ErrorState error={finalize.error} />}
               </>
             )}
+            {revisionMode&&step===3&&<><label>Reason for change · optional<textarea maxLength={2000} value={changeReason} onChange={e=>setChangeReason(e.target.value)}/></label><p>Current approved total: <strong>{money(detail.data!.reservation.total)}</strong>. Proposed total: <strong>{changePreview?money(changePreview.total):'Review required'}</strong>.</p><button type="button" className="button secondary" disabled={previewChange.isPending} onClick={()=>void handleSubmit(v=>previewChange.mutate(v),focusErrors)()}>{previewChange.isPending?'Checking quote and stock…':'Review updated quotation'}</button></>}
+            {previewChange.error&&<ErrorState error={previewChange.error}/>} {submitChange.error&&<ErrorState error={submitChange.error}/>}
             {save.error && <ErrorState error={save.error} />}{' '}
             {persistDraft.error&&<ErrorState error={persistDraft.error}/>}
             {errors.root?.message&&<p className="field-error" role="alert">{errors.root.message}</p>}
@@ -1187,7 +1197,7 @@ export function ReservationWizard() {
               <p className="field-error" role="alert">Please check the highlighted fields.</p>
             )}
             <div className="wizard-actions">
-              {(!id||detail.data?.reservation.status==='draft')&&<button type="button" className="button secondary" disabled={persistDraft.isPending||finalize.isPending} onClick={()=>persistDraft.mutate({data:form.getValues(),target:step})}>{persistDraft.isPending?'Saving draft…':'Save draft'}</button>}
+              {!revisionMode&&(!id||detail.data?.reservation.status==='draft')&&<button type="button" className="button secondary" disabled={persistDraft.isPending||finalize.isPending} onClick={()=>persistDraft.mutate({data:form.getValues(),target:step})}>{persistDraft.isPending?'Saving draft…':'Save draft'}</button>}
               {step > 0 && (
                 <button
                   type="button"
@@ -1206,10 +1216,10 @@ export function ReservationWizard() {
                 <button
                   className="button"
                   disabled={
-                    save.isPending || persistDraft.isPending || (step === 2 && estimated === null)
+                    save.isPending || previewChange.isPending || persistDraft.isPending || (step === 2 && estimated === null)
                   }
                 >
-                  {save.isPending||persistDraft.isPending ? 'Saving…' : 'Save & continue'}
+                  {previewChange.isPending?'Checking quotation…':save.isPending||persistDraft.isPending ? 'Saving…' : revisionMode?'Review & continue':'Save & continue'}
                   <ArrowRight size={17} />
                 </button>
               )}

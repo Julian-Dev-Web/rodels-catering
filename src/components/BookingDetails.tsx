@@ -1,3 +1,4 @@
+import {BookingChanges,AdjustmentRefunds} from './BookingChanges'
 import { useReservation } from '../features/reservations'
 import { useCatalog } from '../features/catalog'
 import { setupItems, setupItemLabel } from '../lib/booking'
@@ -5,13 +6,14 @@ import { dateTime } from '../lib/format'
 import { ErrorState, Loading } from './ui'
 import type { Catalog, RecordRow, Reservation } from '../types'
 import { useQuery } from '@tanstack/react-query'
-import { records, rpc } from '../lib/supabase'
+import { edge, records, rpc } from '../lib/supabase'
 import { date, money, human } from '../lib/format'
 import { timeLabel } from './EventTimeSelect'
 import { birthdayKeys, weddingKeys } from '../lib/booking'
 import { downloadReportPdf, type ReportDocument } from '../lib/reports'
 import { useState } from 'react'
-import { FinancialBreakdown } from './FinancialBreakdown'
+import { useMutation,useQueryClient } from '@tanstack/react-query'
+import { ManualPaymentDialog,PaymentHistory,PaymentTotals,PaymentEmailStatus } from './PaymentPanel'
 import { financialRows } from '../lib/financial'
 import { AllergyRiskText,useAllergyWarnings } from './AllergyFields'
 import { DiscountAssignment } from '../pages/PanelOperations'
@@ -146,6 +148,8 @@ export function BookingSelections({
   )
 }
 export function StaffBookingDetails({ id }: { id: string }) {
+  const [manual,setManual]=useState(false),[paymentNotice,setPaymentNotice]=useState(''),qc=useQueryClient()
+  const diagnostics=useMutation({mutationFn:()=>edge<{state:string}>('reconcile-paymongo-checkout',{reservation_id:id,close_unpaid:true}),onSuccess:result=>{setPaymentNotice(result.state==='unknown'||result.state==='pending'?'The provider outcome is still unresolved. Do not record another payment yet.':'Payment status checked. Review the current balance.');void qc.invalidateQueries()}})
   const query = useReservation(id),
     catalog = useCatalog({ includeArchived: true })
   const contact = useQuery({
@@ -221,7 +225,7 @@ export function StaffBookingDetails({ id }: { id: string }) {
         ' Manila | ' +
         r.guests +
         ' guests',
-      `Total PHP ${(r.total / 100).toFixed(2)}; verified paid PHP ${(r.paid / 100).toFixed(2)}; refunded PHP ${(r.refunded / 100).toFixed(2)}.`,
+      `Total PHP ${(r.total / 100).toFixed(2)}; net verified paid PHP ${((r.paid-r.refunded-(r.payment_reversed||0)) / 100).toFixed(2)}; completed refunds PHP ${(r.refunded / 100).toFixed(2)}.`,
     ],
     headers: ['Detail', 'Saved value'],
     rows: [
@@ -272,7 +276,7 @@ export function StaffBookingDetails({ id }: { id: string }) {
         human(key),
         'PHP ' + (value / 100).toFixed(2),
       ]),
-      ...financialRows(r.financial_snapshot,r.total,r.paid,Number(balance.data?.[0]?.amount??Math.max(r.total-r.paid,0))).map(([label,value])=>[label,typeof value==='number'?money(value):value]),
+      ...financialRows(r.financial_snapshot,r.total,r.paid-r.refunded-(r.payment_reversed||0),Number(balance.data?.[0]?.amount??Math.max(r.total-r.paid,0))).map(([label,value])=>[label,typeof value==='number'?money(value):value]),
       ...(r.selection_snapshot || []).map((s) => [
         s.name,
         s.quantity +
@@ -375,7 +379,6 @@ export function StaffBookingDetails({ id }: { id: string }) {
       </section>
       <section>
         <h3>Styling, seating and optional extras</h3>
-        <FinancialBreakdown snapshot={r.financial_snapshot} total={r.total} paid={r.paid} balance={Number(balance.data?.[0]?.amount??Math.max(r.total-r.paid,0))}/>
         <DiscountAssignment reservation={r}/>
         <BookingSelections
           reservation={r}
@@ -384,32 +387,12 @@ export function StaffBookingDetails({ id }: { id: string }) {
         />
       </section>
       <section>
-        <h3>Payment summary</h3>
-        <dl className="detail-list">
-          <dt>Saved total</dt>
-          <dd>{money(r.total)}</dd>
-          <dt>50% down-payment requirement</dt>
-          <dd>{money(Math.ceil(r.total / 2))}</dd>
-          <dt>Verified paid</dt>
-          <dd>{money(r.paid)}</dd>
-          <dt>Previously refunded</dt>
-          <dd>{money(r.refunded)}</dd>
-          <dt>Payment status</dt>
-          <dd>{human(r.payment_status)}</dd>
-          <dt>Current balance</dt>
-          <dd>
-            {balance.data[0]
-              ? money(Number(balance.data[0].amount))
-              : 'No balance ledger yet; unpaid quoted amount ' +
-                money(Math.max(r.total - r.paid, 0))}
-          </dd>
-        </dl>
-        {payments.data.map((p) => (
-          <p key={p.id}>
-            {p.kind === 'refund' ? 'Completed refund' : 'Verified payment'} ·{' '}
-            {money(Number(p.amount))} · {dateTime(String(p.created_at))} Manila
-          </p>
-        ))}
+        <h3>Payment summary</h3><PaymentTotals id={id}/>
+        {paymentNotice&&<p className="feedback-notice" role="status">{paymentNotice}</p>}
+        {['for_approval','pending','approved'].includes(r.status)&&<button className="button" onClick={()=>setManual(true)}>Record manual payment</button>}
+        <details><summary>Staff payment diagnostics</summary><p>Check the provider first. Only a confirmed unpaid/expired checkout can be closed; processing payments remain held.</p><button className="button secondary" disabled={diagnostics.isPending} onClick={()=>diagnostics.mutate()}>{diagnostics.isPending?'Checking provider…':'Check / close unfinished checkout'}</button>{diagnostics.error&&<ErrorState error={diagnostics.error}/>}</details>
+        <PaymentHistory reservation={r} staff/><BookingChanges reservation={r} staff/><AdjustmentRefunds reservation={r} staff/><PaymentEmailStatus id={r.id}/>
+        {manual&&<ManualPaymentDialog reservation={r} customer={contact.data.name} close={()=>setManual(false)} onSaved={setPaymentNotice}/>}
       </section>
       <section>
         <h3>Recorded activity</h3>

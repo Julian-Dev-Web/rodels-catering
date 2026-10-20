@@ -208,6 +208,7 @@ export function Router() {
                   path="reservations/:id"
                   element={<ReservationDetail />}
                 />
+                <Route path="reservations/:id/change/:step" element={<ReservationWizard/>}/>
                 {['edit', 'menu', 'event-setup', 'confirm'].map((step) => (
                   <Route
                     key={step}

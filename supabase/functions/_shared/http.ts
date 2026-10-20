@@ -44,7 +44,8 @@ export function endpoint(fn: (req: Request) => Promise<Response>) {
     try {
       return await fn(req)
     } catch (e) {
-      return json({ error: e instanceof Error ? e.message : 'Request failed' }, 400)
+      const message=e instanceof Error?e.message:typeof e==='object'&&e&&'message'in e&&typeof e.message==='string'?e.message:'The request could not be completed. Please try again.'
+      return json({ error: message.slice(0,500) }, 400)
     }
   })
 }

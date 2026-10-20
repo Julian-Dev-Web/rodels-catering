@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:db": "vitest run tests/database.test.ts",
-    "typecheck:edge": "npx --yes deno@2.9.6 check --config supabase/functions/deno.json supabase/functions/create-paymongo-checkout/index.ts supabase/functions/reconcile-paymongo-checkout/index.ts supabase/functions/paymongo-webhook/index.ts supabase/functions/admin-set-role/index.ts supabase/functions/process-refund/index.ts supabase/functions/send-transactional-email/index.ts supabase/functions/public-assistant/index.ts supabase/functions/export-application-data/index.ts supabase/functions/dispatch-event-reminders/index.ts",
+    "typecheck:edge": "npx --yes deno@2.9.6 check --config supabase/functions/deno.json supabase/functions/create-paymongo-checkout/index.ts supabase/functions/reconcile-paymongo-checkout/index.ts supabase/functions/paymongo-webhook/index.ts supabase/functions/admin-set-role/index.ts supabase/functions/process-refund/index.ts supabase/functions/send-transactional-email/index.ts supabase/functions/public-assistant/index.ts supabase/functions/export-application-data/index.ts supabase/functions/dispatch-event-reminders/index.ts supabase/functions/dispatch-payment-emails/index.ts supabase/functions/process-adjustment-refund/index.ts",
     "db:bundle": "node scripts/bundle-sql.mjs",
     "db:catalog": "node scripts/bundle-business-catalog.mjs && node scripts/bundle-sql.mjs"
   },

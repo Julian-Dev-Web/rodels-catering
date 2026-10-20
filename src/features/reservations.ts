@@ -18,7 +18,7 @@ export function useReservation(id?: string) {
   return useQuery({
     queryKey: ['reservation', id],
     enabled: !!id,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       requireConfiguration()
       const { data: r, error } = await supabase

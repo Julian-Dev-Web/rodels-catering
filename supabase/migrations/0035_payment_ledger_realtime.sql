@@ -1,0 +1,197 @@
+-- Additive receipt metadata; existing receipt amounts/provider IDs are unchanged.
+alter table public.payments add column source text not null default 'paymongo' check(source in ('paymongo','manual')),
+ add column method text,add column received_at timestamptz,add column recorded_by uuid references public.profiles on delete set null,
+ add column receipt_reference text,add column note text,add column idempotency_key uuid unique,
+ add column payment_reference text unique,add column quote_snapshot jsonb,add column voided_at timestamptz,add column voided_by uuid references public.profiles on delete set null,add column void_reason text,add column void_idempotency_key uuid unique;
+alter table public.transactions add column source text,add column method text,add column received_at timestamptz,add column recorded_by uuid references public.profiles on delete set null;
+alter table public.transactions drop constraint transactions_kind_check;
+alter table public.transactions add constraint transactions_kind_check check(kind in ('payment','refund','reversal'));
+alter table public.reservations add column payment_reversed bigint not null default 0 check(payment_reversed>=0);
+-- Genuine verified receipts can exceed a subsequently approved price. Preserve
+-- the money and expose refund due instead of rejecting a real provider payment.
+do $$declare c record;begin for c in select conname from pg_constraint where conrelid='public.reservations'::regclass and contype='c' and pg_get_constraintdef(oid) ~ 'paid <= total' loop execute format('alter table public.reservations drop constraint %I',c.conname);end loop;end $$;
+alter table public.reservations add constraint reservation_net_receipts_nonnegative check(refunded+payment_reversed<=paid);
+
+create function private.payment_amounts(r public.reservations) returns jsonb language sql immutable set search_path='' as $$
+ select jsonb_build_object('reservation_id',r.id,'reference',r.reservation_reference,'total',r.total,'received',r.paid,'refunded',r.refunded,'reversed',r.payment_reversed,'net_paid',r.paid-r.refunded-r.payment_reversed,
+ 'remaining',case when r.status in ('cancelled','rejected','pending_refund','refund_approved','refunded') then 0 else greatest(r.total-r.paid+r.refunded+r.payment_reversed,0) end,
+ 'refund_due',case when r.status in ('cancelled','rejected','pending_refund','refund_approved','refunded') then 0 else greatest(r.paid-r.refunded-r.payment_reversed-r.total,0) end,
+ 'deposit_target',(r.total+1)/2,'deposit_met',r.paid-r.refunded-r.payment_reversed>=(r.total+1)/2,
+ 'display_status',case when r.status in ('cancelled','rejected','pending_refund','refund_approved','refunded') then r.payment_status::text when r.paid-r.refunded-r.payment_reversed>r.total then 'overpaid' when r.paid-r.refunded-r.payment_reversed>=r.total and r.total>0 then 'fully_paid' when r.paid-r.refunded-r.payment_reversed>0 then 'partially_paid' else 'unpaid' end,
+ 'financial_snapshot',r.financial_snapshot)
+$$;
+create function public.payment_summary(rid uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$declare r public.reservations;begin
+ if not public.can_read_reservation(rid) then raise exception 'Reservation access required';end if;
+ select * into strict r from public.reservations where id=rid;
+ return private.payment_amounts(r)||jsonb_build_object('pending_checkout',exists(select 1 from public.payments where reservation_id=rid and status='pending'));
+end $$;
+create function private.refresh_payment_state(rid uuid,try_approve boolean default false) returns void language plpgsql security definer set search_path='' as $$
+declare r public.reservations;net bigint;next_status public.reservation_status;begin
+ select * into strict r from public.reservations where id=rid for update;net=r.paid-r.refunded-r.payment_reversed;next_status=r.status;
+ if try_approve and net>=(r.total+1)/2 and r.status in ('for_approval','pending') and r.event_date>(now() at time zone 'Asia/Manila')::date then
+  perform pg_advisory_xact_lock(hashtextextended('capacity:'||r.event_date::text,0));
+  if not (private.event_window(r.event_date)->>'closed')::boolean and r.event_time between (private.event_window(r.event_date)->>'opens')::time and (private.event_window(r.event_date)->>'closes')::time and (select count(*) from public.reservations where event_date=r.event_date and id<>rid and holds_capacity)<3 and private.equipment_ready_for_approval(rid) then next_status='approved';end if;
+ end if;
+ update public.reservations set status=next_status,payment_status=case when r.status in ('cancelled','rejected','pending_refund','refund_approved','refunded') then r.payment_status when net>=r.total and r.total>0 then 'fully_paid'::public.payment_status when net>0 then 'partially_paid'::public.payment_status else 'unpaid'::public.payment_status end where id=rid;
+ insert into public.balances values(rid,case when r.status in ('cancelled','rejected','pending_refund','refund_approved','refunded') then 0 else greatest(r.total-net,0) end,now()) on conflict(reservation_id) do update set amount=excluded.amount,updated_at=excluded.updated_at;
+end $$;
+
+-- Called by the existing account-discount lifecycle wrapper. This keeps saved
+-- offer holds/redemption logic while collecting only the actual outstanding sum.
+create or replace function private.begin_checkout_before_account_discount(rid uuid,customer uuid,payment_intent text) returns public.payments language plpgsql security definer set search_path='' as $$
+declare r public.reservations;p public.payments;net bigint;amount bigint;begin
+ if not exists(select 1 from public.profiles where id=customer and role='customer' and account_status='active') or public.maintenance_enabled() then raise exception 'Active customer access required';end if;
+ select * into strict r from public.reservations where id=rid for update;
+ if r.customer_id<>customer or r.status not in ('for_approval','pending','approved') or r.finalized_at is null or r.event_date<=(now() at time zone 'Asia/Manila')::date then raise exception 'Reservation is not payable';end if;
+ perform private.assert_event_window(r.event_date,r.event_time,r.id,false);
+ select * into p from public.payments where reservation_id=rid and status='pending';if found then return p;end if;
+ net=r.paid-r.refunded-r.payment_reversed;
+ if payment_intent='partial' and net=0 then amount=(r.total+1)/2;
+ elsif payment_intent='full' and net=0 then amount=r.total;
+ elsif payment_intent='balance' and net>0 and net<r.total then amount=r.total-net;
+ else raise exception 'Invalid payment intent: payment state changed; review the current verified balance';end if;
+ if amount<=0 then raise exception 'No outstanding amount remains';end if;
+ insert into public.payments(reservation_id,amount,intent,payment_reference) values(rid,amount,payment_intent,'PAY-'||to_char(now() at time zone 'Asia/Manila','YYYYMMDD')||'-'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,12))) returning * into p;return p;
+end $$;
+
+create or replace function public.confirm_provider_payment(event_id text,session_id text,provider_payment_id text,amount bigint) returns void language plpgsql security definer set search_path='' as $$
+declare p public.payments;r public.reservations;a public.customer_discount_assignments;begin
+ select * into strict p from public.payments where external_session_id=session_id for update;
+ select * into strict r from public.reservations where id=p.reservation_id for update;
+ if p.status='fully_paid' then if p.external_payment_id is distinct from provider_payment_id or p.amount<>amount then raise exception 'Verified receipt does not match this provider payment';end if;return;end if;
+ if p.source<>'paymongo' or p.status<>'pending' or p.amount<>amount or nullif(provider_payment_id,'') is null or nullif(event_id,'') is null then raise exception 'Payment does not match the pending checkout';end if;
+ insert into public.webhook_events(id,event_type) values(event_id,'checkout_session.payment.paid') on conflict do nothing;if not found then return;end if;
+ update public.payments set status='fully_paid',external_payment_id=provider_payment_id,received_at=coalesce(received_at,clock_timestamp()),quote_snapshot=jsonb_build_object('total',r.total,'net_paid',r.paid+confirm_provider_payment.amount-r.refunded-r.payment_reversed,'remaining',greatest(r.total-r.paid-confirm_provider_payment.amount+r.refunded+r.payment_reversed,0),'financial_snapshot',r.financial_snapshot,'pricing',r.pricing,'selection_snapshot',r.selection_snapshot,'event_name',r.event_name,'event_date',r.event_date,'captured_at',clock_timestamp()) where id=p.id;
+ update public.reservations set paid=paid+amount where id=r.id;
+ perform private.refresh_payment_state(r.id,true);
+ select * into a from public.customer_discount_assignments where held_payment_id=p.id for update;
+ if a.id is not null and a.used_at is null then update public.customer_discount_assignments set used_payment_id=p.id,used_reservation_id=r.id,used_at=now(),held_payment_id=null where id=a.id;perform private.audit('account_discount.redeemed',a.id::text,jsonb_build_object('reservation_id',r.id,'payment_id',p.id,'percentage_bps',a.percentage_bps));end if;
+ insert into public.transactions(reservation_id,payment_id,kind,amount,reference,source,method,received_at) values(r.id,p.id,'payment',amount,provider_payment_id,'paymongo',coalesce(p.method,'paymongo'),coalesce(p.received_at,clock_timestamp()));
+ perform private.audit('payment.confirmed',p.id::text,jsonb_build_object('provider_payment_id',provider_payment_id,'event',event_id));
+end $$;
+create function public.confirm_provider_receipt(event_id text,session_id text,provider_payment_id text,amount bigint,method text,received_at timestamptz,provider_metadata jsonb) returns void language plpgsql security definer set search_path='' as $$
+declare p public.payments;begin
+ select * into strict p from public.payments where external_session_id=session_id for update;
+ if provider_metadata->>'payment_id' is distinct from p.id::text or provider_metadata->>'reservation_id' is distinct from p.reservation_id::text then raise exception 'Provider reservation reference mismatch';end if;
+ if p.status='pending' then update public.payments set method=case when confirm_provider_receipt.method in ('gcash','card') then confirm_provider_receipt.method else 'paymongo' end,received_at=case when confirm_provider_receipt.received_at between p.created_at-interval '5 minutes' and now()+interval '5 minutes' then confirm_provider_receipt.received_at else clock_timestamp() end where id=p.id;end if;
+ perform public.confirm_provider_payment(event_id,session_id,provider_payment_id,amount);
+end $$;
+
+create function public.record_manual_payment(rid uuid,amount bigint,method text,received_at timestamptz,idempotency_key uuid,receipt_reference text default '',note text default '') returns jsonb language plpgsql security definer set search_path='' as $$
+declare r public.reservations;p public.payments;d public.reservation_discounts;a public.customer_discount_assignments;remaining bigint;begin
+ perform private.require_staff();select * into strict r from public.reservations where id=rid for update;
+ if idempotency_key is null then raise exception 'Payment request identifier required';end if;
+ select * into p from public.payments x where x.idempotency_key=record_manual_payment.idempotency_key;
+ if found then if p.reservation_id<>rid or p.amount<>amount or p.method<>method or p.received_at is distinct from received_at then raise exception 'This payment request was already used with different details';end if;return private.payment_amounts(r)||jsonb_build_object('payment_id',p.id,'duplicate',true);end if;
+ if r.status not in ('for_approval','pending','approved') or r.finalized_at is null then raise exception 'Choose an active submitted reservation';end if;
+ perform private.no_checkout(rid);
+ remaining=greatest(r.total-r.paid+r.refunded+r.payment_reversed,0);
+ if amount is null or amount<=0 or amount>remaining then raise exception 'Enter a positive amount within the outstanding balance (% centavos)',remaining;end if;
+ if method is null or method not in ('cash','bank_transfer') or received_at is null or received_at>now()+interval '1 minute' or received_at<r.created_at-interval '1 day' or length(coalesce(receipt_reference,''))>150 or length(coalesce(note,''))>2000 then raise exception 'Check the payment method, received date and optional reference/notes';end if;
+ select * into d from public.reservation_discounts where reservation_id=rid;
+ if r.paid=0 and d.account_assignment_id is not null then select * into a from public.customer_discount_assignments where id=d.account_assignment_id for update;if a.usage_type='one_time' and private.account_discount_status(a)<>'ACTIVE' then raise exception 'One-time offer is unavailable; review the current quote';end if;end if;
+ insert into public.payments(reservation_id,amount,intent,status,source,method,received_at,recorded_by,idempotency_key,receipt_reference,note,payment_reference) values(rid,amount,case when r.paid=0 then 'partial' else 'balance' end,'fully_paid','manual',method,received_at,auth.uid(),idempotency_key,nullif(trim(receipt_reference),''),nullif(trim(note),''),'PAY-'||to_char(now() at time zone 'Asia/Manila','YYYYMMDD')||'-'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,12))) returning * into p;
+ update public.reservations set paid=paid+amount where id=rid;perform private.refresh_payment_state(rid,true);
+ update public.payments set quote_snapshot=jsonb_build_object('total',r.total,'net_paid',r.paid+record_manual_payment.amount-r.refunded-r.payment_reversed,'remaining',greatest(r.total-r.paid-record_manual_payment.amount+r.refunded+r.payment_reversed,0),'financial_snapshot',r.financial_snapshot,'pricing',r.pricing,'selection_snapshot',r.selection_snapshot,'event_name',r.event_name,'event_date',r.event_date,'captured_at',clock_timestamp()) where id=p.id;
+ if a.usage_type='one_time' and a.used_at is null then update public.customer_discount_assignments set used_payment_id=p.id,used_reservation_id=rid,used_at=now(),held_payment_id=null where id=a.id;perform private.audit('account_discount.redeemed',a.id::text,jsonb_build_object('reservation_id',rid,'payment_id',p.id,'source','manual'));end if;
+ insert into public.transactions(reservation_id,payment_id,kind,amount,reference,source,method,received_at,recorded_by) values(rid,p.id,'payment',amount,'manual:'||p.id,'manual',method,received_at,auth.uid());
+ perform private.audit('payment.manual_recorded',p.id::text,jsonb_build_object('reservation_id',rid,'amount',amount,'method',method,'received_at',received_at));
+ select * into r from public.reservations where id=rid;return private.payment_amounts(r)||jsonb_build_object('payment_id',p.id,'payment_reference',p.payment_reference,'duplicate',false);
+end $$;
+create function public.void_manual_payment(payment_id uuid,reason text,idempotency_key uuid) returns jsonb language plpgsql security definer set search_path='' as $$
+declare p public.payments;r public.reservations;begin
+ perform private.require_staff();select * into strict p from public.payments where id=payment_id for update;select * into strict r from public.reservations where id=p.reservation_id for update;
+ if p.source<>'manual' or p.status<>'fully_paid' then raise exception 'Only a confirmed manual entry can be corrected here';end if;
+ if p.voided_at is not null then if p.void_idempotency_key is distinct from idempotency_key then raise exception 'This entry was already voided';end if;return private.payment_amounts(r);end if;
+ if idempotency_key is null or length(trim(coalesce(reason,''))) not between 5 and 2000 then raise exception 'Enter a correction reason (5-2000 characters)';end if;
+ perform private.no_checkout(r.id);
+ if p.amount>r.paid-r.refunded-r.payment_reversed then raise exception 'A completed refund must be reconciled before reversing this receipt';end if;
+ update public.payments set voided_at=now(),voided_by=auth.uid(),void_reason=trim(reason),void_idempotency_key=$3 where id=p.id;
+ update public.reservations set payment_reversed=payment_reversed+p.amount where id=r.id;perform private.refresh_payment_state(r.id);
+ insert into public.transactions(reservation_id,payment_id,kind,amount,reference,source,method,received_at,recorded_by) values(r.id,p.id,'reversal',p.amount,'void:'||p.id,'manual',p.method,now(),auth.uid());
+ perform private.audit('payment.manual_voided',p.id::text,jsonb_build_object('reservation_id',r.id,'amount',p.amount,'reason',trim(reason)));
+ select * into r from public.reservations where id=r.id;return private.payment_amounts(r);
+end $$;
+
+alter table public.notifications add column financial_transaction_id uuid references public.transactions,add column financial_event text;
+create unique index one_financial_notice on public.notifications(financial_transaction_id,user_id,financial_event) where financial_transaction_id is not null;
+create table public.payment_email_outbox(id uuid primary key default gen_random_uuid(),notification_id uuid not null unique references public.notifications,transaction_id uuid not null references public.transactions,reservation_id uuid not null references public.reservations,recipient_id uuid not null references public.profiles,status text not null default 'queued' check(status in ('queued','sending','accepted','failed','uncertain','blocked','manual_review')),attempts int not null default 0,next_attempt_at timestamptz not null default now(),claimed_at timestamptz,first_attempt_at timestamptz,provider_id text,provider_payload jsonb,last_error text,accepted_at timestamptz,created_at timestamptz not null default now());
+create index payment_email_ready on public.payment_email_outbox(status,next_attempt_at);
+alter table public.payment_email_outbox enable row level security;revoke all on public.payment_email_outbox from anon,authenticated;grant select on public.payment_email_outbox to authenticated;grant all on public.payment_email_outbox to service_role;
+create policy payment_email_staff on public.payment_email_outbox for select to authenticated using(public.is_staff());
+insert into public.app_settings(key,value) values('payment_email_worker','{"enabled":false,"url":null,"vault_secret_name":"rodel_reminder_worker_secret"}');
+create function private.kick_payment_email_worker() returns void language plpgsql security definer set search_path='' as $$
+declare config jsonb;token text;begin
+ select value into config from public.app_settings where key='payment_email_worker';
+ if not coalesce((config->>'enabled')::boolean,false) or coalesce(config->>'url','')='' or to_regclass('vault.decrypted_secrets') is null or to_regnamespace('net') is null then return;end if;
+ execute 'select decrypted_secret from vault.decrypted_secrets where name=$1 limit 1' into token using config->>'vault_secret_name';
+ if coalesce(token,'')='' then return;end if;
+ execute 'select net.http_post(url:=$1,headers:=$2,body:=$3,timeout_milliseconds:=10000)' using config->>'url',jsonb_build_object('Content-Type','application/json','Authorization','Bearer '||token),'{}'::jsonb;
+exception when others then null; -- The durable outbox and Cron retry remain authoritative.
+end $$;
+create function private.financial_transaction_notice() returns trigger language plpgsql security definer set search_path='' as $$
+declare r public.reservations;p public.profiles;nid uuid;heading text;body text;label text;money text;begin
+ select * into strict r from public.reservations where id=new.reservation_id;
+ heading=case new.kind when 'payment' then case when new.source='manual' then 'In-person payment recorded' else 'Payment confirmed' end when 'refund' then 'Refund completed' else 'Payment entry corrected' end;
+ label=case new.method when 'cash' then 'Cash on Hand' when 'bank_transfer' then 'Bank Transfer' when 'gcash' then 'GCash via PayMongo' when 'card' then 'Card via PayMongo' else case when new.kind='refund' then 'Confirmed refund' else 'PayMongo' end end;
+ money='PHP '||to_char(new.amount::numeric/100,'FM999999999990.00');
+ body=r.reservation_reference||' · '||r.event_name||' · '||money||' · '||label||'. Verified received: PHP '||to_char((r.paid-r.refunded-r.payment_reversed)::numeric/100,'FM999999999990.00')||'; balance: PHP '||to_char(((private.payment_amounts(r)->>'remaining')::bigint)::numeric/100,'FM999999999990.00')||'. '||to_char(coalesce(new.received_at,new.created_at) at time zone 'Asia/Manila','Mon DD, YYYY HH12:MI AM')||' Manila.';
+ for p in select * from public.profiles where id=r.customer_id or (role in ('manager','super_admin') and account_status='active') loop
+  nid=null;insert into public.notifications(user_id,title,body,href,financial_transaction_id,financial_event) values(p.id,heading,body,case when p.id=r.customer_id then '/customer/reservations/'||r.id when p.role='super_admin' then '/super-admin/dashboard' else '/manager/reservations?reservation='||r.id end,new.id,new.kind) on conflict do nothing returning id into nid;
+  if nid is not null and p.id=r.customer_id then insert into public.payment_email_outbox(notification_id,transaction_id,reservation_id,recipient_id) values(nid,new.id,r.id,p.id) on conflict do nothing;end if;
+ end loop;
+ perform private.kick_payment_email_worker();return null;
+end $$;
+create trigger financial_transaction_notice after insert on public.transactions for each row execute function private.financial_transaction_notice();
+-- Generic notifications must not race the dedicated financial outbox.
+create or replace function public.pending_notification_emails(limit_count int default 50) returns table(id uuid) language sql security definer set search_path='' as $$
+ select n.id from public.notifications n left join public.email_deliveries e on e.notification_id=n.id where e.id is null and n.financial_transaction_id is null order by n.created_at limit greatest(1,least(limit_count,100));
+$$;
+create function public.claim_payment_emails(batch_size int default 10) returns setof public.payment_email_outbox language plpgsql security definer set search_path='' as $$
+declare job public.payment_email_outbox;begin
+ update public.payment_email_outbox set status='manual_review',last_error='Idempotency window elapsed; inspect provider delivery before retry' where status in ('queued','sending','failed','uncertain') and first_attempt_at<now()-interval '23 hours';
+ for job in select * from public.payment_email_outbox where attempts<12 and ((status in ('queued','failed','uncertain') and next_attempt_at<=now()) or (status='sending' and claimed_at<now()-interval '2 minutes')) order by created_at limit greatest(1,least(batch_size,20)) for update skip locked loop
+  update public.payment_email_outbox set status='sending',claimed_at=now(),first_attempt_at=coalesce(first_attempt_at,now()),attempts=attempts+1 where id=job.id returning * into job;return next job;
+ end loop;
+end $$;
+create function public.prepare_payment_email(delivery_id uuid,payload jsonb default null) returns public.payment_email_outbox language plpgsql security definer set search_path='' as $$declare d public.payment_email_outbox;begin
+ select * into strict d from public.payment_email_outbox where id=delivery_id for update;if d.status<>'sending' then raise exception 'Email job is not leased';end if;
+ if payload is not null and d.provider_payload is null then update public.payment_email_outbox set provider_payload=payload where id=d.id returning * into d;end if;return d;
+end $$;
+create function public.finish_payment_email(delivery_id uuid,result text,provider text default null,error_code text default null) returns void language plpgsql security definer set search_path='' as $$begin
+ if result not in ('accepted','failed','uncertain','blocked') or (result='accepted' and nullif(provider,'') is null) then raise exception 'Provider acceptance ID required for successful dispatch';end if;
+ update public.payment_email_outbox set status=result,provider_id=case when result='accepted' then provider else provider_id end,accepted_at=case when result='accepted' then now() else accepted_at end,last_error=left(error_code,300),next_attempt_at=now()+least(interval '30 minutes',interval '30 seconds'*power(2,least(attempts,6))) where id=delivery_id and status='sending';
+end $$;
+create function public.retry_payment_email(delivery_id uuid) returns void language plpgsql security definer set search_path='' as $$declare d public.payment_email_outbox;begin
+ perform private.require_staff();select * into strict d from public.payment_email_outbox where id=delivery_id for update;
+ if d.status not in ('blocked','failed','uncertain') or d.attempts>=12 or d.first_attempt_at<now()-interval '23 hours' then raise exception 'Inspect the provider outcome before retrying this delivery';end if;
+ update public.payment_email_outbox set status='queued',next_attempt_at=now(),last_error=null where id=delivery_id;perform private.audit('payment.email_retry_requested',delivery_id::text);perform private.kick_payment_email_worker();
+end $$;
+
+create function public.payment_history(rid uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$begin
+ if not public.can_read_reservation(rid) then raise exception 'Reservation access required';end if;
+ return coalesce((select jsonb_agg(x order by x.recorded_at desc) from (
+  select t.id,t.payment_id,t.kind,t.amount,coalesce(p.payment_reference,case when t.kind='refund' then 'REF-' else 'PAY-' end||upper(substr(replace(t.id::text,'-',''),1,12))) as reference,
+  coalesce(t.source,p.source,'historical') as source,coalesce(t.method,p.method,case when p.source='paymongo' then 'paymongo' else 'not_recorded' end) as method,
+  t.created_at as recorded_at,coalesce(t.received_at,p.received_at) as received_at,case when t.kind='reversal' then 'reversed' when p.voided_at is not null then 'voided' else 'verified' end as status,
+  actor.full_name as recorded_by,p.receipt_reference,p.note,p.void_reason,t.reference as provider_reference,p.quote_snapshot
+  from public.transactions t left join public.payments p on p.id=t.payment_id left join public.profiles actor on actor.id=coalesce(t.recorded_by,p.recorded_by) where t.reservation_id=rid
+  union all select p.id,p.id,'checkout',p.amount,coalesce(p.payment_reference,'CHECKOUT-'||upper(substr(replace(p.id::text,'-',''),1,12))),p.source,coalesce(p.method,'paymongo'),p.created_at,p.received_at,p.status::text,null::text,p.receipt_reference,p.note,p.void_reason,null::text,p.quote_snapshot from public.payments p where p.reservation_id=rid and p.status<>'fully_paid'
+ )x),'[]');
+end $$;
+
+do $$declare t text;begin foreach t in array array['reservations','payments','transactions','balances'] loop
+ if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename=t) then execute format('alter publication supabase_realtime add table public.%I',t);end if;
+end loop;end $$;
+revoke execute on function private.payment_amounts(public.reservations),private.refresh_payment_state(uuid,boolean),private.begin_checkout_before_account_discount(uuid,uuid,text),private.kick_payment_email_worker(),private.financial_transaction_notice() from public,anon,authenticated;
+revoke execute on function public.payment_summary(uuid),public.payment_history(uuid),public.record_manual_payment(uuid,bigint,text,timestamptz,uuid,text,text),public.void_manual_payment(uuid,text,uuid),public.retry_payment_email(uuid),public.confirm_provider_receipt(text,text,text,bigint,text,timestamptz,jsonb),public.claim_payment_emails(int),public.prepare_payment_email(uuid,jsonb),public.finish_payment_email(uuid,text,text,text) from public,anon,authenticated;
+grant execute on function public.payment_summary(uuid),public.payment_history(uuid),public.record_manual_payment(uuid,bigint,text,timestamptz,uuid,text,text),public.void_manual_payment(uuid,text,uuid),public.retry_payment_email(uuid) to authenticated;
+grant execute on function public.confirm_provider_receipt(text,text,text,bigint,text,timestamptz,jsonb),public.claim_payment_emails(int),public.prepare_payment_email(uuid,jsonb),public.finish_payment_email(uuid,text,text,text) to service_role;
+
+alter function public.export_application_snapshot() set schema private;alter function private.export_application_snapshot() rename to export_application_snapshot_0034;
+create function public.export_application_snapshot() returns jsonb language plpgsql stable security definer set search_path='' as $$declare r jsonb=private.export_application_snapshot_0034();rows jsonb;n bigint;begin
+ select coalesce(jsonb_agg(to_jsonb(x) order by x.id),'[]'::jsonb),count(*) into rows,n from(select * from public.payment_email_outbox limit 50001)x;if n>50000 then raise exception 'Dataset too large for application export';end if;
+ r=jsonb_set(r,'{tables}',(r->'tables')||jsonb_build_object('payment_email_outbox',rows));r=jsonb_set(r,'{counts}',(r->'counts')||jsonb_build_object('payment_email_outbox',n));if octet_length(r::text)>10485760 then raise exception 'Dataset too large for application export';end if;return r||jsonb_build_object('schema_version','0035_payment_ledger_realtime.sql');
+end $$;
+revoke execute on function private.export_application_snapshot_0034(),public.export_application_snapshot() from public,anon,authenticated;grant execute on function public.export_application_snapshot() to service_role;
+notify pgrst,'reload schema';

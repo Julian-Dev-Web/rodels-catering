@@ -1,6 +1,7 @@
 import type { RecordRow, Reservation } from '../types'
 import type { FinancialSnapshot } from './financial'
 import { dateTime, dayManila, human, todayManila } from './format'
+import {paymentMethod} from './payments'
 export type ReportRow = RecordRow & {
   reservation: string
   customer: string
@@ -35,37 +36,40 @@ export function paymentReportRows(
     return {
       id: t.id,
       booking_key: String(t.reservation_id),
-      reference: String(t.record_reference || 'Reference unavailable'),
+      reference: String(p?.payment_reference || t.record_reference || 'Record '+String(t.kind)),
       reservation:
         r?.reservation_reference || 'Historical reference unavailable',
       customer: r?.customer_name || 'Not provided',
       event: r?.event_name || 'Unavailable booking',
       event_date: r?.event_date || '',
       created_at: t.created_at,
-      paid_at: dateTime(String(t.created_at)) + ' Manila',
+      paid_at: dateTime(String(t.received_at || p?.received_at || t.created_at)) + ' Manila',
       kind: String(t.kind),
       payment_type:
         t.kind === 'refund'
           ? 'Completed refund'
-          : p?.intent === 'partial'
+          : t.kind==='reversal'?'Mistaken entry reversed':p?.source==='manual'?'In-person installment':p?.intent === 'partial'
             ? '50% down payment'
             : p?.intent === 'balance'
               ? 'Balance payment'
               : p?.intent === 'full'
                 ? 'Full payment'
                 : 'Verified payment',
-      method: 'PayMongo; checkout method not recorded',
-      status: t.kind === 'refund' ? 'Completed' : 'Provider confirmed',
+      method: paymentMethod(String(t.method||p?.method||(p?.source==='manual'?'not_recorded':'paymongo'))),
+      status: t.kind === 'refund' ? 'Completed' : t.kind==='reversal'?'Reversed':p?.voided_at?'Voided':p?.source==='manual'?'Staff recorded':'Provider confirmed',
       received: t.kind === 'payment' ? Number(t.amount) / 100 : 0,
       refunded: t.kind === 'refund' ? Number(t.amount) / 100 : 0,
-      balance: (r ? (due.get(r.id) ?? Math.max(r.total - r.paid, 0)) : 0) / 100,
+      reversed: t.kind==='reversal'?Number(t.amount)/100:0,
+      refund_due: r&&['pending','for_approval','approved','completed'].includes(r.status)?Math.max(r.paid-(r.refunded||0)-(r.payment_reversed||0)-r.total,0)/100:0,
+      balance: (r ? (due.get(r.id) ?? Math.max(r.total-r.paid+(r.refunded||0)+(r.payment_reversed||0),0)) : 0) / 100,
       tax_discount: savedFinancialLabel(r?.financial_snapshot),
     }
   })
 }
 export function paymentSummary(rows: ReportRow[]) {
   const received = rows.reduce((sum, r) => sum + Number(r.received), 0),
-    refunded = rows.reduce((sum, r) => sum + Number(r.refunded), 0)
+    refunded = rows.reduce((sum, r) => sum + Number(r.refunded), 0),
+    reversed = rows.reduce((sum,r)=>sum+Number(r.reversed||0),0)
   const unique = new Map(
       rows.map((r) => [
         String(r.booking_key || r.reservation),
@@ -76,7 +80,8 @@ export function paymentSummary(rows: ReportRow[]) {
   return {
     received,
     refunded,
-    net: received - refunded,
+    reversed,
+    net: received - refunded - reversed,
     outstanding,
     bookings: unique.size,
   }
@@ -94,8 +99,10 @@ export function reservationReportRows(rows: Reservation[]): ReportRow[] {
     status: human(r.status),
     total: r.total / 100,
     tax_discount: savedFinancialLabel(r.financial_snapshot),
-    paid: r.paid / 100,
-    remaining: Math.max(r.total - r.paid, 0) / 100,
+    paid: (r.paid-(r.refunded||0)-(r.payment_reversed||0)) / 100,
+    remaining: ['cancelled','rejected','pending_refund','refund_approved','refunded'].includes(r.status)?0:Math.max(r.total-r.paid+(r.refunded||0)+(r.payment_reversed||0),0) / 100,
+    refund_due: ['pending','for_approval','approved','completed'].includes(r.status)?Math.max(r.paid-(r.refunded||0)-(r.payment_reversed||0)-r.total,0)/100:0,
+    revision: r.approved_revision||0,
     theme: r.event_preferences?.theme || 'Not provided',
     colors: r.event_preferences?.colors || 'Not provided',
     extras:

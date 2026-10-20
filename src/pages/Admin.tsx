@@ -1,5 +1,6 @@
 import { useEffect,useState } from 'react'
-import { Link } from 'react-router-dom'
+import {CancellationPayout} from '../components/CancellationPayout'
+import { Link,useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Area,
@@ -89,7 +90,7 @@ export function Dashboard() {
       <OperationalSummary />
       <div className="stat-grid four">
         <Stat
-          label="Today’s received revenue"
+          label="Today’s verified receipts"
           value={money(m.today_revenue)}
           icon={<Wallet />}
         />
@@ -189,7 +190,7 @@ export function Dashboard() {
             </strong>
           </div>
           <div>
-            <small>Received revenue</small>
+            <small>Verified gross receipts</small>
             <strong>
               {money(m.current_month_revenue)}{' '}
               <span>/ {money(m.previous_month_revenue)}</span>
@@ -254,9 +255,11 @@ const reservationColumns = [
   },
 ]
 export function ManageReservations() {
+  const [params,setParams]=useSearchParams()
   const query = useReservations()
   const [status, setStatus] = useState('all'),
     [selected, setSelected] = useState<RecordRow | null>(null)
+  useEffect(()=>{const id=params.get('reservation');const row=query.data?.find(r=>r.id===id);if(row)setSelected({...row})},[params,query.data])
   return (
     <>
       <PageHeading title="Make every celebration count.">
@@ -323,7 +326,7 @@ export function ManageReservations() {
                       })
                     }
                   />
-                  {Number(r.paid) === 0 && (
+                  {Number(r.paid)-Number(r.refunded)-Number(r.payment_reversed||0) === 0 && (
                     <RejectionAction
                       run={(decision_reason) =>
                         rpc('manager_reservation_status', {
@@ -338,7 +341,7 @@ export function ManageReservations() {
               )}
               {r.status === 'approved' &&
                 String(r.event_date) <= todayManila() &&
-                r.paid === r.total && (
+                Number(r.paid)-Number(r.refunded)-Number(r.payment_reversed||0) >= Number(r.total) && (
                   <Action
                     label="Complete"
                     kind="small secondary"
@@ -358,7 +361,7 @@ export function ManageReservations() {
       {selected && (
         <Modal
           title={String(selected.event_name)}
-          close={() => setSelected(null)}
+          close={() => {setSelected(null);setParams({}, {replace:true})}}
         >
           <StaffBookingDetails id={selected.id} />
         </Modal>
@@ -489,6 +492,7 @@ export function ReviewRequests({
                 </>
               )}
               {kind === 'refunds' && r.status === 'approved' && (
+                <>
                 <Action
                   label={
                     r.processing ? 'Check provider status' : 'Process refund'
@@ -497,6 +501,8 @@ export function ReviewRequests({
                   confirm="Continue the approved refund with PayMongo? This uses the stored eligible amount and original payment references."
                   run={() => edge('process-refund', { refund_id: r.id })}
                 />
+                {!r.processing&&<CancellationPayout id={r.id} amount={Number(r.eligible_amount)}/>}
+                </>
               )}
             </>
           )}

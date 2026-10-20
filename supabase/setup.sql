@@ -4363,4 +4363,516 @@ revoke execute on function private.export_application_snapshot_0033(),public.exp
 grant execute on function public.export_application_snapshot() to service_role;
 notify pgrst,'reload schema';
 
+-- ==================== 0035_payment_ledger_realtime.sql ====================
+
+-- Additive receipt metadata; existing receipt amounts/provider IDs are unchanged.
+alter table public.payments add column source text not null default 'paymongo' check(source in ('paymongo','manual')),
+ add column method text,add column received_at timestamptz,add column recorded_by uuid references public.profiles on delete set null,
+ add column receipt_reference text,add column note text,add column idempotency_key uuid unique,
+ add column payment_reference text unique,add column quote_snapshot jsonb,add column voided_at timestamptz,add column voided_by uuid references public.profiles on delete set null,add column void_reason text,add column void_idempotency_key uuid unique;
+alter table public.transactions add column source text,add column method text,add column received_at timestamptz,add column recorded_by uuid references public.profiles on delete set null;
+alter table public.transactions drop constraint transactions_kind_check;
+alter table public.transactions add constraint transactions_kind_check check(kind in ('payment','refund','reversal'));
+alter table public.reservations add column payment_reversed bigint not null default 0 check(payment_reversed>=0);
+-- Genuine verified receipts can exceed a subsequently approved price. Preserve
+-- the money and expose refund due instead of rejecting a real provider payment.
+do $$declare c record;begin for c in select conname from pg_constraint where conrelid='public.reservations'::regclass and contype='c' and pg_get_constraintdef(oid) ~ 'paid <= total' loop execute format('alter table public.reservations drop constraint %I',c.conname);end loop;end $$;
+alter table public.reservations add constraint reservation_net_receipts_nonnegative check(refunded+payment_reversed<=paid);
+
+create function private.payment_amounts(r public.reservations) returns jsonb language sql immutable set search_path='' as $$
+ select jsonb_build_object('reservation_id',r.id,'reference',r.reservation_reference,'total',r.total,'received',r.paid,'refunded',r.refunded,'reversed',r.payment_reversed,'net_paid',r.paid-r.refunded-r.payment_reversed,
+ 'remaining',case when r.status in ('cancelled','rejected','pending_refund','refund_approved','refunded') then 0 else greatest(r.total-r.paid+r.refunded+r.payment_reversed,0) end,
+ 'refund_due',case when r.status in ('cancelled','rejected','pending_refund','refund_approved','refunded') then 0 else greatest(r.paid-r.refunded-r.payment_reversed-r.total,0) end,
+ 'deposit_target',(r.total+1)/2,'deposit_met',r.paid-r.refunded-r.payment_reversed>=(r.total+1)/2,
+ 'display_status',case when r.status in ('cancelled','rejected','pending_refund','refund_approved','refunded') then r.payment_status::text when r.paid-r.refunded-r.payment_reversed>r.total then 'overpaid' when r.paid-r.refunded-r.payment_reversed>=r.total and r.total>0 then 'fully_paid' when r.paid-r.refunded-r.payment_reversed>0 then 'partially_paid' else 'unpaid' end,
+ 'financial_snapshot',r.financial_snapshot)
+$$;
+create function public.payment_summary(rid uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$declare r public.reservations;begin
+ if not public.can_read_reservation(rid) then raise exception 'Reservation access required';end if;
+ select * into strict r from public.reservations where id=rid;
+ return private.payment_amounts(r)||jsonb_build_object('pending_checkout',exists(select 1 from public.payments where reservation_id=rid and status='pending'));
+end $$;
+create function private.refresh_payment_state(rid uuid,try_approve boolean default false) returns void language plpgsql security definer set search_path='' as $$
+declare r public.reservations;net bigint;next_status public.reservation_status;begin
+ select * into strict r from public.reservations where id=rid for update;net=r.paid-r.refunded-r.payment_reversed;next_status=r.status;
+ if try_approve and net>=(r.total+1)/2 and r.status in ('for_approval','pending') and r.event_date>(now() at time zone 'Asia/Manila')::date then
+  perform pg_advisory_xact_lock(hashtextextended('capacity:'||r.event_date::text,0));
+  if not (private.event_window(r.event_date)->>'closed')::boolean and r.event_time between (private.event_window(r.event_date)->>'opens')::time and (private.event_window(r.event_date)->>'closes')::time and (select count(*) from public.reservations where event_date=r.event_date and id<>rid and holds_capacity)<3 and private.equipment_ready_for_approval(rid) then next_status='approved';end if;
+ end if;
+ update public.reservations set status=next_status,payment_status=case when r.status in ('cancelled','rejected','pending_refund','refund_approved','refunded') then r.payment_status when net>=r.total and r.total>0 then 'fully_paid'::public.payment_status when net>0 then 'partially_paid'::public.payment_status else 'unpaid'::public.payment_status end where id=rid;
+ insert into public.balances values(rid,case when r.status in ('cancelled','rejected','pending_refund','refund_approved','refunded') then 0 else greatest(r.total-net,0) end,now()) on conflict(reservation_id) do update set amount=excluded.amount,updated_at=excluded.updated_at;
+end $$;
+
+-- Called by the existing account-discount lifecycle wrapper. This keeps saved
+-- offer holds/redemption logic while collecting only the actual outstanding sum.
+create or replace function private.begin_checkout_before_account_discount(rid uuid,customer uuid,payment_intent text) returns public.payments language plpgsql security definer set search_path='' as $$
+declare r public.reservations;p public.payments;net bigint;amount bigint;begin
+ if not exists(select 1 from public.profiles where id=customer and role='customer' and account_status='active') or public.maintenance_enabled() then raise exception 'Active customer access required';end if;
+ select * into strict r from public.reservations where id=rid for update;
+ if r.customer_id<>customer or r.status not in ('for_approval','pending','approved') or r.finalized_at is null or r.event_date<=(now() at time zone 'Asia/Manila')::date then raise exception 'Reservation is not payable';end if;
+ perform private.assert_event_window(r.event_date,r.event_time,r.id,false);
+ select * into p from public.payments where reservation_id=rid and status='pending';if found then return p;end if;
+ net=r.paid-r.refunded-r.payment_reversed;
+ if payment_intent='partial' and net=0 then amount=(r.total+1)/2;
+ elsif payment_intent='full' and net=0 then amount=r.total;
+ elsif payment_intent='balance' and net>0 and net<r.total then amount=r.total-net;
+ else raise exception 'Invalid payment intent: payment state changed; review the current verified balance';end if;
+ if amount<=0 then raise exception 'No outstanding amount remains';end if;
+ insert into public.payments(reservation_id,amount,intent,payment_reference) values(rid,amount,payment_intent,'PAY-'||to_char(now() at time zone 'Asia/Manila','YYYYMMDD')||'-'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,12))) returning * into p;return p;
+end $$;
+
+create or replace function public.confirm_provider_payment(event_id text,session_id text,provider_payment_id text,amount bigint) returns void language plpgsql security definer set search_path='' as $$
+declare p public.payments;r public.reservations;a public.customer_discount_assignments;begin
+ select * into strict p from public.payments where external_session_id=session_id for update;
+ select * into strict r from public.reservations where id=p.reservation_id for update;
+ if p.status='fully_paid' then if p.external_payment_id is distinct from provider_payment_id or p.amount<>amount then raise exception 'Verified receipt does not match this provider payment';end if;return;end if;
+ if p.source<>'paymongo' or p.status<>'pending' or p.amount<>amount or nullif(provider_payment_id,'') is null or nullif(event_id,'') is null then raise exception 'Payment does not match the pending checkout';end if;
+ insert into public.webhook_events(id,event_type) values(event_id,'checkout_session.payment.paid') on conflict do nothing;if not found then return;end if;
+ update public.payments set status='fully_paid',external_payment_id=provider_payment_id,received_at=coalesce(received_at,clock_timestamp()),quote_snapshot=jsonb_build_object('total',r.total,'net_paid',r.paid+confirm_provider_payment.amount-r.refunded-r.payment_reversed,'remaining',greatest(r.total-r.paid-confirm_provider_payment.amount+r.refunded+r.payment_reversed,0),'financial_snapshot',r.financial_snapshot,'pricing',r.pricing,'selection_snapshot',r.selection_snapshot,'event_name',r.event_name,'event_date',r.event_date,'captured_at',clock_timestamp()) where id=p.id;
+ update public.reservations set paid=paid+amount where id=r.id;
+ perform private.refresh_payment_state(r.id,true);
+ select * into a from public.customer_discount_assignments where held_payment_id=p.id for update;
+ if a.id is not null and a.used_at is null then update public.customer_discount_assignments set used_payment_id=p.id,used_reservation_id=r.id,used_at=now(),held_payment_id=null where id=a.id;perform private.audit('account_discount.redeemed',a.id::text,jsonb_build_object('reservation_id',r.id,'payment_id',p.id,'percentage_bps',a.percentage_bps));end if;
+ insert into public.transactions(reservation_id,payment_id,kind,amount,reference,source,method,received_at) values(r.id,p.id,'payment',amount,provider_payment_id,'paymongo',coalesce(p.method,'paymongo'),coalesce(p.received_at,clock_timestamp()));
+ perform private.audit('payment.confirmed',p.id::text,jsonb_build_object('provider_payment_id',provider_payment_id,'event',event_id));
+end $$;
+create function public.confirm_provider_receipt(event_id text,session_id text,provider_payment_id text,amount bigint,method text,received_at timestamptz,provider_metadata jsonb) returns void language plpgsql security definer set search_path='' as $$
+declare p public.payments;begin
+ select * into strict p from public.payments where external_session_id=session_id for update;
+ if provider_metadata->>'payment_id' is distinct from p.id::text or provider_metadata->>'reservation_id' is distinct from p.reservation_id::text then raise exception 'Provider reservation reference mismatch';end if;
+ if p.status='pending' then update public.payments set method=case when confirm_provider_receipt.method in ('gcash','card') then confirm_provider_receipt.method else 'paymongo' end,received_at=case when confirm_provider_receipt.received_at between p.created_at-interval '5 minutes' and now()+interval '5 minutes' then confirm_provider_receipt.received_at else clock_timestamp() end where id=p.id;end if;
+ perform public.confirm_provider_payment(event_id,session_id,provider_payment_id,amount);
+end $$;
+
+create function public.record_manual_payment(rid uuid,amount bigint,method text,received_at timestamptz,idempotency_key uuid,receipt_reference text default '',note text default '') returns jsonb language plpgsql security definer set search_path='' as $$
+declare r public.reservations;p public.payments;d public.reservation_discounts;a public.customer_discount_assignments;remaining bigint;begin
+ perform private.require_staff();select * into strict r from public.reservations where id=rid for update;
+ if idempotency_key is null then raise exception 'Payment request identifier required';end if;
+ select * into p from public.payments x where x.idempotency_key=record_manual_payment.idempotency_key;
+ if found then if p.reservation_id<>rid or p.amount<>amount or p.method<>method or p.received_at is distinct from received_at then raise exception 'This payment request was already used with different details';end if;return private.payment_amounts(r)||jsonb_build_object('payment_id',p.id,'duplicate',true);end if;
+ if r.status not in ('for_approval','pending','approved') or r.finalized_at is null then raise exception 'Choose an active submitted reservation';end if;
+ perform private.no_checkout(rid);
+ remaining=greatest(r.total-r.paid+r.refunded+r.payment_reversed,0);
+ if amount is null or amount<=0 or amount>remaining then raise exception 'Enter a positive amount within the outstanding balance (% centavos)',remaining;end if;
+ if method is null or method not in ('cash','bank_transfer') or received_at is null or received_at>now()+interval '1 minute' or received_at<r.created_at-interval '1 day' or length(coalesce(receipt_reference,''))>150 or length(coalesce(note,''))>2000 then raise exception 'Check the payment method, received date and optional reference/notes';end if;
+ select * into d from public.reservation_discounts where reservation_id=rid;
+ if r.paid=0 and d.account_assignment_id is not null then select * into a from public.customer_discount_assignments where id=d.account_assignment_id for update;if a.usage_type='one_time' and private.account_discount_status(a)<>'ACTIVE' then raise exception 'One-time offer is unavailable; review the current quote';end if;end if;
+ insert into public.payments(reservation_id,amount,intent,status,source,method,received_at,recorded_by,idempotency_key,receipt_reference,note,payment_reference) values(rid,amount,case when r.paid=0 then 'partial' else 'balance' end,'fully_paid','manual',method,received_at,auth.uid(),idempotency_key,nullif(trim(receipt_reference),''),nullif(trim(note),''),'PAY-'||to_char(now() at time zone 'Asia/Manila','YYYYMMDD')||'-'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,12))) returning * into p;
+ update public.reservations set paid=paid+amount where id=rid;perform private.refresh_payment_state(rid,true);
+ update public.payments set quote_snapshot=jsonb_build_object('total',r.total,'net_paid',r.paid+record_manual_payment.amount-r.refunded-r.payment_reversed,'remaining',greatest(r.total-r.paid-record_manual_payment.amount+r.refunded+r.payment_reversed,0),'financial_snapshot',r.financial_snapshot,'pricing',r.pricing,'selection_snapshot',r.selection_snapshot,'event_name',r.event_name,'event_date',r.event_date,'captured_at',clock_timestamp()) where id=p.id;
+ if a.usage_type='one_time' and a.used_at is null then update public.customer_discount_assignments set used_payment_id=p.id,used_reservation_id=rid,used_at=now(),held_payment_id=null where id=a.id;perform private.audit('account_discount.redeemed',a.id::text,jsonb_build_object('reservation_id',rid,'payment_id',p.id,'source','manual'));end if;
+ insert into public.transactions(reservation_id,payment_id,kind,amount,reference,source,method,received_at,recorded_by) values(rid,p.id,'payment',amount,'manual:'||p.id,'manual',method,received_at,auth.uid());
+ perform private.audit('payment.manual_recorded',p.id::text,jsonb_build_object('reservation_id',rid,'amount',amount,'method',method,'received_at',received_at));
+ select * into r from public.reservations where id=rid;return private.payment_amounts(r)||jsonb_build_object('payment_id',p.id,'payment_reference',p.payment_reference,'duplicate',false);
+end $$;
+create function public.void_manual_payment(payment_id uuid,reason text,idempotency_key uuid) returns jsonb language plpgsql security definer set search_path='' as $$
+declare p public.payments;r public.reservations;begin
+ perform private.require_staff();select * into strict p from public.payments where id=payment_id for update;select * into strict r from public.reservations where id=p.reservation_id for update;
+ if p.source<>'manual' or p.status<>'fully_paid' then raise exception 'Only a confirmed manual entry can be corrected here';end if;
+ if p.voided_at is not null then if p.void_idempotency_key is distinct from idempotency_key then raise exception 'This entry was already voided';end if;return private.payment_amounts(r);end if;
+ if idempotency_key is null or length(trim(coalesce(reason,''))) not between 5 and 2000 then raise exception 'Enter a correction reason (5-2000 characters)';end if;
+ perform private.no_checkout(r.id);
+ if p.amount>r.paid-r.refunded-r.payment_reversed then raise exception 'A completed refund must be reconciled before reversing this receipt';end if;
+ update public.payments set voided_at=now(),voided_by=auth.uid(),void_reason=trim(reason),void_idempotency_key=$3 where id=p.id;
+ update public.reservations set payment_reversed=payment_reversed+p.amount where id=r.id;perform private.refresh_payment_state(r.id);
+ insert into public.transactions(reservation_id,payment_id,kind,amount,reference,source,method,received_at,recorded_by) values(r.id,p.id,'reversal',p.amount,'void:'||p.id,'manual',p.method,now(),auth.uid());
+ perform private.audit('payment.manual_voided',p.id::text,jsonb_build_object('reservation_id',r.id,'amount',p.amount,'reason',trim(reason)));
+ select * into r from public.reservations where id=r.id;return private.payment_amounts(r);
+end $$;
+
+alter table public.notifications add column financial_transaction_id uuid references public.transactions,add column financial_event text;
+create unique index one_financial_notice on public.notifications(financial_transaction_id,user_id,financial_event) where financial_transaction_id is not null;
+create table public.payment_email_outbox(id uuid primary key default gen_random_uuid(),notification_id uuid not null unique references public.notifications,transaction_id uuid not null references public.transactions,reservation_id uuid not null references public.reservations,recipient_id uuid not null references public.profiles,status text not null default 'queued' check(status in ('queued','sending','accepted','failed','uncertain','blocked','manual_review')),attempts int not null default 0,next_attempt_at timestamptz not null default now(),claimed_at timestamptz,first_attempt_at timestamptz,provider_id text,provider_payload jsonb,last_error text,accepted_at timestamptz,created_at timestamptz not null default now());
+create index payment_email_ready on public.payment_email_outbox(status,next_attempt_at);
+alter table public.payment_email_outbox enable row level security;revoke all on public.payment_email_outbox from anon,authenticated;grant select on public.payment_email_outbox to authenticated;grant all on public.payment_email_outbox to service_role;
+create policy payment_email_staff on public.payment_email_outbox for select to authenticated using(public.is_staff());
+insert into public.app_settings(key,value) values('payment_email_worker','{"enabled":false,"url":null,"vault_secret_name":"rodel_reminder_worker_secret"}');
+create function private.kick_payment_email_worker() returns void language plpgsql security definer set search_path='' as $$
+declare config jsonb;token text;begin
+ select value into config from public.app_settings where key='payment_email_worker';
+ if not coalesce((config->>'enabled')::boolean,false) or coalesce(config->>'url','')='' or to_regclass('vault.decrypted_secrets') is null or to_regnamespace('net') is null then return;end if;
+ execute 'select decrypted_secret from vault.decrypted_secrets where name=$1 limit 1' into token using config->>'vault_secret_name';
+ if coalesce(token,'')='' then return;end if;
+ execute 'select net.http_post(url:=$1,headers:=$2,body:=$3,timeout_milliseconds:=10000)' using config->>'url',jsonb_build_object('Content-Type','application/json','Authorization','Bearer '||token),'{}'::jsonb;
+exception when others then null; -- The durable outbox and Cron retry remain authoritative.
+end $$;
+create function private.financial_transaction_notice() returns trigger language plpgsql security definer set search_path='' as $$
+declare r public.reservations;p public.profiles;nid uuid;heading text;body text;label text;money text;begin
+ select * into strict r from public.reservations where id=new.reservation_id;
+ heading=case new.kind when 'payment' then case when new.source='manual' then 'In-person payment recorded' else 'Payment confirmed' end when 'refund' then 'Refund completed' else 'Payment entry corrected' end;
+ label=case new.method when 'cash' then 'Cash on Hand' when 'bank_transfer' then 'Bank Transfer' when 'gcash' then 'GCash via PayMongo' when 'card' then 'Card via PayMongo' else case when new.kind='refund' then 'Confirmed refund' else 'PayMongo' end end;
+ money='PHP '||to_char(new.amount::numeric/100,'FM999999999990.00');
+ body=r.reservation_reference||' · '||r.event_name||' · '||money||' · '||label||'. Verified received: PHP '||to_char((r.paid-r.refunded-r.payment_reversed)::numeric/100,'FM999999999990.00')||'; balance: PHP '||to_char(((private.payment_amounts(r)->>'remaining')::bigint)::numeric/100,'FM999999999990.00')||'. '||to_char(coalesce(new.received_at,new.created_at) at time zone 'Asia/Manila','Mon DD, YYYY HH12:MI AM')||' Manila.';
+ for p in select * from public.profiles where id=r.customer_id or (role in ('manager','super_admin') and account_status='active') loop
+  nid=null;insert into public.notifications(user_id,title,body,href,financial_transaction_id,financial_event) values(p.id,heading,body,case when p.id=r.customer_id then '/customer/reservations/'||r.id when p.role='super_admin' then '/super-admin/dashboard' else '/manager/reservations?reservation='||r.id end,new.id,new.kind) on conflict do nothing returning id into nid;
+  if nid is not null and p.id=r.customer_id then insert into public.payment_email_outbox(notification_id,transaction_id,reservation_id,recipient_id) values(nid,new.id,r.id,p.id) on conflict do nothing;end if;
+ end loop;
+ perform private.kick_payment_email_worker();return null;
+end $$;
+create trigger financial_transaction_notice after insert on public.transactions for each row execute function private.financial_transaction_notice();
+-- Generic notifications must not race the dedicated financial outbox.
+create or replace function public.pending_notification_emails(limit_count int default 50) returns table(id uuid) language sql security definer set search_path='' as $$
+ select n.id from public.notifications n left join public.email_deliveries e on e.notification_id=n.id where e.id is null and n.financial_transaction_id is null order by n.created_at limit greatest(1,least(limit_count,100));
+$$;
+create function public.claim_payment_emails(batch_size int default 10) returns setof public.payment_email_outbox language plpgsql security definer set search_path='' as $$
+declare job public.payment_email_outbox;begin
+ update public.payment_email_outbox set status='manual_review',last_error='Idempotency window elapsed; inspect provider delivery before retry' where status in ('queued','sending','failed','uncertain') and first_attempt_at<now()-interval '23 hours';
+ for job in select * from public.payment_email_outbox where attempts<12 and ((status in ('queued','failed','uncertain') and next_attempt_at<=now()) or (status='sending' and claimed_at<now()-interval '2 minutes')) order by created_at limit greatest(1,least(batch_size,20)) for update skip locked loop
+  update public.payment_email_outbox set status='sending',claimed_at=now(),first_attempt_at=coalesce(first_attempt_at,now()),attempts=attempts+1 where id=job.id returning * into job;return next job;
+ end loop;
+end $$;
+create function public.prepare_payment_email(delivery_id uuid,payload jsonb default null) returns public.payment_email_outbox language plpgsql security definer set search_path='' as $$declare d public.payment_email_outbox;begin
+ select * into strict d from public.payment_email_outbox where id=delivery_id for update;if d.status<>'sending' then raise exception 'Email job is not leased';end if;
+ if payload is not null and d.provider_payload is null then update public.payment_email_outbox set provider_payload=payload where id=d.id returning * into d;end if;return d;
+end $$;
+create function public.finish_payment_email(delivery_id uuid,result text,provider text default null,error_code text default null) returns void language plpgsql security definer set search_path='' as $$begin
+ if result not in ('accepted','failed','uncertain','blocked') or (result='accepted' and nullif(provider,'') is null) then raise exception 'Provider acceptance ID required for successful dispatch';end if;
+ update public.payment_email_outbox set status=result,provider_id=case when result='accepted' then provider else provider_id end,accepted_at=case when result='accepted' then now() else accepted_at end,last_error=left(error_code,300),next_attempt_at=now()+least(interval '30 minutes',interval '30 seconds'*power(2,least(attempts,6))) where id=delivery_id and status='sending';
+end $$;
+create function public.retry_payment_email(delivery_id uuid) returns void language plpgsql security definer set search_path='' as $$declare d public.payment_email_outbox;begin
+ perform private.require_staff();select * into strict d from public.payment_email_outbox where id=delivery_id for update;
+ if d.status not in ('blocked','failed','uncertain') or d.attempts>=12 or d.first_attempt_at<now()-interval '23 hours' then raise exception 'Inspect the provider outcome before retrying this delivery';end if;
+ update public.payment_email_outbox set status='queued',next_attempt_at=now(),last_error=null where id=delivery_id;perform private.audit('payment.email_retry_requested',delivery_id::text);perform private.kick_payment_email_worker();
+end $$;
+
+create function public.payment_history(rid uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$begin
+ if not public.can_read_reservation(rid) then raise exception 'Reservation access required';end if;
+ return coalesce((select jsonb_agg(x order by x.recorded_at desc) from (
+  select t.id,t.payment_id,t.kind,t.amount,coalesce(p.payment_reference,case when t.kind='refund' then 'REF-' else 'PAY-' end||upper(substr(replace(t.id::text,'-',''),1,12))) as reference,
+  coalesce(t.source,p.source,'historical') as source,coalesce(t.method,p.method,case when p.source='paymongo' then 'paymongo' else 'not_recorded' end) as method,
+  t.created_at as recorded_at,coalesce(t.received_at,p.received_at) as received_at,case when t.kind='reversal' then 'reversed' when p.voided_at is not null then 'voided' else 'verified' end as status,
+  actor.full_name as recorded_by,p.receipt_reference,p.note,p.void_reason,t.reference as provider_reference,p.quote_snapshot
+  from public.transactions t left join public.payments p on p.id=t.payment_id left join public.profiles actor on actor.id=coalesce(t.recorded_by,p.recorded_by) where t.reservation_id=rid
+  union all select p.id,p.id,'checkout',p.amount,coalesce(p.payment_reference,'CHECKOUT-'||upper(substr(replace(p.id::text,'-',''),1,12))),p.source,coalesce(p.method,'paymongo'),p.created_at,p.received_at,p.status::text,null::text,p.receipt_reference,p.note,p.void_reason,null::text,p.quote_snapshot from public.payments p where p.reservation_id=rid and p.status<>'fully_paid'
+ )x),'[]');
+end $$;
+
+do $$declare t text;begin foreach t in array array['reservations','payments','transactions','balances'] loop
+ if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename=t) then execute format('alter publication supabase_realtime add table public.%I',t);end if;
+end loop;end $$;
+revoke execute on function private.payment_amounts(public.reservations),private.refresh_payment_state(uuid,boolean),private.begin_checkout_before_account_discount(uuid,uuid,text),private.kick_payment_email_worker(),private.financial_transaction_notice() from public,anon,authenticated;
+revoke execute on function public.payment_summary(uuid),public.payment_history(uuid),public.record_manual_payment(uuid,bigint,text,timestamptz,uuid,text,text),public.void_manual_payment(uuid,text,uuid),public.retry_payment_email(uuid),public.confirm_provider_receipt(text,text,text,bigint,text,timestamptz,jsonb),public.claim_payment_emails(int),public.prepare_payment_email(uuid,jsonb),public.finish_payment_email(uuid,text,text,text) from public,anon,authenticated;
+grant execute on function public.payment_summary(uuid),public.payment_history(uuid),public.record_manual_payment(uuid,bigint,text,timestamptz,uuid,text,text),public.void_manual_payment(uuid,text,uuid),public.retry_payment_email(uuid) to authenticated;
+grant execute on function public.confirm_provider_receipt(text,text,text,bigint,text,timestamptz,jsonb),public.claim_payment_emails(int),public.prepare_payment_email(uuid,jsonb),public.finish_payment_email(uuid,text,text,text) to service_role;
+
+alter function public.export_application_snapshot() set schema private;alter function private.export_application_snapshot() rename to export_application_snapshot_0034;
+create function public.export_application_snapshot() returns jsonb language plpgsql stable security definer set search_path='' as $$declare r jsonb=private.export_application_snapshot_0034();rows jsonb;n bigint;begin
+ select coalesce(jsonb_agg(to_jsonb(x) order by x.id),'[]'::jsonb),count(*) into rows,n from(select * from public.payment_email_outbox limit 50001)x;if n>50000 then raise exception 'Dataset too large for application export';end if;
+ r=jsonb_set(r,'{tables}',(r->'tables')||jsonb_build_object('payment_email_outbox',rows));r=jsonb_set(r,'{counts}',(r->'counts')||jsonb_build_object('payment_email_outbox',n));if octet_length(r::text)>10485760 then raise exception 'Dataset too large for application export';end if;return r||jsonb_build_object('schema_version','0035_payment_ledger_realtime.sql');
+end $$;
+revoke execute on function private.export_application_snapshot_0034(),public.export_application_snapshot() from public,anon,authenticated;grant execute on function public.export_application_snapshot() to service_role;
+notify pgrst,'reload schema';
+
+-- ==================== 0036_paid_booking_changes.sql ====================
+
+-- Paid changes preserve receipts and use the existing catalog pricing, equipment,
+-- consent and ingredient validators. Preview runs inside a rolled-back subtransaction:
+-- no proposed selection, allocation, audit or timestamp becomes visible/persistent.
+alter table public.reservations add column approved_revision int not null default 0;
+create table public.reservation_changes(id uuid primary key default gen_random_uuid(),reservation_id uuid not null references public.reservations,base_revision int not null,payload jsonb not null,before_snapshot jsonb not null,proposal jsonb not null,quote_hash text not null,reason text not null default '' check(length(reason)<=2000),status text not null default 'pending' check(status in ('pending','approved','rejected')),requested_by uuid not null references public.profiles,created_at timestamptz not null default now(),reviewed_by uuid references public.profiles,reviewed_at timestamptz,decision_reason text check(length(decision_reason)<=2000));
+create unique index one_pending_booking_change on public.reservation_changes(reservation_id) where status='pending';
+create table public.adjustment_refunds(id uuid primary key default gen_random_uuid(),reservation_id uuid not null references public.reservations,amount bigint not null check(amount>0),reason text not null check(length(reason) between 5 and 2000),status text not null default 'requested' check(status in ('requested','approved','rejected','completed')),requested_by uuid not null references public.profiles,created_at timestamptz not null default now(),approved_by uuid references public.profiles,approved_at timestamptz,completed_by uuid references public.profiles,completed_at timestamptz,paid_at timestamptz,method text check(method in ('cash','bank_transfer')),proof_reference text,payment_allocations jsonb,completion_key uuid unique);
+create unique index one_open_adjustment_refund on public.adjustment_refunds(reservation_id) where status in ('requested','approved');
+alter table public.refunds add column manual_method text check(manual_method in ('cash','bank_transfer')),add column manual_paid_at timestamptz,add column manual_proof text,add column manual_completed_by uuid references public.profiles,add column manual_completion_key uuid unique;
+do $$declare t text;begin foreach t in array array['reservation_changes','adjustment_refunds'] loop
+ execute format('alter table public.%I enable row level security',t);execute format('revoke all on public.%I from anon,authenticated',t);execute format('grant select on public.%I to authenticated',t);execute format('grant all on public.%I to service_role',t);execute format('create policy booking_related_read on public.%I for select to authenticated using(public.can_read_reservation(reservation_id))',t);
+ execute format('alter publication supabase_realtime add table public.%I',t);
+end loop;end $$;
+
+create function private.booking_change_snapshot(rid uuid) returns jsonb language sql stable security definer set search_path='' as $$
+ select jsonb_build_object('event_name',r.event_name,'event_date',r.event_date,'event_time',r.event_time,'guests',r.guests,'package',(select name from public.menu_sets where id=r.menu_set_id),'dishes',(select coalesce(jsonb_agg(d.name order by d.name),'[]') from public.reservation_items x join public.dishes d on d.id=x.dish_id where x.reservation_id=r.id),'drink',(select name from public.drinks where id=r.drink_id),'dessert',(select name from public.desserts where id=r.dessert_id),'setup',(select s.name from public.reservation_event_setups x join public.event_setups s on s.id=x.event_setup_id where x.reservation_id=r.id),'inclusions',r.event_preferences->'setup_inclusions','address',r.address,'event_preferences',r.event_preferences,'selections',r.selection_snapshot,'allergy_allergen_ids',r.allergy_allergen_ids,'allergy_notes',r.allergy_notes,'allergy_warning_snapshot',r.allergy_warning_snapshot,'total',r.total,'pricing',r.pricing,'financial_snapshot',r.financial_snapshot,'revision',r.approved_revision) from public.reservations r where id=rid
+$$;
+create function private.assert_paid_change(rid uuid) returns public.reservations language plpgsql security definer set search_path='' as $$declare r public.reservations;begin
+ select * into strict r from public.reservations where id=rid for update;
+ if r.status not in ('pending','for_approval','approved') or r.finalized_at is null or r.paid-r.payment_reversed-r.refunded<=0 then raise exception 'Changes require an active paid booking';end if;
+ if r.event_date<(now() at time zone 'Asia/Manila')::date+3 then raise exception 'Submit and approve booking changes at least 3 days before the event';end if;
+ perform private.no_checkout(rid);
+ if exists(select 1 from public.adjustment_refunds where reservation_id=rid and status in ('requested','approved')) then raise exception 'Resolve the open adjustment refund before changing this booking';end if;
+ return r;
+end $$;
+create function private.apply_paid_selection(rid uuid,data jsonb) returns jsonb language plpgsql security definer set search_path='' as $$
+declare r public.reservations;m public.menu_sets;item jsonb;raw jsonb;f jsonb;tax jsonb;validated_address jsonb;prefs jsonb;begin
+ r=private.assert_paid_change(rid);data=private.draft_submission_data(data);
+ if (data->>'event_date')::date is distinct from r.event_date or (data->>'event_time')::time is distinct from r.event_time then raise exception 'Use the separate reschedule request to change the event date/time';end if;
+ if data->>'consent_version' is distinct from public.booking_policy_version() or (data->>'consent_accepted')::boolean is distinct from true then raise exception 'Accept the current Terms and Privacy Notice';end if;
+ perform private.assert_event_window(r.event_date,r.event_time,rid);
+ validated_address=private.validate_event_address(data->'address');if r.address ? 'notes' and not(validated_address ? 'notes') then validated_address=validated_address||jsonb_build_object('notes',r.address->'notes');end if;
+ prefs=private.validate_event_preferences((data->>'setup_id')::uuid,data->'event_preferences');
+ select * into strict m from public.menu_sets where id=(data->>'menu_set_id')::uuid and active;
+ if (data->>'guests')::numeric<>trunc((data->>'guests')::numeric) or (data->>'guests')::int not between greatest(m.min_guests,100) and least(coalesce(m.max_guests,1000),1000) then raise exception 'Choose a whole guest count within the current package limits (100-1000)';end if;
+ if jsonb_array_length(data->'dish_ids')<>m.dish_count then raise exception 'Choose exactly % dishes',m.dish_count;end if;
+ if not exists(select 1 from public.drinks where id=(data->>'drink_id')::uuid and active) or not exists(select 1 from public.desserts where id=(data->>'dessert_id')::uuid and active) or not exists(select 1 from public.event_setups where id=(data->>'setup_id')::uuid and active) then raise exception 'Choose an active drink, dessert and setup';end if;
+ delete from public.reservation_tables_chairs where reservation_id=rid;
+ update public.reservations set event_name=data->>'event_name',address=validated_address,guests=(data->>'guests')::int,menu_set_id=m.id,drink_id=(data->>'drink_id')::uuid,dessert_id=(data->>'dessert_id')::uuid,booking_version=1,event_preferences=prefs,consent_version=public.booking_policy_version(),consent_at=coalesce(consent_at,now()),allergy_allergen_ids=array(select jsonb_array_elements_text(coalesce(data->'allergy_allergen_ids','[]'))),allergy_notes=coalesce(data->>'allergy_notes',''),allergy_acknowledgments=coalesce(data->'allergy_acknowledgments','[]') where id=rid;
+ delete from public.reservation_items where reservation_id=rid;
+ for item in select value from jsonb_array_elements(data->'dish_ids') loop
+  if not exists(select 1 from public.dishes where id=(item#>>'{}')::uuid and active) then raise exception 'Dish unavailable';end if;
+  insert into public.reservation_items values(rid,(item#>>'{}')::uuid);
+ end loop;
+ delete from public.reservation_event_setups where reservation_id=rid;insert into public.reservation_event_setups values(rid,(data->>'setup_id')::uuid);
+ delete from public.reservation_event_features where reservation_id=rid;
+ for item in select value from jsonb_array_elements(coalesce(data->'feature_ids','[]')) loop
+  if not exists(select 1 from public.event_features where id=(item#>>'{}')::uuid and active) then raise exception 'Feature unavailable';end if;insert into public.reservation_event_features values(rid,(item#>>'{}')::uuid);
+ end loop;
+ delete from public.reservation_add_ons where reservation_id=rid;
+ for item in select value from jsonb_array_elements(coalesce(data->'add_ons','[]')) loop
+  if (item->>'quantity')::numeric<>trunc((item->>'quantity')::numeric) or (item->>'quantity')::int not between 1 and 1000 or not exists(select 1 from public.add_ons where id=(item->>'id')::uuid and active) then raise exception 'Choose an available add-on and whole quantity (1-1000)';end if;insert into public.reservation_add_ons values(rid,(item->>'id')::uuid,(item->>'quantity')::int);
+ end loop;
+ delete from public.reservation_tables_chairs where reservation_id=rid;
+ for item in select value from jsonb_array_elements(coalesce(data->'chairs','[]')) loop
+  if (item->>'quantity')::numeric<>trunc((item->>'quantity')::numeric) or (item->>'quantity')::int not between 1 and (data->>'guests')::int or not exists(select 1 from public.chair_types where id=(item->>'id')::uuid and active) or not exists(select 1 from public.table_types where id=(data->>'table_type_id')::uuid and active) then raise exception 'Choose available seating and whole chair quantities';end if;
+  insert into public.reservation_tables_chairs values(rid,(data->>'table_type_id')::uuid,(item->>'id')::uuid,0,(item->>'quantity')::int);
+ end loop;
+ if (select coalesce(sum(chair_quantity),0) from public.reservation_tables_chairs where reservation_id=rid)<>(data->>'guests')::int then raise exception 'Seat every guest exactly once';end if;
+ perform private.sync_equipment(rid,true);perform private.validate_allergy_ack(rid,true);
+ raw=private.calculate_price_before_tax(rid);
+ -- Paid changes carry the original discount and tax agreement, including an
+ -- already-consumed one-time offer. No current account promo is silently added.
+ if r.financial_snapshot is null then raise exception 'Historical booking needs an accounting-reviewed tax/discount snapshot before revision';end if;
+ tax=jsonb_build_object('mode',r.financial_snapshot->>'tax_mode','rate_bps',r.financial_snapshot->'rate_bps','business_confirmed',r.financial_snapshot->'business_confirmed');
+ f=r.financial_snapshot||private.financial_quote((raw->>'total')::bigint,r.financial_snapshot->>'discount_kind',(r.financial_snapshot->>'discount_value')::bigint,tax);
+ f=f-'captured_at';update public.reservations set pricing=raw||jsonb_build_object('total',(f->>'total')::bigint),total=(f->>'total')::bigint,financial_snapshot=f where id=rid;
+ perform private.capture_selection_snapshot(rid);
+ return private.booking_change_snapshot(rid);
+end $$;
+create function private.preview_paid_selection(rid uuid,data jsonb) returns jsonb language plpgsql security definer set search_path='' as $$declare result jsonb;begin
+ begin result=private.apply_paid_selection(rid,data);raise exception using errcode='ZP001',message='rollback quote preview';exception when sqlstate 'ZP001' then null;end;
+ -- Recipe timestamps change with each preview; identity is the risk token.
+ return result||jsonb_build_object('quote_hash',md5((result-'allergy_warning_snapshot')::text||coalesce((select string_agg(x->>'token',',' order by x->>'dish_id') from jsonb_array_elements(result->'allergy_warning_snapshot')x),'')));
+end $$;
+create function public.preview_reservation_change(rid uuid,data jsonb) returns jsonb language plpgsql security definer set search_path='' as $$begin
+ perform private.require_customer();if not exists(select 1 from public.reservations where id=rid and customer_id=auth.uid()) then raise exception 'Reservation access required';end if;
+ return private.preview_paid_selection(rid,data);
+end $$;
+create function public.request_reservation_change(rid uuid,data jsonb,expected_hash text,reason text default '') returns uuid language plpgsql security definer set search_path='' as $$declare proposal jsonb;cid uuid;r public.reservations;begin
+ perform private.require_customer();select * into strict r from public.reservations where id=rid and customer_id=auth.uid() for update;proposal=private.preview_paid_selection(rid,data);
+ if expected_hash is distinct from proposal->>'quote_hash' then raise exception 'Quotation changed. Review the current proposed quotation before submitting';end if;
+ insert into public.reservation_changes(reservation_id,base_revision,payload,before_snapshot,proposal,quote_hash,reason,requested_by) values(rid,r.approved_revision,data,private.booking_change_snapshot(rid),proposal,expected_hash,coalesce(reason,''),auth.uid()) returning id into cid;
+ perform private.audit('reservation.change_requested',cid::text,jsonb_build_object('reservation_id',rid,'old_total',r.total,'proposed_total',proposal->'total'));perform private.notify(rid,'Booking change requested','Your paid booking remains unchanged while the manager reviews your request.');return cid;
+end $$;
+create function public.review_reservation_change(change_id uuid,approve boolean,reason text default '') returns void language plpgsql security definer set search_path='' as $$declare c public.reservation_changes;r public.reservations;p jsonb;begin
+ perform private.require_staff();select * into strict c from public.reservation_changes where id=change_id for update;select * into strict r from public.reservations where id=c.reservation_id for update;
+ if c.status<>'pending' or approve is null or length(coalesce(reason,''))>2000 then raise exception 'Choose a pending request and valid decision';end if;
+ if approve then
+  if r.approved_revision<>c.base_revision or private.booking_change_snapshot(r.id) is distinct from c.before_snapshot then raise exception 'The agreed booking changed; reject this request and ask the customer to review a fresh proposal';end if;
+  p=private.preview_paid_selection(r.id,c.payload);if p->>'quote_hash' is distinct from c.quote_hash then raise exception 'Catalog or ingredient quotation changed; reject this request and ask the customer to review the new quote';end if;
+  perform private.apply_paid_selection(r.id,c.payload);update public.reservations set approved_revision=approved_revision+1,financial_snapshot=financial_snapshot||jsonb_build_object('captured_at',now()) where id=r.id;perform private.refresh_payment_state(r.id);
+ end if;
+ update public.reservation_changes set status=case when approve then 'approved' else 'rejected' end,reviewed_by=auth.uid(),reviewed_at=now(),decision_reason=coalesce(review_reservation_change.reason,'') where id=c.id;
+ perform private.audit('reservation.change_reviewed',c.id::text,jsonb_build_object('reservation_id',r.id,'approved',approve,'previous_total',r.total,'new_total',case when approve then p->'total' else to_jsonb(r.total) end));perform private.notify(r.id,'Booking change '||case when approve then 'approved' else 'rejected' end,case when approve then 'The revised quotation is saved. Review the additional balance or refund due. Original payment receipts are preserved.' else 'Your original booking and payment amounts remain in place. '||coalesce(reason,'') end);
+end $$;
+
+create function public.request_adjustment_refund(rid uuid,reason text) returns uuid language plpgsql security definer set search_path='' as $$declare r public.reservations;fid uuid;due bigint;begin
+ if not public.is_staff() then perform private.require_customer();end if;
+ select * into strict r from public.reservations where id=rid for update;if not public.is_staff() and r.customer_id<>auth.uid() then raise exception 'Reservation access required';end if;
+ perform private.no_checkout(rid);due=(private.payment_amounts(r)->>'refund_due')::bigint;
+ if due<=0 or r.approved_revision=0 or exists(select 1 from public.reservation_changes where reservation_id=rid and status='pending') then raise exception 'An approved price adjustment with excess verified funds is required';end if;
+ insert into public.adjustment_refunds(reservation_id,amount,reason,requested_by) values(rid,due,reason,auth.uid()) returning id into fid;
+ perform private.audit('adjustment_refund.requested',fid::text,jsonb_build_object('reservation_id',rid,'amount',due));perform private.notify(rid,'Price adjustment refund requested','The excess verified payment is awaiting review. No cancellation deduction applies.');return fid;
+end $$;
+create function public.review_adjustment_refund(fid uuid,approve boolean) returns void language plpgsql security definer set search_path='' as $$declare f public.adjustment_refunds;r public.reservations;begin
+ perform private.require_staff();select * into strict f from public.adjustment_refunds where id=fid for update;select * into strict r from public.reservations where id=f.reservation_id for update;
+ if f.status<>'requested' or approve is null then raise exception 'Choose a requested adjustment refund';end if;perform private.no_checkout(r.id);
+ if approve and f.amount>(private.payment_amounts(r)->>'refund_due')::bigint then raise exception 'Refund exceeds the current excess payment';end if;
+ update public.adjustment_refunds set status=case when approve then 'approved' else 'rejected' end,approved_by=auth.uid(),approved_at=now() where id=fid;perform private.audit('adjustment_refund.reviewed',fid::text,jsonb_build_object('approved',approve));perform private.notify(r.id,'Price adjustment refund reviewed',case when approve then 'Approved for payout. It is not refunded until the actual cash or bank payout is recorded.' else 'Request rejected. Please contact support.' end);
+end $$;
+create function public.complete_adjustment_refund(fid uuid,method text,paid_at timestamptz,proof_reference text,idempotency_key uuid) returns jsonb language plpgsql security definer set search_path='' as $$
+declare f public.adjustment_refunds;r public.reservations;p public.payments;remaining bigint;portion bigint;used bigint;allocations jsonb='[]';begin
+ perform private.require_staff();select * into strict f from public.adjustment_refunds where id=fid for update;select * into strict r from public.reservations where id=f.reservation_id for update;
+ if f.status='completed' then if f.completion_key is distinct from idempotency_key then raise exception 'Payout already recorded';end if;return private.payment_amounts(r);end if;
+ if f.status<>'approved' or idempotency_key is null or method is null or method not in ('cash','bank_transfer') or paid_at is null or paid_at>now()+interval '1 minute' or paid_at<f.created_at-interval '1 day' or length(trim(coalesce(proof_reference,''))) not between 3 and 500 then raise exception 'Confirm an approved actual payout, cash/bank method, received date and proof/reference';end if;
+ perform private.no_checkout(r.id);if f.amount>(private.payment_amounts(r)->>'refund_due')::bigint then raise exception 'Refund exceeds the current excess payment';end if;
+ remaining=f.amount;
+ for p in select * from public.payments where reservation_id=r.id and status='fully_paid' and voided_at is null order by created_at,id for update loop
+  select coalesce(sum((x->>'amount')::bigint),0) into used from public.adjustment_refunds a cross join jsonb_array_elements(coalesce(a.payment_allocations,'[]'))x where a.reservation_id=r.id and a.status='completed' and x->>'payment_id'=p.id::text;
+  select used+coalesce(sum(amount),0) into used from public.refund_operations where payment_id=p.id and status='succeeded';portion=least(remaining,greatest(p.amount-used,0));
+  if portion>0 then allocations=allocations||jsonb_build_array(jsonb_build_object('payment_id',p.id,'amount',portion,'reference',coalesce(p.payment_reference,p.external_payment_id,'Historical receipt')));remaining=remaining-portion;end if;
+ end loop;
+ if remaining<>0 then raise exception 'Original receipt allocation does not cover this payout';end if;
+ update public.adjustment_refunds set status='completed',completed_by=auth.uid(),completed_at=now(),paid_at=complete_adjustment_refund.paid_at,method=complete_adjustment_refund.method,proof_reference=trim(complete_adjustment_refund.proof_reference),payment_allocations=allocations,completion_key=idempotency_key where id=f.id;
+ update public.reservations set refunded=refunded+f.amount where id=r.id;perform private.refresh_payment_state(r.id);
+ insert into public.transactions(reservation_id,kind,amount,reference,source,method,received_at,recorded_by) values(r.id,'refund',f.amount,'adjustment-refund:'||f.id,'manual',method,paid_at,auth.uid());
+ perform private.audit('adjustment_refund.completed',f.id::text,jsonb_build_object('reservation_id',r.id,'amount',f.amount,'channel',method,'proof_reference',trim(proof_reference),'payments',allocations));select * into r from public.reservations where id=r.id;return private.payment_amounts(r);
+end $$;
+
+-- Retain the five-day / 10% cancellation policy. An earlier price-adjustment
+-- payout or receipt correction is excluded from its paid basis.
+alter function private.refund_quote(uuid,timestamptz) rename to refund_quote_before_receipt_corrections;
+create function private.refund_quote(rid uuid,reference_time timestamptz) returns jsonb language plpgsql stable set search_path='' as $$declare r public.reservations;q jsonb;a jsonb;adjusted bigint;basis bigint;begin
+ q=private.refund_quote_before_receipt_corrections(rid,reference_time);select * into strict r from public.reservations where id=rid;
+ select coalesce(sum(amount),0) into adjusted from public.adjustment_refunds where reservation_id=rid and status='completed';basis=r.paid-r.payment_reversed-adjusted;
+ if (r.payment_reversed>0 or adjusted>0) and basis>0 then a=private.refund_amounts(basis,r.refunded-adjusted);q=q||a||jsonb_build_object('previously_refunded',r.refunded);end if;
+ if basis<=r.refunded-adjusted then q=q||jsonb_build_object('eligible',false,'eligible_amount',0,'reason','No remaining verified funds are refundable.');end if;return q;
+end $$;
+create or replace function public.claim_refund(fid uuid) returns jsonb language plpgsql security definer set search_path='' as $$
+declare f public.refunds;r public.reservations;p public.payments;remaining bigint;portion bigint;used bigint;allocations jsonb;begin
+ select * into strict f from public.refunds where id=fid for update;select * into strict r from public.reservations where id=f.reservation_id for update;
+ if f.status<>'approved' then raise exception 'Approved refund required';end if;
+ if exists(select 1 from public.payments where reservation_id=r.id and source='manual' and voided_at is null and status='fully_paid') then raise exception 'This booking includes manual receipts. Record an actual cash/bank cancellation payout with proof instead of a provider refund';end if;
+ if not f.processing then
+  remaining=f.eligible_amount;if remaining>r.paid-r.refunded-r.payment_reversed then raise exception 'Refund exceeds net verified receipts';end if;
+  for p in select * from public.payments where reservation_id=r.id and status='fully_paid' and source='paymongo' and voided_at is null order by created_at,id for update loop
+   select coalesce(sum((x->>'amount')::bigint),0) into used from public.adjustment_refunds a cross join jsonb_array_elements(coalesce(a.payment_allocations,'[]'))x where a.reservation_id=r.id and a.status='completed' and x->>'payment_id'=p.id::text;
+   portion=least(remaining,greatest(p.amount-used,0));if portion>0 then insert into public.refund_operations(refund_id,payment_id,amount) values(fid,p.id,portion);remaining=remaining-portion;end if;
+  end loop;if remaining<>0 then raise exception 'Payment allocation does not cover eligible refund';end if;update public.refunds set processing=true where id=fid;
+ end if;
+ select jsonb_agg(jsonb_build_object('id',o.id,'amount',o.amount,'external_payment_id',pay.external_payment_id) order by pay.created_at) into allocations from public.refund_operations o join public.payments pay on pay.id=o.payment_id where o.refund_id=fid;
+ return jsonb_build_object('refund',to_jsonb(f),'operations',allocations);
+end $$;
+create function public.complete_manual_cancellation_refund(fid uuid,method text,paid_at timestamptz,proof_reference text,idempotency_key uuid) returns jsonb language plpgsql security definer set search_path='' as $$declare f public.refunds;r public.reservations;begin
+ perform private.require_staff();select * into strict f from public.refunds where id=fid for update;select * into strict r from public.reservations where id=f.reservation_id for update;
+ if f.status='completed' then if f.manual_completion_key is distinct from idempotency_key then raise exception 'Payout already recorded';end if;return private.payment_amounts(r);end if;
+ if f.status<>'approved' or f.processing or exists(select 1 from public.refund_operations where refund_id=fid and (claimed or external_refund_id is not null)) then raise exception 'Reconcile any claimed provider operation before recording a manual payout';end if;
+ if idempotency_key is null or method is null or method not in ('cash','bank_transfer') or paid_at is null or paid_at>now()+interval '1 minute' or paid_at<f.created_at-interval '1 day' or length(trim(coalesce(proof_reference,''))) not between 3 and 500 then raise exception 'Actual payout method, date and proof/reference required';end if;
+ if f.eligible_amount>r.paid-r.refunded-r.payment_reversed then raise exception 'Payout exceeds net verified receipts';end if;
+ update public.refunds set status='completed',manual_method=method,manual_paid_at=paid_at,manual_proof=trim(proof_reference),manual_completed_by=auth.uid(),manual_completion_key=idempotency_key where id=fid;
+ update public.reservations set refunded=refunded+f.eligible_amount,status='refunded',payment_status=case when r.refunded+f.eligible_amount=r.paid-r.payment_reversed then 'refunded'::public.payment_status else 'partially_refunded'::public.payment_status end where id=r.id;perform private.refresh_payment_state(r.id);
+ insert into public.transactions(reservation_id,kind,amount,reference,source,method,received_at,recorded_by) values(r.id,'refund',f.eligible_amount,'manual-cancellation-refund:'||f.id,'manual',method,paid_at,auth.uid());perform private.audit('refund.manual_completed',fid::text,jsonb_build_object('reservation_id',r.id,'amount',f.eligible_amount,'method',method,'proof_reference',trim(proof_reference)));
+ select * into r from public.reservations where id=r.id;return private.payment_amounts(r);
+end $$;
+
+-- Freeze cancellation rules while an adjustment is awaiting payment/refund, so
+-- the two independent refund workflows cannot reserve the same funds.
+alter function public.request_cancellation(uuid,text) set schema private;alter function private.request_cancellation(uuid,text) rename to request_cancellation_before_paid_changes;
+create function public.request_cancellation(rid uuid,reason text) returns uuid language plpgsql security definer set search_path='' as $$begin
+ perform 1 from public.reservations where id=rid for update;
+ if exists(select 1 from public.adjustment_refunds where reservation_id=rid and status in ('requested','approved')) or exists(select 1 from public.reservation_changes where reservation_id=rid and status='pending') then raise exception 'Resolve the pending booking change or adjustment refund before cancellation';end if;
+ return private.request_cancellation_before_paid_changes(rid,reason);
+end $$;
+alter function public.void_manual_payment(uuid,text,uuid) set schema private;alter function private.void_manual_payment(uuid,text,uuid) rename to void_manual_payment_before_refund_guard;
+create function public.void_manual_payment(payment_id uuid,reason text,idempotency_key uuid) returns jsonb language plpgsql security definer set search_path='' as $$declare p public.payments;r public.reservations;begin
+ perform private.require_staff();select * into strict p from public.payments where id=payment_id;select * into strict r from public.reservations where id=p.reservation_id for update;
+ if p.voided_at is null and (r.status not in ('pending','for_approval','approved') or exists(select 1 from public.refunds where reservation_id=r.id and status in ('pending','approved','completed')) or exists(select 1 from public.adjustment_refunds where reservation_id=r.id and status in ('requested','approved')) or exists(select 1 from public.adjustment_refunds a cross join jsonb_array_elements(coalesce(a.payment_allocations,'[]'))x where a.status='completed' and x->>'payment_id'=p.id::text)) then raise exception 'A refund or closed booking is linked to this receipt. Reconcile with accounting before correcting it';end if;
+ return private.void_manual_payment_before_refund_guard(payment_id,reason,idempotency_key);
+end $$;
+revoke execute on function private.void_manual_payment_before_refund_guard(uuid,text,uuid),public.void_manual_payment(uuid,text,uuid) from public,anon,authenticated;grant execute on function public.void_manual_payment(uuid,text,uuid) to authenticated;
+create or replace function public.payment_summary(rid uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$declare r public.reservations;begin
+ if not public.can_read_reservation(rid) then raise exception 'Reservation access required';end if;select * into strict r from public.reservations where id=rid;
+ return private.payment_amounts(r)||jsonb_build_object('pending_checkout',exists(select 1 from public.payments where reservation_id=rid and status='pending'),'additional_payment_due',r.approved_revision>0 and r.paid-r.refunded-r.payment_reversed>0 and r.total>r.paid-r.refunded-r.payment_reversed,'approved_revision',r.approved_revision);
+end $$;
+alter function public.reservation_activity(uuid) set schema private;alter function private.reservation_activity(uuid) rename to reservation_activity_before_paid_changes;
+create function public.reservation_activity(rid uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$declare old jsonb;begin
+ old=private.reservation_activity_before_paid_changes(rid);
+ return (select coalesce(jsonb_agg(x order by x->>'created_at' desc),'[]') from (
+  select value x from jsonb_array_elements(old) where value->>'kind' not in ('payment','refund','reversal')
+  union all select jsonb_build_object('created_at',created_at,'kind',kind,'description',case when kind='reversal' then 'Mistaken manual receipt corrected' when kind='refund' then 'Completed refund' when source='manual' then 'Manager recorded '||replace(method,'_',' ')||' payment' else 'Provider-verified payment' end,'amount',amount,'reason',null) from public.transactions where reservation_id=rid
+  union all select jsonb_build_object('created_at',coalesce(reviewed_at,created_at),'kind','change','description','Booking change '||status,'reason',coalesce(decision_reason,reason),'amount',(proposal->>'total')::bigint) from public.reservation_changes where reservation_id=rid
+  union all select jsonb_build_object('created_at',coalesce(completed_at,approved_at,created_at),'kind','adjustment_refund','description','Price adjustment refund '||status||' (no cancellation penalty)','reason',reason,'amount',amount) from public.adjustment_refunds where reservation_id=rid
+ )items);
+end $$;
+revoke execute on function private.booking_change_snapshot(uuid),private.assert_paid_change(uuid),private.apply_paid_selection(uuid,jsonb),private.preview_paid_selection(uuid,jsonb),private.request_cancellation_before_paid_changes(uuid,text),private.reservation_activity_before_paid_changes(uuid),private.refund_quote_before_receipt_corrections(uuid,timestamptz),private.refund_quote(uuid,timestamptz) from public,anon,authenticated;
+revoke execute on function public.complete_manual_cancellation_refund(uuid,text,timestamptz,text,uuid) from public,anon,authenticated;grant execute on function public.complete_manual_cancellation_refund(uuid,text,timestamptz,text,uuid) to authenticated;
+revoke execute on function public.preview_reservation_change(uuid,jsonb),public.request_reservation_change(uuid,jsonb,text,text),public.review_reservation_change(uuid,boolean,text),public.request_adjustment_refund(uuid,text),public.review_adjustment_refund(uuid,boolean),public.complete_adjustment_refund(uuid,text,timestamptz,text,uuid),public.request_cancellation(uuid,text),public.reservation_activity(uuid) from public,anon,authenticated;
+grant execute on function public.preview_reservation_change(uuid,jsonb),public.request_reservation_change(uuid,jsonb,text,text),public.review_reservation_change(uuid,boolean,text),public.request_adjustment_refund(uuid,text),public.review_adjustment_refund(uuid,boolean),public.complete_adjustment_refund(uuid,text,timestamptz,text,uuid),public.request_cancellation(uuid,text),public.reservation_activity(uuid) to authenticated;
+alter function public.export_application_snapshot() set schema private;alter function private.export_application_snapshot() rename to export_application_snapshot_0035;
+create function public.export_application_snapshot() returns jsonb language plpgsql stable security definer set search_path='' as $$declare r jsonb=private.export_application_snapshot_0035();t text;rows jsonb;n bigint;begin
+ foreach t in array array['reservation_changes','adjustment_refunds'] loop execute format('select coalesce(jsonb_agg(to_jsonb(x) order by x.id),''[]''::jsonb),count(*) from(select * from public.%I limit 50001)x',t) into rows,n;if n>50000 then raise exception 'Dataset too large for application export';end if;r=jsonb_set(r,'{tables}',(r->'tables')||jsonb_build_object(t,rows));r=jsonb_set(r,'{counts}',(r->'counts')||jsonb_build_object(t,n));end loop;
+ if octet_length(r::text)>10485760 then raise exception 'Dataset too large for application export';end if;return r||jsonb_build_object('schema_version','0036_paid_booking_changes.sql');
+end $$;
+revoke execute on function private.export_application_snapshot_0035(),public.export_application_snapshot() from public,anon,authenticated;grant execute on function public.export_application_snapshot() to service_role;
+notify pgrst,'reload schema';
+
+-- ==================== 0037_payment_reporting_integration.sql ====================
+
+-- Append columns to the security-invoker view without changing old column order.
+create or replace view public.reservation_summary with(security_invoker=true) as select r.id,r.customer_id,r.event_name,r.event_date,r.event_time,r.address,r.guests,r.menu_set_id,r.drink_id,r.dessert_id,r.status,r.holds_capacity,r.payment_status,r.total,r.paid,r.refunded,r.pricing,r.finalized_at,r.created_at,r.updated_at,m.name as package_name,p.full_name as customer_name,r.booking_version,r.event_preferences,r.consent_version,r.consent_at,r.reservation_reference,r.selection_snapshot,r.allergy_allergen_ids,r.allergy_notes,r.allergy_acknowledgments,r.financial_snapshot,r.payment_reversed,r.approved_revision from public.reservations r join public.menu_sets m on m.id=r.menu_set_id join public.profiles p on p.id=r.customer_id;
+create or replace function private.manager_reservation_status_previous(rid uuid,new_status public.reservation_status) returns void language plpgsql security definer set search_path='' as $$declare r public.reservations;net bigint;begin
+ perform private.require_staff();select * into strict r from public.reservations where id=rid for update;net=r.paid-r.refunded-r.payment_reversed;
+ if not ((r.status in ('pending','for_approval') and new_status='approved' and r.finalized_at is not null and r.event_date>(now() at time zone 'Asia/Manila')::date) or (r.status in ('pending','for_approval') and new_status='rejected' and net=0) or (r.status='approved' and new_status='completed' and net>=r.total and r.event_date<=(now() at time zone 'Asia/Manila')::date)) then raise exception 'Invalid reservation transition';end if;
+ perform private.no_checkout(rid);update public.reservations set status=new_status where id=rid;perform private.audit('reservation.status_changed',rid::text,jsonb_build_object('from',r.status,'to',new_status));perform private.notify(rid,'Reservation updated','Reservation status: '||new_status::text);
+end $$;
+alter function public.export_application_snapshot() set schema private;alter function private.export_application_snapshot() rename to export_application_snapshot_0036;
+create function public.export_application_snapshot() returns jsonb language sql stable security definer set search_path='' as $$select private.export_application_snapshot_0036()||jsonb_build_object('schema_version','0037_payment_reporting_integration.sql')$$;
+revoke execute on function private.export_application_snapshot_0036(),public.export_application_snapshot() from public,anon,authenticated;grant execute on function public.export_application_snapshot() to service_role;
+notify pgrst,'reload schema';
+
+-- ==================== 0038_adjustment_provider_refunds.sql ====================
+
+alter table public.adjustment_refunds add column processing boolean not null default false,add column processing_by uuid references public.profiles;
+alter table public.adjustment_refunds drop constraint adjustment_refunds_method_check;
+alter table public.adjustment_refunds add constraint adjustment_refunds_method_check check(method in ('cash','bank_transfer','paymongo'));
+create table public.adjustment_refund_operations(id uuid primary key default gen_random_uuid(),refund_id uuid not null references public.adjustment_refunds,payment_id uuid not null references public.payments,amount bigint not null check(amount>0),claimed boolean not null default false,external_refund_id text unique,status text not null default 'not_started' check(status in ('not_started','pending','processing','succeeded','failed')),unique(refund_id,payment_id));
+alter table public.adjustment_refund_operations enable row level security;revoke all on public.adjustment_refund_operations from anon,authenticated;grant select on public.adjustment_refund_operations to authenticated;grant all on public.adjustment_refund_operations to service_role;
+create policy adjustment_operations_staff on public.adjustment_refund_operations for select to authenticated using(public.is_staff());
+create function public.claim_adjustment_refund(fid uuid,actor uuid) returns jsonb language plpgsql security definer set search_path='' as $$
+declare f public.adjustment_refunds;r public.reservations;p public.payments;remaining bigint;used bigint;portion bigint;ops jsonb;begin
+ if not exists(select 1 from public.profiles where id=actor and role in ('manager','super_admin') and account_status='active') then raise exception 'Active staff initiator required';end if;
+ select * into strict f from public.adjustment_refunds where id=fid for update;select * into strict r from public.reservations where id=f.reservation_id for update;
+ if f.status='completed' then return jsonb_build_object('completed',true,'operations','[]');end if;
+ if f.status<>'approved' then raise exception 'Approved adjustment refund required';end if;perform private.no_checkout(r.id);
+ if not f.processing then
+  remaining=f.amount;if remaining>(private.payment_amounts(r)->>'refund_due')::bigint then raise exception 'Refund exceeds the excess verified funds';end if;
+  for p in select * from public.payments where reservation_id=r.id and source='paymongo' and status='fully_paid' and voided_at is null and external_payment_id is not null order by created_at,id for update loop
+   select coalesce(sum((x->>'amount')::bigint),0) into used from public.adjustment_refunds a cross join jsonb_array_elements(coalesce(a.payment_allocations,'[]'))x where a.reservation_id=r.id and a.status='completed' and x->>'payment_id'=p.id::text;
+   select used+coalesce(sum(amount),0) into used from public.refund_operations where payment_id=p.id and status='succeeded';portion=least(remaining,greatest(p.amount-used,0));
+   if portion>0 then insert into public.adjustment_refund_operations(refund_id,payment_id,amount) values(fid,p.id,portion);remaining=remaining-portion;end if;
+  end loop;
+  if remaining<>0 then raise exception 'Provider receipts do not cover this payout. Use the explicit actual cash/bank payout workflow';end if;
+  update public.adjustment_refunds set processing=true,processing_by=actor where id=fid;perform private.audit('adjustment_refund.provider_started',fid::text,jsonb_build_object('initiated_by',actor,'reservation_id',r.id,'amount',f.amount));
+ end if;
+ select coalesce(jsonb_agg(jsonb_build_object('id',o.id,'amount',o.amount,'external_payment_id',pay.external_payment_id) order by pay.created_at),'[]') into ops from public.adjustment_refund_operations o join public.payments pay on pay.id=o.payment_id where o.refund_id=fid;return jsonb_build_object('completed',false,'operations',ops);
+end $$;
+create function public.claim_adjustment_operation(operation_id uuid) returns jsonb language plpgsql security definer set search_path='' as $$declare o public.adjustment_refund_operations;f public.adjustment_refunds;begin
+ select a.* into strict f from public.adjustment_refund_operations x join public.adjustment_refunds a on a.id=x.refund_id where x.id=operation_id for update of a;
+ if f.status<>'approved' or not f.processing then raise exception 'Refund is not processing';end if;
+ select * into strict o from public.adjustment_refund_operations where id=operation_id for update;
+ if o.external_refund_id is not null then return to_jsonb(o)||jsonb_build_object('newly_claimed',false);end if;
+ if o.claimed then raise exception 'Ambiguous provider refund requires reconciliation before retry';end if;
+ update public.adjustment_refund_operations set claimed=true where id=o.id;return to_jsonb(o)||jsonb_build_object('newly_claimed',true);
+end $$;
+create function public.record_adjustment_operation(operation_id uuid,provider_id text,provider_status text) returns void language plpgsql security definer set search_path='' as $$declare o public.adjustment_refund_operations;f public.adjustment_refunds;r public.reservations;begin
+ select a.* into strict f from public.adjustment_refund_operations x join public.adjustment_refunds a on a.id=x.refund_id where x.id=operation_id for update of a;
+ select * into strict r from public.reservations where id=f.reservation_id for update;
+ select * into strict o from public.adjustment_refund_operations where id=operation_id for update;
+ if not o.claimed or nullif(provider_id,'') is null or provider_status is null or provider_status not in ('pending','processing','succeeded','failed') or (o.external_refund_id is not null and o.external_refund_id<>provider_id) or (o.status='succeeded' and provider_status<>'succeeded') then raise exception 'Invalid verified provider refund outcome';end if;
+ if provider_status='succeeded' and o.status<>'succeeded' then
+  if f.status<>'approved' or not f.processing or o.amount>r.paid-r.refunded-r.payment_reversed then raise exception 'Refund allocation exceeds verified receipts';end if;
+  update public.reservations set refunded=refunded+o.amount where id=r.id;perform private.refresh_payment_state(r.id);
+  insert into public.transactions(reservation_id,payment_id,kind,amount,reference,source,method,received_at) values(r.id,o.payment_id,'refund',o.amount,'adjustment-operation:'||o.id,'paymongo','paymongo',now());
+  perform private.audit('adjustment_refund.provider_receipt',o.id::text,jsonb_build_object('refund_id',f.id,'reservation_id',r.id,'amount',o.amount,'provider_refund_id',provider_id));
+ end if;
+ update public.adjustment_refund_operations set external_refund_id=provider_id,status=provider_status where id=o.id;
+end $$;
+create function public.finish_adjustment_refund(fid uuid) returns void language plpgsql security definer set search_path='' as $$declare f public.adjustment_refunds;r public.reservations;actual bigint;allocations jsonb;begin
+ select * into strict f from public.adjustment_refunds where id=fid for update;select * into strict r from public.reservations where id=f.reservation_id for update;
+ if f.status='completed' then return;end if;
+ select coalesce(sum(o.amount),0),coalesce(jsonb_agg(jsonb_build_object('payment_id',o.payment_id,'amount',o.amount,'reference',coalesce(p.payment_reference,p.external_payment_id),'provider_refund_id',o.external_refund_id)),'[]') into actual,allocations from public.adjustment_refund_operations o join public.payments p on p.id=o.payment_id where o.refund_id=fid and o.status='succeeded' and o.external_refund_id is not null;
+ if f.status<>'approved' or not f.processing or actual<>f.amount then raise exception 'Provider has not confirmed the full eligible excess refund';end if;
+ update public.adjustment_refunds set status='completed',processing=false,completed_at=now(),paid_at=now(),completed_by=processing_by,method='paymongo',payment_allocations=allocations,proof_reference='Provider-confirmed refund allocations' where id=fid;
+ perform private.audit('adjustment_refund.provider_completed',fid::text,jsonb_build_object('reservation_id',r.id,'amount',actual,'initiated_by',f.processing_by,'operations',allocations));
+end $$;
+-- A known rejection before a provider refund exists can be released for manual
+-- payout. Ambiguous operations stay held until an operator reconciles them.
+create function public.release_rejected_adjustment_operation(operation_id uuid) returns void language plpgsql security definer set search_path='' as $$declare o public.adjustment_refund_operations;begin
+ select * into strict o from public.adjustment_refund_operations where id=operation_id for update;
+ if o.external_refund_id is not null then raise exception 'A provider refund reference already exists';end if;
+ update public.adjustment_refund_operations set claimed=false,status='failed' where id=o.id;
+ perform private.audit('adjustment_refund.provider_rejected',o.refund_id::text,jsonb_build_object('operation_id',o.id));
+end $$;
+create function private.complete_receipt_details() returns trigger language plpgsql security definer set search_path='' as $$declare r public.reservations;details jsonb;begin
+ if new.kind<>'payment' or new.payment_id is null then return new;end if;
+ select * into strict r from public.reservations where id=new.reservation_id;
+ details=jsonb_build_object('reservation_reference',r.reservation_reference,'event_name',r.event_name,'event_date',r.event_date,'event_time',r.event_time,'guests',r.guests,'package',(select name from public.menu_sets where id=r.menu_set_id),'dishes',(select coalesce(jsonb_agg(d.name order by d.name),'[]') from public.reservation_items x join public.dishes d on d.id=x.dish_id where x.reservation_id=r.id),'drink',(select name from public.drinks where id=r.drink_id),'dessert',(select name from public.desserts where id=r.dessert_id),'setup',(select s.name from public.reservation_event_setups x join public.event_setups s on s.id=x.event_setup_id where x.reservation_id=r.id),'address',r.address,'selections',r.selection_snapshot,'setup_inclusions',r.event_preferences->'setup_inclusions');
+ update public.payments set quote_snapshot=coalesce(quote_snapshot,'{}')||details where id=new.payment_id;return new;
+end $$;
+create trigger complete_receipt_details before insert on public.transactions for each row execute function private.complete_receipt_details();
+revoke execute on function private.complete_receipt_details() from public,anon,authenticated;
+alter function public.complete_adjustment_refund(uuid,text,timestamptz,text,uuid) set schema private;alter function private.complete_adjustment_refund(uuid,text,timestamptz,text,uuid) rename to complete_adjustment_refund_before_provider_guard;
+-- Renamed RPC uses positional arguments for its qualified parameters.
+do $$begin execute replace(replace(replace(pg_get_functiondef('private.complete_adjustment_refund_before_provider_guard(uuid,text,timestamptz,text,uuid)'::regprocedure),'complete_adjustment_refund.paid_at','$3'),'complete_adjustment_refund.method','$2'),'complete_adjustment_refund.proof_reference','$4');end $$;
+create function public.complete_adjustment_refund(fid uuid,method text,paid_at timestamptz,proof_reference text,idempotency_key uuid) returns jsonb language plpgsql security definer set search_path='' as $$declare f public.adjustment_refunds;begin
+ perform private.require_staff();select * into strict f from public.adjustment_refunds where id=fid for update;
+ if f.status<>'completed' and exists(select 1 from public.adjustment_refund_operations where refund_id=fid and (claimed or external_refund_id is not null)) then raise exception 'Provider refund is processing or ambiguous. Reconcile it before manual payout';end if;
+ update public.adjustment_refunds set processing=false where id=fid;return private.complete_adjustment_refund_before_provider_guard(fid,method,paid_at,proof_reference,idempotency_key);
+end $$;
+revoke execute on function private.complete_adjustment_refund_before_provider_guard(uuid,text,timestamptz,text,uuid),public.complete_adjustment_refund(uuid,text,timestamptz,text,uuid),public.claim_adjustment_refund(uuid,uuid),public.claim_adjustment_operation(uuid),public.record_adjustment_operation(uuid,text,text),public.finish_adjustment_refund(uuid),public.release_rejected_adjustment_operation(uuid) from public,anon,authenticated;
+grant execute on function public.complete_adjustment_refund(uuid,text,timestamptz,text,uuid) to authenticated;
+grant execute on function public.claim_adjustment_refund(uuid,uuid),public.claim_adjustment_operation(uuid),public.record_adjustment_operation(uuid,text,text),public.finish_adjustment_refund(uuid),public.release_rejected_adjustment_operation(uuid) to service_role;
+alter function public.export_application_snapshot() set schema private;alter function private.export_application_snapshot() rename to export_application_snapshot_0037;
+create function public.export_application_snapshot() returns jsonb language plpgsql stable security definer set search_path='' as $$declare r jsonb=private.export_application_snapshot_0037();rows jsonb;n bigint;begin
+ select coalesce(jsonb_agg(to_jsonb(x) order by x.id),'[]'),count(*) into rows,n from(select * from public.adjustment_refund_operations limit 50001)x;if n>50000 then raise exception 'Dataset too large for application export';end if;r=jsonb_set(r,'{tables}',(r->'tables')||jsonb_build_object('adjustment_refund_operations',rows));r=jsonb_set(r,'{counts}',(r->'counts')||jsonb_build_object('adjustment_refund_operations',n));if octet_length(r::text)>10485760 then raise exception 'Dataset too large for application export';end if;return r||jsonb_build_object('schema_version','0038_adjustment_provider_refunds.sql');
+end $$;
+revoke execute on function private.export_application_snapshot_0037(),public.export_application_snapshot() from public,anon,authenticated;grant execute on function public.export_application_snapshot() to service_role;
+notify pgrst,'reload schema';
+
 commit;

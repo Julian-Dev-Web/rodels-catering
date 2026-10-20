@@ -79,4 +79,4 @@ The protected application archive now includes all **50 public application table
 - All ten browser acceptance checks passed on the production build: Manager editor/confirmation, unpublished fixture isolation, Egg evidence/blocked Continue/focus, desktop/mobile layout, Back/Save/Reload acknowledgment retention, simultaneous allergies, garlic/ambiguous text, deselection/no-allergy behavior, recipe revision invalidation and denied customer recipe writes.
 - Visual QA widened dish warning rows across the menu grid; mobile renders the selected dish above its full-width warning instead of compressing warning text into a narrow food tile.
 - Unpublished fixtures, their ingredient definitions and the temporary customer/drafts were cleaned; the audit trail was retained. The final comparison found **no changes to original rows across 11 protected tables**, including the original 87-dish catalog and existing financial/customer/draft records.
-- Frontend release verification is appended after the GitHub/Vercel rollout.
+- Released in commit `fbfe80a`. The live custom domain served the exact tested entry bundle `/assets/index-g-b4JPGt.js` after the GitHub/Vercel rollout.

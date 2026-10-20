@@ -129,7 +129,7 @@ export function Reports({ paymentsOnly = false }: { paymentsOnly?: boolean }) {
   const summary =
     mode === 'payments'
       ? [
-          `Verified receipts: PHP ${numeric(ps.received)}. Completed refunds: PHP ${numeric(ps.refunded)}. Net received: PHP ${numeric(ps.net)}.`,
+          `Verified receipts: PHP ${numeric(ps.received)}. Completed refunds: PHP ${numeric(ps.refunded)}. Corrections: PHP ${numeric(ps.reversed)}. Net received: PHP ${numeric(ps.net)}.`,
           `Current outstanding balance for ${ps.bookings} unique included bookings: PHP ${numeric(ps.outstanding)}. Pending attempts contribute no receipts.`,
         ]
       : [
@@ -155,6 +155,8 @@ export function Reports({ paymentsOnly = false }: { paymentsOnly?: boolean }) {
           { key: 'status', label: 'Status' },
           { key: 'received', label: 'Received (PHP)' },
           { key: 'refunded', label: 'Refund (PHP)' },
+          {key:'reversed',label:'Corrections (PHP)'},
+          {key:'refund_due',label:'Current refund due (PHP)'},
           { key: 'balance', label: 'Current balance (PHP)' },
           { key: 'tax_discount', label: 'Saved VAT / discount' },
         ]
@@ -172,6 +174,8 @@ export function Reports({ paymentsOnly = false }: { paymentsOnly?: boolean }) {
           { key: 'guests', label: 'Guests' },
           { key: 'status', label: 'Status' },
           { key: 'total', label: 'Total (PHP)' },
+          {key:'refund_due',label:'Refund due (PHP)'},
+          {key:'revision',label:'Approved revision'},
           { key: 'chair_quantity', label: 'Guest chairs' },
           { key: 'theme', label: 'Theme' },
           { key: 'colors', label: 'Colors' },
@@ -265,7 +269,7 @@ export function Reports({ paymentsOnly = false }: { paymentsOnly?: boolean }) {
           {mode === 'payments' ? 'Ledger type' : 'Booking status'}
           <select value={kind} onChange={(e) => setKind(e.target.value)}>
             {(mode === 'payments'
-              ? ['all', 'payment', 'refund']
+              ? ['all', 'payment', 'refund','reversal']
               : [
                   'all',
                   'Draft',

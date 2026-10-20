@@ -1,11 +1,12 @@
+import {BookingChanges,AdjustmentRefunds} from '../components/BookingChanges'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams,useLocation } from 'react-router-dom'
+import {FeedbackNotice} from '../components/FeedbackNotice'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowRight,
   CalendarDays,
   Plus,
-  ShieldCheck,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -13,7 +14,6 @@ import { useReservations, useReservation, useSavedDrafts } from '../features/res
 import { useCatalog } from '../features/catalog'
 import { useAuth } from '../features/auth'
 import {
-  Action,
   Badge,
   DataTable,
   Empty,
@@ -28,8 +28,7 @@ import {
   BookingActivity,
 } from '../components/BookingDetails'
 import { RefundRequest } from '../components/RefundRequest'
-import { FinancialBreakdown } from '../components/FinancialBreakdown'
-import { FeedbackNotice } from '../components/FeedbackNotice'
+import { CustomerPaymentPanel, PaymentHistory, PaymentTotals } from '../components/PaymentPanel'
 import { financialRows } from '../lib/financial'
 import { downloadReportPdf, savedFinancialLabel } from '../lib/reports'
 import { RescheduleForm } from '../components/RescheduleForm'
@@ -41,8 +40,7 @@ import {
   money,
   todayManila,
 } from '../lib/format'
-import { edge, records, rpc } from '../lib/supabase'
-import { paymentAmount } from '../lib/rules'
+import { records, rpc } from '../lib/supabase'
 import { refundProcessing } from '../lib/refunds'
 import type { RecordRow, Reservation } from '../types'
 export function Reservations() {
@@ -84,7 +82,7 @@ export function Reservations() {
         />
         <Stat
           label="Total paid"
-          value={money(rows.reduce((s, r) => s + r.paid - r.refunded, 0))}
+          value={money(rows.reduce((s, r) => s + r.paid - r.refunded - (r.payment_reversed||0), 0))}
           icon={<Wallet />}
         />
       </div>
@@ -166,20 +164,17 @@ export function Stat({
   )
 }
 export function ReservationDetail() {
+  const location=useLocation(),[notice,setNotice]=useState<string>(location.state?.notice||'')
   const { id } = useParams(),
     query = useReservation(id),
     catalog = useCatalog({ includeArchived: true })
   const [modal, setModal] = useState<'cancel' | 'reschedule' | null>(null)
   const [statementError,setStatementError]=useState<unknown>(null),[statementBusy,setStatementBusy]=useState(false)
-  const [checkoutNotice,setCheckoutNotice]=useState('')
   if (query.isPending) return <Loading />
   if (query.error) return <ErrorState error={query.error} />
   const { reservation: r, children: c } = query.data
   const editable =
     ['draft', 'pending', 'for_approval'].includes(r.status) && r.paid === 0
-  const payable =
-    ['for_approval', 'pending', 'approved'].includes(r.status) &&
-    r.paid < r.total
   return (
     <>
       <PageHeading
@@ -194,6 +189,7 @@ export function ReservationDetail() {
         {date(r.event_date)} · {timeLabel(r.event_time)} Manila · {r.guests}{' '}
         guests
       </PageHeading>
+      {notice&&<FeedbackNotice text={notice} close={()=>setNotice('')}/>}
       <div className="detail-layout">
         <section className="panel">
           <div className="actions">
@@ -239,9 +235,9 @@ export function ReservationDetail() {
             />
           )}
           <h3>Recorded activity</h3>
-          <button className="button secondary" disabled={statementBusy} onClick={async()=>{setStatementBusy(true);setStatementError(null);try{await downloadReportPdf({title:'Booking and payment record',filters:'System-generated record; not an official BIR tax invoice',generated:date(new Date().toISOString())+' Manila',summary:[r.reservation_reference||'Reservation',r.event_name,date(r.event_date)+' '+timeLabel(r.event_time)+' Asia/Manila',['street','barangay','city','province'].map(key=>r.address[key]).filter(Boolean).join(', ')],headers:['Description','Saved amount / information'],rows:financialRows(r.financial_snapshot,r.total,r.paid,['cancelled','rejected','pending_refund','refund_approved','refunded'].includes(r.status)?0:undefined).map(([label,value])=>[label,typeof value==='number'?money(value):value]),filename:'RodelConnect-booking-'+(r.reservation_reference||'record')})}catch(error){setStatementError(error)}finally{setStatementBusy(false)}}}>{statementBusy?'Preparing record…':'Download booking / payment record'}</button>
+          <button className="button secondary" disabled={statementBusy} onClick={async()=>{setStatementBusy(true);setStatementError(null);try{await downloadReportPdf({title:'Booking and payment record',filters:'System-generated record; not an official BIR tax invoice',generated:date(new Date().toISOString())+' Manila',summary:[r.reservation_reference||'Reservation',r.event_name,date(r.event_date)+' '+timeLabel(r.event_time)+' Asia/Manila',['street','barangay','city','province'].map(key=>r.address[key]).filter(Boolean).join(', ')],headers:['Description','Saved amount / information'],rows:financialRows(r.financial_snapshot,r.total,r.paid-r.refunded-(r.payment_reversed||0),['cancelled','rejected','pending_refund','refund_approved','refunded'].includes(r.status)?0:undefined).map(([label,value])=>[label,typeof value==='number'?money(value):value]),filename:'RodelConnect-booking-'+(r.reservation_reference||'record')})}catch(error){setStatementError(error)}finally{setStatementBusy(false)}}}>{statementBusy?'Preparing record…':'Download booking / payment record'}</button>
           {!!statementError&&<ErrorState error={statementError}/>}
-          <BookingActivity id={r.id} />
+          <BookingActivity id={r.id} /><BookingChanges reservation={r}/><AdjustmentRefunds reservation={r}/>
           <div className="actions">
             {editable && (
               <Link
@@ -285,65 +281,8 @@ export function ReservationDetail() {
               'refund_approved',
               'refunded',
             ].includes(r.status) && <RefundRequest reservation={r} />}
-          {payable && (
-            <div className="payment-box">
-              <h3>A little closer to your celebration.</h3>
-              {checkoutNotice&&<FeedbackNotice text={checkoutNotice} close={()=>setCheckoutNotice('')}/>}
-              <p>
-                Choose how you’d like to pay. Your confirmed payment state
-                appears here after verified server processing.
-              </p>
-              <div className="actions">
-                {(r.paid === 0 ? ['partial', 'full'] : ['balance']).map(
-                  (intent) => (
-                    <Action
-                      key={intent}
-                      label={`${human(intent === 'partial' ? '50% down payment' : intent)} · ${money(paymentAmount(r.total, r.paid, intent as 'partial' | 'full' | 'balance'))}`}
-                      kind="primary"
-                      confirm="You will continue to PayMongo’s secure checkout. A redirect alone does not confirm payment or your event date."
-                      run={async () => {
-                        const data = await edge<{ url?: string; quote_updated?: boolean }>(
-                          'create-paymongo-checkout',
-                          {
-                            reservation_id: r.id,
-                            intent,
-                            expected_total:r.total,
-                            expected_quote_at:r.financial_snapshot?.captured_at,
-                          },
-                        )
-                        if(data.quote_updated){await query.refetch();throw new Error('Your quotation has been updated. Review the discount, total and down payment, then choose your payment again.')}
-                        if(!data.url)throw new Error('Checkout URL unavailable')
-                        const url = new URL(data.url)
-                        if (
-                          url.protocol !== 'https:' ||
-                          !url.hostname.endsWith('.paymongo.com')
-                        )
-                          throw new Error('Invalid checkout URL')
-                        window.location.assign(url.toString())
-                      }}
-                    />
-                  ),
-                )}
-                <Action label="Close or reconcile unfinished checkout" confirm="We will check PayMongo first. A processing payment stays open. Closing an unpaid session releases any unused one-time offer." run={async()=>{
-                  const result=await edge<{state:string}>('reconcile-paymongo-checkout',{reservation_id:r.id})
-                  await query.refetch()
-                  if(result.state==='pending')throw Error('PayMongo is still processing this payment. Your quote and offer remain held; please wait for confirmation.')
-                  setCheckoutNotice(result.state==='paid'?'Payment verified. Your booking now shows its updated payment state.':result.state==='released'?'Unpaid checkout safely closed. Any unused one-time offer is available again while eligible.':'There is no unfinished checkout to close.')
-                }}/>
-              </div>
-            </div>
-          )}
-          <div className="alert">
-            <ShieldCheck size={22} />
-            <p>
-              Payment confirmation is read from the server. If you’ve just
-              returned from checkout, use Refresh status while your payment is
-              verified.
-            </p>
-          </div>
-          <button className="text-button" onClick={() => void query.refetch()}>
-            Refresh status
-          </button>
+          <CustomerPaymentPanel reservation={r}/>
+          <PaymentHistory reservation={r}/>
         </section>
         <aside className="quote-panel">
           <span className="eyebrow">YOUR CONFIRMED QUOTE</span>
@@ -355,11 +294,7 @@ export function ReservationDetail() {
                 <strong>{money(v)}</strong>
               </div>
             ))}
-          <FinancialBreakdown snapshot={r.financial_snapshot} total={r.total} paid={r.paid} balance={['cancelled','rejected','pending_refund','refund_approved','refunded'].includes(r.status)?0:undefined}/>
-          <div className="price-line">
-            <span>Refunded</span>
-            <strong>{money(r.refunded)}</strong>
-          </div>
+          <PaymentTotals id={r.id}/>
         </aside>
       </div>
       {modal && (
@@ -694,7 +629,7 @@ export function Payments({ transactions = false }: { transactions?: boolean }) {
             reservations.data
               ?.filter(
                 (r) =>
-                  r.total > r.paid &&
+                  r.total > r.paid-r.refunded-(r.payment_reversed||0) &&
                   ['approved', 'pending', 'for_approval'].includes(r.status),
               )
               .map((r) => (
@@ -703,7 +638,7 @@ export function Payments({ transactions = false }: { transactions?: boolean }) {
                     <strong>{r.event_name}</strong>
                     <small>{date(r.event_date)}</small>
                   </div>
-                  <strong>{money(r.total - r.paid)}</strong>
+                  <strong>{money(Math.max(r.total-r.paid+r.refunded+(r.payment_reversed||0),0))}</strong>
                   <Link
                     className="button small secondary"
                     to={'/customer/reservations/' + r.id}

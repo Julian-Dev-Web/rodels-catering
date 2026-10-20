@@ -86,6 +86,7 @@ describe('complete filtered financial exports', () => {
     expect(filtered).toHaveLength(21)
     expect(paymentSummary(filtered)).toEqual({
       received: 2000,
+      reversed: 0,
       refunded: 90,
       net: 1910,
       outstanding: 10000,

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useFinancialRealtime } from '../features/payments'
 import {
   Link,
   NavLink,
@@ -185,6 +186,7 @@ const icons: Record<string, typeof CalendarDays> = {
   database: Database,
 }
 export function PortalLayout() {
+  useFinancialRealtime()
   const { profile } = useAuth(),
     location = useLocation(),
     navigate = useNavigate()

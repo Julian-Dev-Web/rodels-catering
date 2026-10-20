@@ -75,3 +75,10 @@ export function bookingPayload(v:Values):Values {
   if(address.notes==null||address.notes==='')delete address.notes
   return {...v,address}
 }
+// Validation can reorder object properties between wizard steps. Compare the
+// normalized selections, rather than JSON insertion order, when a quote is saved.
+export function bookingPayloadKey(v:Values):string {
+  const parsed=bookingSchema.safeParse(v)
+  const payload=bookingPayload(parsed.success?parsed.data:v)
+  return JSON.stringify(payload,(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b))):value)
+}

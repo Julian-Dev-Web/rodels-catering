@@ -83,6 +83,8 @@ export interface Reservation {
   total: number
   paid: number
   refunded: number
+  payment_reversed?: number
+  approved_revision?: number
   pricing: Record<string, number>
   created_at: string
   finalized_at: string | null
